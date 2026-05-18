@@ -9,6 +9,8 @@ export type RunStatus = "queued" | "running" | "completed" | "failed";
 export type BranchName = "free" | "constrained";
 export type ClaimDirection = "SUPPORTS" | "REFUTES" | "NEUTRAL";
 export type RecommendationStrength = "weak" | "moderate" | "strong";
+export type EvidenceProducer = "investigator" | "contaminator";
+export type EvidenceProvenance = "REAL" | "SYNTHETIC";
 
 export interface RunRequest {
   title?: string;
@@ -20,6 +22,7 @@ export interface RunRequest {
   model?: string;
   api_key?: string;
   base_url?: string;
+  horizons?: number[];
 }
 
 export interface ClaimNode {
@@ -92,6 +95,34 @@ export interface DriftSnapshot {
     label: string;
   };
   anchors: string[];
+}
+
+export interface EvidenceUnit {
+  id: string;
+  claim_id: string;
+  year: number;
+  branch: BranchName;
+  producer: EvidenceProducer;
+  cited_ids: string[];
+  provenance: EvidenceProvenance;
+  direction: ClaimDirection;
+  rationale: string;
+}
+
+export interface CitationEdge {
+  from_unit: string;
+  to_id: string;
+}
+
+export interface LineageRecord {
+  claim_id: string;
+  year: number;
+  branch: BranchName;
+  surviving_real: string[];
+  lost_real: string[];
+  synthetic_carriers: string[];
+  verdict_before: ClaimDirection;
+  verdict_after: ClaimDirection;
 }
 
 export interface SimulationRun {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ from app.db import (
     run_exists,
     update_run_status,
 )
+from app.llm import DeterministicFakeClient
 from app.models import RunRequestModel
 from app.showcase import SHOWCASES, get_showcase
 from app.simulator import (
@@ -122,6 +124,10 @@ def _process_run(run_id: str, run_request: RunRequestModel, input_text: str) -> 
 
 
 def _bootstrap_showcases() -> None:
+    force_fallback = bool(
+        os.environ.get("PYTEST_CURRENT_TEST")
+        or os.environ.get("MEDEVO_BOOTSTRAP_FALLBACK") == "1"
+    )
     for showcase in SHOWCASES:
         run_id = f"showcase-{showcase.id}"
         if run_exists(run_id) and has_artifact(run_id, "bundle.json"):
@@ -136,6 +142,10 @@ def _bootstrap_showcases() -> None:
             model=DEFAULT_OLLAMA_MODEL,
         )
         backend = resolve_backend(run_request)
+        if force_fallback:
+            backend.using_fallback = True
+            backend.model = "deterministic-fallback"
+            backend.base_url = None
         ensure_run_dir(run_id)
         insert_run(
             run_id=run_id,
@@ -151,7 +161,11 @@ def _bootstrap_showcases() -> None:
             input_source="showcase",
             artifact_dir=str(ARTIFACTS_DIR / run_id),
         )
-        bundle, summary = simulate_run(request=run_request, input_text=showcase.input_text)
+        bundle, summary = simulate_run(
+            request=run_request,
+            input_text=showcase.input_text,
+            client=DeterministicFakeClient() if force_fallback else None,
+        )
         _write_artifacts(
             run_id,
             bundle.model_dump(),

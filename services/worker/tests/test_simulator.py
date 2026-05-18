@@ -3,6 +3,8 @@ import hashlib
 from app.llm import (
     PROMPT_TEMPLATE_DIGEST,
     RESEARCHER_PROMPT_TEMPLATE,
+    SYNTHESIST_PROMPT_TEMPLATE,
+    SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
     DeterministicFakeClient,
 )
 from app.models import RunRequestModel
@@ -20,6 +22,7 @@ def _request() -> RunRequestModel:
             "Escalate support when perfusion fails to improve."
         ),
         backend="ollama",
+        horizons=[10, 20, 30],
     )
 
 
@@ -63,7 +66,8 @@ def test_fallback_run_is_marked_non_scientific() -> None:
 
     assert bundle.scientific is False
     assert bundle.mode_banner == "ILLUSTRATIVE — NOT A SCIENTIFIC RUN"
-    assert any("FALLBACK MODE" in note for note in bundle.validation_notes)
+    assert any("DEGRADED RUN" in note for note in bundle.validation_notes)
+    assert bundle.degradation_reason is not None
     assert summary["scientific"] is False
 
 
@@ -79,6 +83,16 @@ def test_researcher_prompt_template_is_frozen() -> None:
         assert forbidden not in lowered
 
 
+def test_synthesist_prompt_template_is_frozen() -> None:
+    assert (
+        hashlib.sha256(SYNTHESIST_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
+        == SYNTHESIST_PROMPT_TEMPLATE_DIGEST
+    )
+    lowered = SYNTHESIST_PROMPT_TEMPLATE.lower()
+    for forbidden in ("year", "branch", "drift", "bias", "contaminat", "ai-generated"):
+        assert forbidden not in lowered
+
+
 def test_backend_resolution_uses_fallback_when_ollama_unavailable() -> None:
     request = RunRequestModel(
         input_mode="guideline",
@@ -89,3 +103,22 @@ def test_backend_resolution_uses_fallback_when_ollama_unavailable() -> None:
     backend = resolve_backend(request)
     assert backend.backend == "ollama"
     assert backend.using_fallback in {True, False}
+
+
+def test_openai_compatible_requires_base_url_for_scientific_run() -> None:
+    request = RunRequestModel(
+        input_mode="guideline",
+        input_source="paste",
+        input_text="Routine bronchodilators should not be continued without observed benefit.",
+        backend="openai-compatible",
+        api_key="secret",
+        model="some-model",
+    )
+    backend = resolve_backend(request)
+    assert backend.using_fallback is True
+    assert backend.base_url is None
+
+    request.base_url = "https://example.test/v1"
+    backend = resolve_backend(request)
+    assert backend.using_fallback is False
+    assert backend.base_url == "https://example.test/v1"

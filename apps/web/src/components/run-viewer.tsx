@@ -1,13 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, LoaderCircle, ShieldCheck, ShieldX, Sparkles } from "lucide-react";
 
 import { fetchArtifacts, fetchRun, type ArtifactResponse, type RunSummaryResponse } from "@/lib/worker";
 
 type BranchName = "free" | "constrained";
+type LineageRecord = NonNullable<ArtifactResponse["bundle"]["lineage"]>[number];
 
 export function RunViewer({ runId }: { runId: string }) {
   const [summary, setSummary] = useState<RunSummaryResponse | null>(null);
@@ -16,47 +17,51 @@ export function RunViewer({ runId }: { runId: string }) {
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useEffectEvent(async () => {
-    try {
-      const nextSummary = await fetchRun(runId);
-      setSummary(nextSummary);
-      if (nextSummary.run.status === "completed") {
-        const nextArtifacts = await fetchArtifacts(runId);
-        setArtifacts(nextArtifacts);
-        setError(null);
-      } else if (nextSummary.run.status === "failed") {
-        setError(nextSummary.error ?? "Run failed.");
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const nextSummary = await fetchRun(runId);
+        if (cancelled) {
+          return;
+        }
+        setSummary(nextSummary);
+        if (nextSummary.run.status === "completed") {
+          const nextArtifacts = await fetchArtifacts(runId);
+          if (cancelled) {
+            return;
+          }
+          setArtifacts(nextArtifacts);
+          setError(null);
+        } else if (nextSummary.run.status === "failed") {
+          setError(nextSummary.error ?? "Run failed.");
+        }
+      } catch (nextError) {
+        if (!cancelled) {
+          setError(nextError instanceof Error ? nextError.message : "Unable to load run.");
+        }
       }
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Unable to load run.");
-    }
-  });
-
-  useEffect(() => {
-    refresh();
+    };
+    void refresh();
     const interval = setInterval(() => {
-      refresh();
+      void refresh();
     }, 2500);
-    return () => clearInterval(interval);
-  }, [refresh]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [runId]);
 
-  useEffect(() => {
-    if (!artifacts) {
-      return;
-    }
-    const firstClaim = artifacts.bundle.snapshots.free
-      .find((snapshot) => snapshot.year === selectedYear)
-      ?.claims.at(0);
-    if (firstClaim && !selectedClaimId) {
-      setSelectedClaimId(firstClaim.claim_id);
-    }
-  }, [artifacts, selectedYear, selectedClaimId]);
+  const availableYears = summary?.years ?? [10, 20, 30];
+  const activeYear = availableYears.includes(selectedYear)
+    ? selectedYear
+    : (availableYears[0] ?? 10);
 
   const freeSnapshot = artifacts?.bundle.snapshots.free.find(
-    (snapshot) => snapshot.year === selectedYear,
+    (snapshot) => snapshot.year === activeYear,
   );
   const constrainedSnapshot = artifacts?.bundle.snapshots.constrained.find(
-    (snapshot) => snapshot.year === selectedYear,
+    (snapshot) => snapshot.year === activeYear,
   );
 
   const claimIds =
@@ -64,12 +69,20 @@ export function RunViewer({ runId }: { runId: string }) {
     constrainedSnapshot?.claims.map((claim) => claim.claim_id) ??
     [];
 
-  const activeClaimId = selectedClaimId ?? claimIds[0] ?? null;
+  const activeClaimId = claimIds.includes(selectedClaimId ?? "")
+    ? selectedClaimId
+    : (claimIds[0] ?? null);
   const freeClaim = freeSnapshot?.claims.find((claim) => claim.claim_id === activeClaimId);
   const constrainedClaim = constrainedSnapshot?.claims.find(
     (claim) => claim.claim_id === activeClaimId,
   );
   const graph = artifacts?.bundle.claim_graphs.find((item) => item.claim_id === activeClaimId);
+  const activeLineage =
+    artifacts?.bundle.lineage?.filter(
+      (record) =>
+        record.year === activeYear &&
+        record.claim_id === activeClaimId,
+    ) ?? [];
 
   const isLoading = !summary || (summary.run.status !== "completed" && !error);
 
@@ -120,6 +133,11 @@ export function RunViewer({ runId }: { runId: string }) {
                 }
                 note="CIVER discard path under A2"
               />
+              <MetricCard
+                label="LLM calls"
+                value={String(artifacts?.meta.summary.llm_call_count ?? 0)}
+                note="Documented run budget"
+              />
             </div>
 
             {summary?.showcase && artifacts?.meta.description ? (
@@ -138,6 +156,11 @@ export function RunViewer({ runId }: { runId: string }) {
                   contrast carries no scientific weight. Excluded from any paper
                   artifact and the preregistered test set.
                 </div>
+                {artifacts.bundle.degradation_reason ? (
+                  <div className="mt-3 rounded-2xl border border-[#d97706] bg-white/70 px-3 py-3 text-sm leading-6 text-[#92400e]">
+                    {artifacts.bundle.degradation_reason}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -170,13 +193,13 @@ export function RunViewer({ runId }: { runId: string }) {
 
           <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_70px_rgba(17,35,30,0.08)] backdrop-blur lg:p-8">
             <div className="flex flex-wrap items-center gap-3">
-              {[10, 20, 30].map((year) => (
+              {(summary?.years ?? [10, 20, 30]).map((year) => (
                 <button
                   key={year}
                   type="button"
                   onClick={() => setSelectedYear(year)}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    selectedYear === year
+                    activeYear === year
                       ? "bg-[var(--foreground)] text-white"
                       : "border border-[var(--border)] bg-white/70 text-[var(--foreground)]"
                   }`}
@@ -221,12 +244,14 @@ export function RunViewer({ runId }: { runId: string }) {
                   claim={freeClaim}
                   band={freeSnapshot?.band.label}
                   anchors={freeSnapshot?.anchors ?? []}
+                  lineage={activeLineage.find((record) => record.branch === "free")}
                 />
                 <ExplanationCard
                   title="Constrained branch"
                   claim={constrainedClaim}
                   band={constrainedSnapshot?.band.label}
                   anchors={constrainedSnapshot?.anchors ?? []}
+                  lineage={activeLineage.find((record) => record.branch === "constrained")}
                 />
               </div>
             ) : (
@@ -389,11 +414,13 @@ function ExplanationCard({
   claim,
   band,
   anchors,
+  lineage,
 }: {
   title: string;
   claim?: ArtifactResponse["bundle"]["snapshots"][BranchName][number]["claims"][number];
   band?: string;
   anchors: string[];
+  lineage?: LineageRecord;
 }) {
   if (!claim) {
     return null;
@@ -422,6 +449,18 @@ function ExplanationCard({
           </div>
         ))}
       </div>
+      {lineage ? (
+        <div className="mt-4 rounded-xl border border-[var(--border)] bg-white/90 p-3 text-sm leading-6 text-[var(--foreground)]">
+          <div className="font-medium">Lineage</div>
+          <div className="mt-2">
+            Surviving real: {lineage.surviving_real.join(", ") || "none"}
+          </div>
+          <div>Lost real: {lineage.lost_real.join(", ") || "none"}</div>
+          <div>
+            Synthetic carriers: {lineage.synthetic_carriers.join(", ") || "none"}
+          </div>
+        </div>
+      ) : null}
       <div className="mt-4 rounded-xl border border-[var(--border)] bg-white/85 p-3 text-xs leading-6 text-[var(--muted)]">
         <div>{band}</div>
         <div className="mt-2">{anchors.join(" ")}</div>

@@ -46,6 +46,13 @@
     },
     "base_url": {
       "type": "string"
+    },
+    "horizons": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      }
     }
   }
 }

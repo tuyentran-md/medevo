@@ -13,6 +13,8 @@ BackendKind = Literal["ollama", "openai-compatible", "gemini", "anthropic"]
 RunStatus = Literal["queued", "running", "completed", "failed"]
 ClaimDirection = Literal["SUPPORTS", "REFUTES", "NEUTRAL"]
 RecommendationStrength = Literal["weak", "moderate", "strong"]
+EvidenceProvenance = Literal["REAL", "SYNTHETIC"]
+EvidenceProducer = Literal["investigator", "contaminator"]
 
 
 class RunRequestModel(BaseModel):
@@ -25,6 +27,7 @@ class RunRequestModel(BaseModel):
     model: str | None = None
     api_key: str | None = Field(default=None, exclude=True)
     base_url: str | None = None
+    horizons: list[int] | None = None
 
 
 class BackendConfigModel(BaseModel):
@@ -100,6 +103,34 @@ class DriftSnapshot(BaseModel):
     anchors: list[str]
 
 
+class EvidenceUnit(BaseModel):
+    id: str
+    claim_id: str
+    year: int
+    branch: BranchName
+    producer: EvidenceProducer
+    cited_ids: list[str]
+    provenance: EvidenceProvenance
+    direction: ClaimDirection
+    rationale: str
+
+
+class CitationEdge(BaseModel):
+    from_unit: str
+    to_id: str
+
+
+class LineageRecord(BaseModel):
+    claim_id: str
+    year: int
+    branch: BranchName
+    surviving_real: list[str]
+    lost_real: list[str]
+    synthetic_carriers: list[str]
+    verdict_before: ClaimDirection
+    verdict_after: ClaimDirection
+
+
 class SimulationRunModel(BaseModel):
     id: str
     status: RunStatus
@@ -138,3 +169,5 @@ class ArtifactBundle(BaseModel):
     scientific: bool = True
     mode_banner: str = ""
     model_descriptor: dict[str, str] = Field(default_factory=dict)
+    lineage: list[LineageRecord] = Field(default_factory=list)
+    degradation_reason: str | None = None

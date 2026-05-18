@@ -67,12 +67,25 @@ export interface ArtifactResponse {
     scientific?: boolean;
     mode_banner?: string;
     model_descriptor?: Record<string, string>;
+    lineage?: Array<{
+      claim_id: string;
+      year: number;
+      branch: "free" | "constrained";
+      surviving_real: string[];
+      lost_real: string[];
+      synthetic_carriers: string[];
+      verdict_before: "SUPPORTS" | "REFUTES" | "NEUTRAL";
+      verdict_after: "SUPPORTS" | "REFUTES" | "NEUTRAL";
+    }>;
+    degradation_reason?: string | null;
   };
   meta: {
     summary: {
       claim_count: number;
       years: number[];
       has_blocked_outputs: boolean;
+      llm_call_count?: number;
+      degradation_reason?: string | null;
     };
     validation: string[];
     description?: string;

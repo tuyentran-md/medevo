@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 @contextmanager
 def load_client(tmp_path, monkeypatch):
     monkeypatch.setenv("MEDEVO_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MEDEVO_FORCE_FALLBACK", "1")
     for module_name in list(sys.modules):
         if module_name.startswith("app"):
             sys.modules.pop(module_name)
@@ -33,6 +34,7 @@ def test_create_run_and_fetch_artifacts(tmp_path, monkeypatch) -> None:
                     "Broad-spectrum antibiotics should be started promptly. Escalate to ICU support when shock persists."
                 ),
                 "backend": "ollama",
+                "horizons": [10, 20, 30],
             },
         )
         assert response.status_code == 200
@@ -47,6 +49,7 @@ def test_create_run_and_fetch_artifacts(tmp_path, monkeypatch) -> None:
         payload = artifact_response.json()
         assert payload["meta"]["summary"]["years"] == [10, 20, 30]
         assert set(payload["bundle"]["snapshots"].keys()) == {"free", "constrained"}
+        assert "lineage" in payload["bundle"]
 
 
 def test_byok_request_does_not_persist_api_key(tmp_path, monkeypatch) -> None:
@@ -63,6 +66,7 @@ def test_byok_request_does_not_persist_api_key(tmp_path, monkeypatch) -> None:
                 "backend": "gemini",
                 "api_key": "secret-value",
                 "model": "gemini-2.5-flash",
+                "horizons": [10, 20, 30],
             },
         )
         assert response.status_code == 200

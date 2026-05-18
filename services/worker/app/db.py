@@ -35,6 +35,49 @@ def init_db() -> None:
                 artifact_dir TEXT NOT NULL,
                 error TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS source_catalog (
+                run_id TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                source_id TEXT NOT NULL,
+                label TEXT NOT NULL,
+                body TEXT NOT NULL,
+                PRIMARY KEY (run_id, source_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS evidence_units (
+                run_id TEXT NOT NULL,
+                unit_id TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                branch TEXT NOT NULL,
+                producer TEXT NOT NULL,
+                provenance TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                cited_ids_json TEXT NOT NULL,
+                rationale TEXT NOT NULL,
+                PRIMARY KEY (run_id, unit_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS citation_edges (
+                run_id TEXT NOT NULL,
+                from_unit TEXT NOT NULL,
+                to_id TEXT NOT NULL,
+                PRIMARY KEY (run_id, from_unit, to_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS lineage_records (
+                run_id TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                branch TEXT NOT NULL,
+                surviving_real_json TEXT NOT NULL,
+                lost_real_json TEXT NOT NULL,
+                synthetic_carriers_json TEXT NOT NULL,
+                verdict_before TEXT NOT NULL,
+                verdict_after TEXT NOT NULL,
+                PRIMARY KEY (run_id, claim_id, year, branch)
+            );
             """
         )
         conn.commit()
