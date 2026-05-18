@@ -6,7 +6,7 @@ from contextlib import closing
 from datetime import datetime
 
 from app.config import DB_PATH
-from app.models import BackendConfigModel, RunSummary, SimulationRunModel
+from app.models import BackendConfigModel, EvidenceUnit, LineageRecord, RunSummary, SimulationRunModel
 
 
 def get_conn() -> sqlite3.Connection:
@@ -182,3 +182,97 @@ def build_run_summary(row: sqlite3.Row, years: list[int], showcase: bool = False
 
 def dump_row(row: sqlite3.Row) -> dict[str, object]:
     return json.loads(json.dumps(dict(row)))
+
+
+def insert_ecology_records(
+    *,
+    run_id: str,
+    source_catalog: dict[str, list[object]],
+    evidence_units: list[EvidenceUnit],
+    lineage_records: list[LineageRecord],
+) -> None:
+    source_rows = [
+        (
+            run_id,
+            getattr(source, "claim_id"),
+            getattr(source, "source_id"),
+            getattr(source, "label"),
+            getattr(source, "text"),
+        )
+        for sources in source_catalog.values()
+        for source in sources
+    ]
+
+    deduped_units = {unit.id: unit for unit in evidence_units}
+    evidence_rows = [
+        (
+            run_id,
+            unit.id,
+            unit.claim_id,
+            unit.year,
+            unit.branch,
+            unit.producer,
+            unit.provenance,
+            unit.direction,
+            json.dumps(unit.cited_ids),
+            unit.rationale,
+        )
+        for unit in deduped_units.values()
+    ]
+    citation_rows = [
+        (run_id, unit.id, cited_id)
+        for unit in deduped_units.values()
+        for cited_id in unit.cited_ids
+    ]
+    lineage_rows = [
+        (
+            run_id,
+            record.claim_id,
+            record.year,
+            record.branch,
+            json.dumps(record.surviving_real),
+            json.dumps(record.lost_real),
+            json.dumps(record.synthetic_carriers),
+            record.verdict_before,
+            record.verdict_after,
+        )
+        for record in lineage_records
+    ]
+
+    with closing(get_conn()) as conn:
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO source_catalog (
+                run_id, claim_id, source_id, label, body
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            source_rows,
+        )
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO evidence_units (
+                run_id, unit_id, claim_id, year, branch, producer, provenance,
+                direction, cited_ids_json, rationale
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            evidence_rows,
+        )
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO citation_edges (
+                run_id, from_unit, to_id
+            ) VALUES (?, ?, ?)
+            """,
+            citation_rows,
+        )
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO lineage_records (
+                run_id, claim_id, year, branch, surviving_real_json,
+                lost_real_json, synthetic_carriers_json, verdict_before,
+                verdict_after
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            lineage_rows,
+        )
+        conn.commit()

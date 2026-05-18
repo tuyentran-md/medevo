@@ -113,6 +113,7 @@ def simulate_run(
     request: RunRequestModel,
     input_text: str,
     client: LLMClient | None = None,
+    run_id: str | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     backend = resolve_backend(request)
     llm = client or make_client(
@@ -130,4 +131,5 @@ def simulate_run(
         input_text=input_text,
         claim_graphs=claim_graphs,
         llm=llm,
+        run_id=run_id,
     )

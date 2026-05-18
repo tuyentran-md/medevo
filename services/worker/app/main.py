@@ -109,7 +109,11 @@ def _write_artifacts(run_id: str, bundle: dict[str, Any], metadata: dict[str, An
 def _process_run(run_id: str, run_request: RunRequestModel, input_text: str) -> None:
     update_run_status(run_id, "running")
     try:
-        bundle, summary = simulate_run(request=run_request, input_text=input_text)
+        bundle, summary = simulate_run(
+            request=run_request,
+            input_text=input_text,
+            run_id=run_id,
+        )
         _write_artifacts(
             run_id,
             bundle.model_dump(),
@@ -164,6 +168,7 @@ def _bootstrap_showcases() -> None:
         bundle, summary = simulate_run(
             request=run_request,
             input_text=showcase.input_text,
+            run_id=run_id,
             client=DeterministicFakeClient() if force_fallback else None,
         )
         _write_artifacts(

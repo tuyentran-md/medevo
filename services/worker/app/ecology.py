@@ -8,6 +8,7 @@ from statistics import fmean
 from typing import Any
 
 from app.config import YEARS
+from app.db import insert_ecology_records
 from app.llm import (
     RESEARCHER_PROMPT_TEMPLATE,
     SYNTHESIST_PROMPT_TEMPLATE,
@@ -583,6 +584,7 @@ def run_ecology(
     input_text: str,
     claim_graphs: list[ClaimGraph],
     llm: LLMClient,
+    run_id: str | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     years = horizon_years(request)
     claims = extract_claims(input_text, request.input_mode)
@@ -602,6 +604,7 @@ def run_ecology(
     snapshots: dict[str, list[DriftSnapshot]] = {"free": [], "constrained": []}
     branch_diff: dict[str, dict[str, float]] = {}
     lineage_records: list[LineageRecord] = []
+    evidence_units: list[EvidenceUnit] = []
 
     for year in years:
         branch_scores: dict[str, list[float]] = {"free": [], "constrained": []}
@@ -634,6 +637,8 @@ def run_ecology(
                     synthetic_units=synthetic_units,
                     real_catalog_ids=real_catalog_ids,
                 )
+                evidence_units.append(investigator)
+                evidence_units.extend(surviving_units)
                 synth_direction, synth_rationale = _synthesist_verdict(
                     claim=claim,
                     year=year,
@@ -695,6 +700,14 @@ def run_ecology(
             )
 
     descriptor = llm.describe()
+    if run_id is not None:
+        insert_ecology_records(
+            run_id=run_id,
+            source_catalog=source_catalog,
+            evidence_units=evidence_units,
+            lineage_records=lineage_records,
+        )
+
     scientific = llm.scientific
     degradation_reason = telemetry.degradation_reason or (
         getattr(llm, "degradation_reason", None) if not scientific else None

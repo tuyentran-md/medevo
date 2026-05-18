@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import sqlite3
 import sys
 
 from contextlib import contextmanager
@@ -50,6 +51,13 @@ def test_create_run_and_fetch_artifacts(tmp_path, monkeypatch) -> None:
         assert payload["meta"]["summary"]["years"] == [10, 20, 30]
         assert set(payload["bundle"]["snapshots"].keys()) == {"free", "constrained"}
         assert "lineage" in payload["bundle"]
+        with sqlite3.connect(tmp_path / "medevo.db") as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM lineage_records WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+        assert row is not None
+        assert row[0] > 0
 
 
 def test_byok_request_does_not_persist_api_key(tmp_path, monkeypatch) -> None:
