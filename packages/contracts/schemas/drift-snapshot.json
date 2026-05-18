@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DriftSnapshot",
+  "type": "object",
+  "required": [
+    "year",
+    "branch",
+    "claims",
+    "band",
+    "anchors"
+  ],
+  "properties": {
+    "year": {
+      "type": "integer"
+    },
+    "branch": {
+      "enum": [
+        "free",
+        "constrained"
+      ]
+    },
+    "claims": {
+      "type": "array"
+    },
+    "band": {
+      "type": "object"
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

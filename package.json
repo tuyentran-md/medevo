@@ -1,0 +1,16 @@
+{
+  "name": "medevo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @medevo/web run dev",
+    "build:web": "npm --workspace @medevo/web run build",
+    "lint:web": "npm --workspace @medevo/web run lint"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

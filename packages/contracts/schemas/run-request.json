@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RunRequest",
+  "type": "object",
+  "required": [
+    "input_mode",
+    "input_source",
+    "backend"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "input_mode": {
+      "enum": [
+        "guideline",
+        "paper"
+      ]
+    },
+    "input_source": {
+      "enum": [
+        "paste",
+        "upload",
+        "showcase"
+      ]
+    },
+    "input_text": {
+      "type": "string"
+    },
+    "showcase_id": {
+      "type": "string"
+    },
+    "backend": {
+      "enum": [
+        "ollama",
+        "openai-compatible",
+        "gemini",
+        "anthropic"
+      ]
+    },
+    "model": {
+      "type": "string"
+    },
+    "api_key": {
+      "type": "string"
+    },
+    "base_url": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+node_modules
+.next
+dist
+coverage
+*.log
+.DS_Store
+
+services/worker/.venv
+services/worker/__pycache__
+services/worker/.pytest_cache
+services/worker/data/artifacts
+services/worker/data/medevo.db
+
+apps/web/.env.local
+services/worker/.env
