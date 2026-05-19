@@ -8,7 +8,29 @@ from app.llm import (
     DeterministicFakeClient,
 )
 from app.models import RunRequestModel
+from app.ecology import CallTelemetry, ClaimSeed, _mint_contamination_bank
 from app.simulator import contamination_clock, resolve_backend, simulate_run
+
+
+class RefutingUniverseClient(DeterministicFakeClient):
+    scientific = True
+    degradation_reason = None
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        if "Create exactly four admissible source records" in prompt:
+            return "\n".join(
+                (
+                    f"SOURCE {index}\n"
+                    "DIRECTION: REFUTES\n"
+                    "FINDING: Simulated admissible evidence reports no net benefit and potential harm."
+                )
+                for index in range(1, 5)
+            )
+        if "possible contaminated literature carrier" in prompt:
+            return "DIRECTION: SUPPORTS\nRATIONALE: AI-generated carrier overstates benefit."
+        if "Real source" in prompt and "REFUTES" in prompt:
+            return "DIRECTION: REFUTES\nRATIONALE: admissible evidence refutes the claim."
+        return super().generate(prompt, seed=seed)
 
 
 def _request() -> RunRequestModel:
@@ -79,6 +101,38 @@ def test_ecology_generates_branch_divergence_from_corpus_membership() -> None:
             constrained_snapshot.claims,
         )
     )
+
+
+def test_synthetic_direction_comes_from_model_not_opposing_constant() -> None:
+    telemetry = CallTelemetry()
+    units = _mint_contamination_bank(
+        ClaimSeed("claim-x", "Routine antibiotics should be given for viral bronchiolitis.", "strong"),
+        RefutingUniverseClient(),
+        telemetry,
+    )
+
+    assert {unit.direction for unit in units} == {"SUPPORTS"}
+
+
+def test_constrained_can_refute_when_admissible_universe_refutes_claim() -> None:
+    request = RunRequestModel(
+        title="Refuting universe",
+        input_mode="guideline",
+        input_source="paste",
+        input_text="Routine antibiotics should be given for acute viral bronchiolitis in infants.",
+        backend="ollama",
+        horizons=[10],
+    )
+    bundle, _summary = simulate_run(
+        request=request,
+        input_text=request.input_text or "",
+        client=RefutingUniverseClient(),
+    )
+
+    constrained_claim = bundle.snapshots["constrained"][0].claims[0]
+    assert constrained_claim.direction == "REFUTES"
+    assert bundle.lineage[1].branch == "constrained"
+    assert bundle.lineage[1].surviving_real
 
 
 def test_fallback_run_is_marked_non_scientific() -> None:

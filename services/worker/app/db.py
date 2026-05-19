@@ -60,6 +60,7 @@ def init_db() -> None:
                 source_id TEXT NOT NULL,
                 label TEXT NOT NULL,
                 locator TEXT NOT NULL,
+                direction TEXT NOT NULL DEFAULT 'NEUTRAL',
                 body TEXT NOT NULL,
                 PRIMARY KEY (run_id, source_id)
             );
@@ -136,6 +137,7 @@ def init_db() -> None:
         )
         _ensure_column(conn, "runs", "years_json", "TEXT NOT NULL DEFAULT '[]'")
         _ensure_column(conn, "source_catalog", "locator", "TEXT NOT NULL DEFAULT ''")
+        _ensure_column(conn, "source_catalog", "direction", "TEXT NOT NULL DEFAULT 'NEUTRAL'")
         _ensure_column(
             conn,
             "evidence_units",
@@ -272,6 +274,7 @@ def insert_ecology_records(
             getattr(source, "source_id"),
             getattr(source, "label"),
             getattr(source, "locator"),
+            getattr(source, "direction", "NEUTRAL"),
             getattr(source, "text"),
         )
         for sources in source_catalog.values()
@@ -355,8 +358,8 @@ def insert_ecology_records(
         conn.executemany(
             """
             INSERT OR REPLACE INTO source_catalog (
-                run_id, claim_id, source_id, label, locator, body
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                run_id, claim_id, source_id, label, locator, direction, body
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             source_rows,
         )

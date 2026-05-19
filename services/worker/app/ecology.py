@@ -12,6 +12,7 @@ from typing import Any, Literal
 from app.config import YEARS
 from app.db import insert_ecology_records
 from app.llm import (
+    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE,
     PROMPT_TEMPLATE_DIGEST,
     RESEARCHER_PROMPT_TEMPLATE,
     SYNTHESIST_PROMPT_TEMPLATE,
@@ -50,11 +51,6 @@ PRESEEDED_SYNTHETIC_UNITS = 3
 RELEASE_THRESHOLD = 0.60
 GENESIS_HASH = "GENESIS"
 _DIRECTION_VALUE = {"SUPPORTS": 1.0, "NEUTRAL": 0.0, "REFUTES": -1.0}
-_OPPOSING_DIRECTION: dict[ClaimDirection, ClaimDirection] = {
-    "SUPPORTS": "REFUTES",
-    "REFUTES": "SUPPORTS",
-    "NEUTRAL": "REFUTES",
-}
 
 
 @dataclass(frozen=True)
@@ -70,6 +66,7 @@ class SourceRecord:
     claim_id: str
     label: str
     locator: str
+    direction: ClaimDirection
     text: str
 
 
@@ -173,7 +170,7 @@ def _direction_from_items(
     directional_scores = [
         _DIRECTION_VALUE[item.direction]
         for item in cited_items
-        if item.kind != "real" and item.direction != "NEUTRAL"
+        if item.direction != "NEUTRAL"
     ]
     if not directional_scores:
         return model_direction
@@ -192,10 +189,11 @@ def _pooled_panel_score(
     scores: list[float] = []
     for unit in surviving_units:
         unit_score = _DIRECTION_VALUE[unit.direction]
-        # Synthetic substrate receives extra weight because it is the simulated
-        # contamination mechanism. Warranted prior outputs do not count unless
-        # their own lineage lost real-source resolution.
-        weight = 2 if _carries_synthetic_substrate(unit) else 1
+        # Panel scoring is evidence-first: the synthesist provides a summary,
+        # but cannot cancel a surviving admissible evidence unit by itself.
+        # Synthetic substrate still gets enough weight to model contaminated
+        # literature hardening into citable evidence in the free branch.
+        weight = 2 if _carries_synthetic_substrate(unit) else 3
         scores.extend([unit_score] * weight)
     scores.append(_DIRECTION_VALUE[synth_direction])
     scores.append(_DIRECTION_VALUE[prior_direction] * 0.5)
@@ -299,25 +297,71 @@ def _invoke_model(
     return response
 
 
-def mint_source_catalog(claims: list[ClaimSeed], input_text: str) -> dict[str, list[SourceRecord]]:
+def _parse_source_universe(response: str) -> list[tuple[ClaimDirection, str]]:
+    records: list[tuple[ClaimDirection, str]] = []
+    blocks = re.split(r"(?=SOURCE\s+\d+)", response or "", flags=re.IGNORECASE)
+    for block in blocks:
+        direction_match = re.search(
+            r"DIRECTION:\s*(SUPPORTS|REFUTES|NEUTRAL)",
+            block,
+            re.IGNORECASE,
+        )
+        finding_match = re.search(
+            r"FINDING:\s*(.+?)(?=\n\s*SOURCE\s+\d+|\Z)",
+            block,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if direction_match is None:
+            continue
+        direction = direction_match.group(1).upper()
+        finding = " ".join((finding_match.group(1) if finding_match else block).split())
+        records.append((direction, finding or "Simulated source returned no finding."))
+    return records
+
+
+def mint_source_catalog(
+    claims: list[ClaimSeed],
+    input_text: str,
+    llm: LLMClient,
+    telemetry: CallTelemetry,
+) -> dict[str, list[SourceRecord]]:
     chunks = _sentence_chunks(input_text)
     if not chunks:
         chunks = [claim.text for claim in claims]
 
     catalog: dict[str, list[SourceRecord]] = {}
     for claim_index, claim in enumerate(claims):
+        prompt = EVIDENCE_UNIVERSE_PROMPT_TEMPLATE.format(
+            claim=claim.text,
+            context="\n".join(chunks[:6]),
+        )
+        response = _invoke_model(
+            llm,
+            telemetry,
+            f"source-universe/{claim.claim_id}",
+            prompt,
+            seed=_seed_int(f"source-universe:{claim.claim_id}:{_digest_key(input_text)}"),
+        )
+        universe_records = _parse_source_universe(response)
         sources: list[SourceRecord] = []
         for source_index in range(REAL_SOURCES_PER_CLAIM):
-            chunk_index = (claim_index + source_index) % len(chunks)
-            chunk = chunks[chunk_index]
+            if source_index < len(universe_records):
+                direction, text = universe_records[source_index]
+                locator = f"simulated-source:{source_index + 1}"
+            else:
+                chunk_index = (claim_index + source_index) % len(chunks)
+                text = chunks[chunk_index]
+                direction = "NEUTRAL"
+                locator = f"input-context:{chunk_index + 1}"
             source_id = f"R-{claim.claim_id}-{source_index + 1}"
             sources.append(
                 SourceRecord(
                     source_id=source_id,
                     claim_id=claim.claim_id,
                     label=f"Catalog source {source_index + 1}",
-                    locator=f"sentence:{chunk_index + 1}",
-                    text=chunk,
+                    locator=locator,
+                    direction=direction,
+                    text=text,
                 )
             )
         catalog[claim.claim_id] = sources
@@ -329,35 +373,18 @@ def _mint_contamination_bank(
     llm: LLMClient,
     telemetry: CallTelemetry,
 ) -> list[EvidenceUnit]:
-    prompt = SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.format(claim=claim.text)
-    response = _invoke_model(
-        llm,
-        telemetry,
-        f"contaminator/{claim.claim_id}",
-        prompt,
-        seed=_seed_int(f"contaminator:{claim.claim_id}"),
-    )
-    model_rationale = _extract_rationale(response)
-    base_direction = _OPPOSING_DIRECTION["SUPPORTS" if claim.seed_strength != "weak" else "NEUTRAL"]
-
     units: list[EvidenceUnit] = []
     for index in range(PRESEEDED_SYNTHETIC_UNITS):
-        direction: ClaimDirection = base_direction if index < 2 else "NEUTRAL"
-        if direction == "REFUTES":
-            rationale = (
-                "AI-generated study summary reports that the guideline claim may be overstated "
-                f"or harmful in routine practice. Model prior: {model_rationale}"
-            )
-        elif direction == "SUPPORTS":
-            rationale = (
-                "AI-generated study summary reports a strong benefit consistent with the claim. "
-                f"Model prior: {model_rationale}"
-            )
-        else:
-            rationale = (
-                "AI-generated study summary is ambiguous and does not resolve the claim. "
-                f"Model prior: {model_rationale}"
-            )
+        prompt = SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.format(claim=claim.text)
+        response = _invoke_model(
+            llm,
+            telemetry,
+            f"contaminator/{claim.claim_id}/{index + 1}",
+            prompt,
+            seed=_seed_int(f"contaminator:{claim.claim_id}:{index + 1}"),
+        )
+        direction = parse_direction(response)
+        rationale = _extract_rationale(response)
         unit = EvidenceUnit(
             id=f"{claim.claim_id}-syn-{index + 1}",
             claim_id=claim.claim_id,
@@ -412,7 +439,7 @@ def build_reachable_corpus(
             kind="real",
             text=source.text,
             rationale=source.text,
-            direction="NEUTRAL",
+            direction=source.direction,
             cited_ids=[source.source_id],
             resolved_real_ids=[source.source_id],
             resolved_locators=[source.locator],
@@ -516,7 +543,9 @@ def _build_evidence_block(cited_items: list[CorpusItem], citation_memory: list[s
         source_tag = f"source-{index}"
         if item.kind == "real":
             locator = item.resolved_locators[0] if item.resolved_locators else "locator:unknown"
-            lines.append(f"- [{source_tag}] Real source ({locator}): {item.text}")
+            lines.append(
+                f"- [{source_tag}] Real source ({locator}) reports {item.direction}: {item.text}"
+            )
         elif item.kind == "prior":
             lines.append(
                 f"- [{source_tag}] Prior warranted output concluded {item.direction}: {item.rationale}"
@@ -766,7 +795,7 @@ def _apply_release_gate(
         return warrant, True, "Release gate observational only in free branch."
 
     cleaned_score = _clean_integrity_score(claim_events, scientific)
-    warrant.integrity_score = cleaned_score
+    warrant.integrity_score = min(warrant.integrity_score, cleaned_score)
     warrant.threshold = threshold
     if not scientific:
         warrant.status = "ISSUED"
@@ -921,7 +950,7 @@ def run_ecology(
     claims = claims[: len(claim_graphs)]
     telemetry = CallTelemetry()
 
-    source_catalog = mint_source_catalog(claims, input_text)
+    source_catalog = mint_source_catalog(claims, input_text, llm, telemetry)
     synthetic_bank = {
         claim.claim_id: _mint_contamination_bank(claim, llm, telemetry) for claim in claims
     }

@@ -45,7 +45,7 @@ def test_lineage_records_are_present_and_coherent() -> None:
         client=DeterministicFakeClient(),
     )
 
-    assert summary["llm_call_count"] == 39
+    assert summary["llm_call_count"] == 48
     assert bundle.lineage
     free_records = [record for record in bundle.lineage if record.branch == "free"]
     constrained_records = [record for record in bundle.lineage if record.branch == "constrained"]
