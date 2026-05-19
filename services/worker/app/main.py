@@ -163,6 +163,7 @@ def _bootstrap_showcases() -> None:
             using_fallback=backend.using_fallback,
             input_mode=showcase.input_mode,
             input_source="showcase",
+            years=list(YEARS),
             artifact_dir=str(ARTIFACTS_DIR / run_id),
         )
         bundle, summary = simulate_run(
@@ -234,6 +235,7 @@ async def create_run(request: Request, background_tasks: BackgroundTasks) -> dic
         using_fallback=backend.using_fallback,
         input_mode=run_request.input_mode,
         input_source=run_request.input_source,
+        years=run_request.horizons or list(YEARS),
         artifact_dir=str(ARTIFACTS_DIR / run_id),
     )
     background_tasks.add_task(_process_run, run_id, run_request, input_text)
@@ -245,7 +247,7 @@ def get_run(run_id: str) -> dict[str, Any]:
     row = get_run_row(run_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Run not found.")
-    summary = build_run_summary(row, list(YEARS), showcase=run_id.startswith("showcase-"))
+    summary = build_run_summary(row, showcase=run_id.startswith("showcase-"))
     return summary.model_dump(mode="json")
 
 

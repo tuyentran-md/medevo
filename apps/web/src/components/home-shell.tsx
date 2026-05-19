@@ -106,7 +106,7 @@ export function HomeShell() {
               Public demo · Research instrument
             </div>
 
-            <h1 className="max-w-4xl font-[family-name:var(--font-display)] text-5xl leading-[0.94] text-[var(--foreground)] sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-2xl font-[family-name:var(--font-display)] text-3xl leading-[1.1] text-[var(--foreground)] sm:text-4xl lg:text-5xl">
               Watch a clinical guideline drift across an AI-saturated evidence world.
             </h1>
 
@@ -179,28 +179,28 @@ export function HomeShell() {
               </label>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2">
+                <label className="grid min-w-0 gap-2">
                   <span className="text-sm font-medium text-[var(--foreground)]">Input mode</span>
                   <select
                     value={inputMode}
                     onChange={(event) =>
                       setInputMode(event.target.value as "guideline" | "paper")
                     }
-                    className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   >
                     <option value="guideline">Guideline</option>
                     <option value="paper">Paper conclusion</option>
                   </select>
                 </label>
 
-                <label className="grid gap-2">
+                <label className="grid min-w-0 gap-2">
                   <span className="text-sm font-medium text-[var(--foreground)]">Backend</span>
                   <select
                     value={backend}
                     onChange={(event) =>
                       setBackend(event.target.value as (typeof backendOptions)[number]["value"])
                     }
-                    className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   >
                     {backendOptions.map((option) => (
                       <option key={option.value} value={option.value}>

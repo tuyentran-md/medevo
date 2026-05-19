@@ -1,0 +1,26 @@
+[
+  {
+    "claim_id": "claim-1",
+    "year": 10,
+    "branch": "constrained",
+    "expected_survives": true
+  },
+  {
+    "claim_id": "claim-1",
+    "year": 30,
+    "branch": "free",
+    "expected_survives": false
+  },
+  {
+    "claim_id": "claim-2",
+    "year": 20,
+    "branch": "constrained",
+    "expected_survives": true
+  },
+  {
+    "claim_id": "claim-3",
+    "year": 30,
+    "branch": "free",
+    "expected_survives": false
+  }
+]

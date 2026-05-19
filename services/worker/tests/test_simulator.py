@@ -30,10 +30,9 @@ def test_contamination_clock_rises_across_years() -> None:
     assert contamination_clock(10) < contamination_clock(20) < contamination_clock(30)
 
 
-def test_constrained_blocks_emerge_free_never_blocks() -> None:
-    """Free branch never blocks. Constrained blocks emerge from CIVER's
-    real-source rule when a study's context is fully synthetic — not from a
-    branch constant."""
+def test_constrained_preserves_real_lineage_free_never_blocks() -> None:
+    """Free never blocks. Constrained must preserve real-source inheritance via
+    valid warrants, while free accumulates synthetic carriers."""
     request = _request()
     bundle, summary = simulate_run(
         request=request,
@@ -47,10 +46,38 @@ def test_constrained_blocks_emerge_free_never_blocks() -> None:
         for snapshot in bundle.snapshots["free"]
         for claim in snapshot.claims
     )
+    assert any(record.surviving_real for record in bundle.lineage if record.branch == "constrained")
+    assert any(record.synthetic_carriers for record in bundle.lineage if record.branch == "free")
     assert any(
-        claim.blocked_count > 0
-        for snapshot in bundle.snapshots["constrained"]
-        for claim in snapshot.claims
+        warrant.branch == "constrained" and warrant.status == "ISSUED" and warrant.issued
+        for warrant in bundle.warrants
+    )
+
+
+def test_ecology_generates_branch_divergence_from_corpus_membership() -> None:
+    request = _request()
+    bundle, _summary = simulate_run(
+        request=request,
+        input_text=request.input_text or "",
+        client=DeterministicFakeClient(),
+    )
+
+    deltas = [
+        delta
+        for year_deltas in bundle.branch_diff.values()
+        for delta in year_deltas.values()
+    ]
+    assert max(deltas) > 0
+    assert any(
+        free_claim.direction != constrained_claim.direction
+        for free_snapshot, constrained_snapshot in zip(
+            bundle.snapshots["free"],
+            bundle.snapshots["constrained"],
+        )
+        for free_claim, constrained_claim in zip(
+            free_snapshot.claims,
+            constrained_snapshot.claims,
+        )
     )
 
 

@@ -67,6 +67,22 @@ export interface ArtifactResponse {
     scientific?: boolean;
     mode_banner?: string;
     model_descriptor?: Record<string, string>;
+    provenance_log?: {
+      model?: string;
+      model_digest?: string;
+      provider?: string;
+      base_url?: string;
+      temperature?: number;
+      seed_mode?: string;
+      prompt_template_digests?: Record<string, string>;
+      calls?: Array<{
+        label: string;
+        seed: number;
+        prompt_digest: string;
+        response_hash: string;
+        timestamp: string;
+      }>;
+    };
     lineage?: Array<{
       claim_id: string;
       year: number;
@@ -77,6 +93,35 @@ export interface ArtifactResponse {
       verdict_before: "SUPPORTS" | "REFUTES" | "NEUTRAL";
       verdict_after: "SUPPORTS" | "REFUTES" | "NEUTRAL";
     }>;
+    audit_trail?: Array<{
+      run_id: string;
+      claim_id: string;
+      branch: "free" | "constrained";
+      year: number;
+      event_index: number;
+      phase: string;
+      previous_state_hash: string;
+      current_state_hash: string;
+      event_type: string;
+      severity: "info" | "warn" | "block";
+      integrity_score_before: number;
+      integrity_score_after: number;
+      message: string;
+    }>;
+    warrants?: Array<{
+      id: string;
+      output_id: string;
+      output_hash: string;
+      run_id: string;
+      claim_id: string;
+      branch: "free" | "constrained";
+      year: number;
+      status: "ISSUED" | "REFUSED" | "REVOKED";
+      issued: boolean;
+      integrity_score: number;
+      threshold: number;
+    }>;
+    bundle_seal?: string;
     degradation_reason?: string | null;
   };
   meta: {

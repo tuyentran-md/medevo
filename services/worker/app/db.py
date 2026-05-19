@@ -6,7 +6,15 @@ from contextlib import closing
 from datetime import datetime
 
 from app.config import DB_PATH
-from app.models import BackendConfigModel, EvidenceUnit, LineageRecord, RunSummary, SimulationRunModel
+from app.models import (
+    AuditEvent,
+    BackendConfigModel,
+    EvidenceUnit,
+    ExecutionWarrant,
+    LineageRecord,
+    RunSummary,
+    SimulationRunModel,
+)
 
 
 def get_conn() -> sqlite3.Connection:
@@ -14,6 +22,15 @@ def get_conn() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, spec: str) -> None:
+    existing = {
+        row["name"]
+        for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
 
 
 def init_db() -> None:
@@ -32,6 +49,7 @@ def init_db() -> None:
                 using_fallback INTEGER NOT NULL,
                 input_mode TEXT NOT NULL,
                 input_source TEXT NOT NULL,
+                years_json TEXT NOT NULL DEFAULT '[]',
                 artifact_dir TEXT NOT NULL,
                 error TEXT
             );
@@ -41,6 +59,7 @@ def init_db() -> None:
                 claim_id TEXT NOT NULL,
                 source_id TEXT NOT NULL,
                 label TEXT NOT NULL,
+                locator TEXT NOT NULL,
                 body TEXT NOT NULL,
                 PRIMARY KEY (run_id, source_id)
             );
@@ -55,6 +74,9 @@ def init_db() -> None:
                 provenance TEXT NOT NULL,
                 direction TEXT NOT NULL,
                 cited_ids_json TEXT NOT NULL,
+                resolved_real_json TEXT NOT NULL DEFAULT '[]',
+                resolved_locators_json TEXT NOT NULL DEFAULT '[]',
+                output_hash TEXT,
                 rationale TEXT NOT NULL,
                 PRIMARY KEY (run_id, unit_id)
             );
@@ -78,8 +100,55 @@ def init_db() -> None:
                 verdict_after TEXT NOT NULL,
                 PRIMARY KEY (run_id, claim_id, year, branch)
             );
+
+            CREATE TABLE IF NOT EXISTS warrant_store (
+                run_id TEXT NOT NULL,
+                warrant_id TEXT NOT NULL,
+                output_id TEXT NOT NULL,
+                output_hash TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                issued INTEGER NOT NULL,
+                integrity_score REAL NOT NULL,
+                threshold REAL NOT NULL,
+                PRIMARY KEY (run_id, warrant_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS audit_event (
+                run_id TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                event_index INTEGER NOT NULL,
+                phase TEXT NOT NULL,
+                previous_state_hash TEXT NOT NULL,
+                current_state_hash TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                integrity_score_before REAL NOT NULL,
+                integrity_score_after REAL NOT NULL,
+                message TEXT NOT NULL,
+                PRIMARY KEY (run_id, claim_id, branch, event_index)
+            );
             """
         )
+        _ensure_column(conn, "runs", "years_json", "TEXT NOT NULL DEFAULT '[]'")
+        _ensure_column(conn, "source_catalog", "locator", "TEXT NOT NULL DEFAULT ''")
+        _ensure_column(
+            conn,
+            "evidence_units",
+            "resolved_real_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        )
+        _ensure_column(
+            conn,
+            "evidence_units",
+            "resolved_locators_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        )
+        _ensure_column(conn, "evidence_units", "output_hash", "TEXT")
         conn.commit()
 
 
@@ -96,6 +165,7 @@ def insert_run(
     using_fallback: bool,
     input_mode: str,
     input_source: str,
+    years: list[int],
     artifact_dir: str,
 ) -> None:
     with closing(get_conn()) as conn:
@@ -103,8 +173,8 @@ def insert_run(
             """
             INSERT INTO runs (
                 id, status, created_at, input_digest, title, backend, model, base_url,
-                using_fallback, input_mode, input_source, artifact_dir, error
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                using_fallback, input_mode, input_source, years_json, artifact_dir, error
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
             """,
             (
                 run_id,
@@ -118,6 +188,7 @@ def insert_run(
                 int(using_fallback),
                 input_mode,
                 input_source,
+                json.dumps(years),
                 artifact_dir,
             ),
         )
@@ -151,7 +222,8 @@ def active_run_count() -> int:
     return int(row["n"])
 
 
-def build_run_summary(row: sqlite3.Row, years: list[int], showcase: bool = False) -> RunSummary:
+def build_run_summary(row: sqlite3.Row, showcase: bool = False) -> RunSummary:
+    years = json.loads(row["years_json"] or "[]")
     backend_config = BackendConfigModel(
         backend=row["backend"],
         model=row["model"],
@@ -190,6 +262,8 @@ def insert_ecology_records(
     source_catalog: dict[str, list[object]],
     evidence_units: list[EvidenceUnit],
     lineage_records: list[LineageRecord],
+    warrants: list[ExecutionWarrant],
+    audit_events: list[AuditEvent],
 ) -> None:
     source_rows = [
         (
@@ -197,6 +271,7 @@ def insert_ecology_records(
             getattr(source, "claim_id"),
             getattr(source, "source_id"),
             getattr(source, "label"),
+            getattr(source, "locator"),
             getattr(source, "text"),
         )
         for sources in source_catalog.values()
@@ -215,6 +290,9 @@ def insert_ecology_records(
             unit.provenance,
             unit.direction,
             json.dumps(unit.cited_ids),
+            json.dumps(unit.resolved_real_ids),
+            json.dumps(unit.resolved_locators),
+            unit.output_hash,
             unit.rationale,
         )
         for unit in deduped_units.values()
@@ -238,13 +316,47 @@ def insert_ecology_records(
         )
         for record in lineage_records
     ]
+    warrant_rows = [
+        (
+            run_id,
+            warrant.id,
+            warrant.output_id,
+            warrant.output_hash,
+            warrant.claim_id,
+            warrant.branch,
+            warrant.year,
+            warrant.status,
+            int(warrant.issued),
+            warrant.integrity_score,
+            warrant.threshold,
+        )
+        for warrant in warrants
+    ]
+    audit_rows = [
+        (
+            event.run_id,
+            event.claim_id,
+            event.branch,
+            event.year,
+            event.event_index,
+            event.phase,
+            event.previous_state_hash,
+            event.current_state_hash,
+            event.event_type,
+            event.severity,
+            event.integrity_score_before,
+            event.integrity_score_after,
+            event.message,
+        )
+        for event in audit_events
+    ]
 
     with closing(get_conn()) as conn:
         conn.executemany(
             """
             INSERT OR REPLACE INTO source_catalog (
-                run_id, claim_id, source_id, label, body
-            ) VALUES (?, ?, ?, ?, ?)
+                run_id, claim_id, source_id, label, locator, body
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
             source_rows,
         )
@@ -252,8 +364,9 @@ def insert_ecology_records(
             """
             INSERT OR REPLACE INTO evidence_units (
                 run_id, unit_id, claim_id, year, branch, producer, provenance,
-                direction, cited_ids_json, rationale
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                direction, cited_ids_json, resolved_real_json,
+                resolved_locators_json, output_hash, rationale
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             evidence_rows,
         )
@@ -274,5 +387,24 @@ def insert_ecology_records(
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             lineage_rows,
+        )
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO warrant_store (
+                run_id, warrant_id, output_id, output_hash, claim_id, branch,
+                year, status, issued, integrity_score, threshold
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            warrant_rows,
+        )
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO audit_event (
+                run_id, claim_id, branch, year, event_index, phase,
+                previous_state_hash, current_state_hash, event_type, severity,
+                integrity_score_before, integrity_score_after, message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            audit_rows,
         )
         conn.commit()

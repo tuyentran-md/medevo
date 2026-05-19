@@ -107,6 +107,9 @@ export interface EvidenceUnit {
   provenance: EvidenceProvenance;
   direction: ClaimDirection;
   rationale: string;
+  resolved_real_ids?: string[];
+  resolved_locators?: string[];
+  output_hash?: string | null;
 }
 
 export interface CitationEdge {
@@ -123,6 +126,36 @@ export interface LineageRecord {
   synthetic_carriers: string[];
   verdict_before: ClaimDirection;
   verdict_after: ClaimDirection;
+}
+
+export interface ExecutionWarrant {
+  id: string;
+  output_id: string;
+  output_hash: string;
+  run_id: string;
+  claim_id: string;
+  branch: BranchName;
+  year: number;
+  status: "ISSUED" | "REFUSED" | "REVOKED";
+  issued: boolean;
+  integrity_score: number;
+  threshold: number;
+}
+
+export interface AuditEvent {
+  run_id: string;
+  claim_id: string;
+  branch: BranchName;
+  year: number;
+  event_index: number;
+  phase: string;
+  previous_state_hash: string;
+  current_state_hash: string;
+  event_type: string;
+  severity: "info" | "warn" | "block";
+  integrity_score_before: number;
+  integrity_score_after: number;
+  message: string;
 }
 
 export interface SimulationRun {

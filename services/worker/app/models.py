@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -15,6 +15,8 @@ ClaimDirection = Literal["SUPPORTS", "REFUTES", "NEUTRAL"]
 RecommendationStrength = Literal["weak", "moderate", "strong"]
 EvidenceProvenance = Literal["REAL", "SYNTHETIC"]
 EvidenceProducer = Literal["investigator", "contaminator"]
+WarrantStatus = Literal["ISSUED", "REFUSED", "REVOKED"]
+AuditSeverity = Literal["info", "warn", "block"]
 
 
 class RunRequestModel(BaseModel):
@@ -113,6 +115,9 @@ class EvidenceUnit(BaseModel):
     provenance: EvidenceProvenance
     direction: ClaimDirection
     rationale: str
+    resolved_real_ids: list[str] = Field(default_factory=list)
+    resolved_locators: list[str] = Field(default_factory=list)
+    output_hash: str | None = None
 
 
 class CitationEdge(BaseModel):
@@ -129,6 +134,36 @@ class LineageRecord(BaseModel):
     synthetic_carriers: list[str]
     verdict_before: ClaimDirection
     verdict_after: ClaimDirection
+
+
+class ExecutionWarrant(BaseModel):
+    id: str
+    output_id: str
+    output_hash: str
+    run_id: str
+    claim_id: str
+    branch: BranchName
+    year: int
+    status: WarrantStatus
+    issued: bool
+    integrity_score: float
+    threshold: float
+
+
+class AuditEvent(BaseModel):
+    run_id: str
+    claim_id: str
+    branch: BranchName
+    year: int
+    event_index: int
+    phase: str
+    previous_state_hash: str
+    current_state_hash: str
+    event_type: str
+    severity: AuditSeverity
+    integrity_score_before: float
+    integrity_score_after: float
+    message: str
 
 
 class SimulationRunModel(BaseModel):
@@ -170,4 +205,8 @@ class ArtifactBundle(BaseModel):
     mode_banner: str = ""
     model_descriptor: dict[str, str] = Field(default_factory=dict)
     lineage: list[LineageRecord] = Field(default_factory=list)
+    audit_trail: list[AuditEvent] = Field(default_factory=list)
+    warrants: list[ExecutionWarrant] = Field(default_factory=list)
+    bundle_seal: str = ""
+    provenance_log: dict[str, Any] = Field(default_factory=dict)
     degradation_reason: str | None = None

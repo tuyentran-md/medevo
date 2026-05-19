@@ -156,8 +156,12 @@ class OpenAICompatClient:
                         "model": self._model,
                         "messages": [{"role": "user", "content": prompt}],
                         "temperature": 0.2,
-                        "seed": seed,
-                        "max_tokens": 1024,
+                        # NOTE: `seed` deliberately omitted — Gemini OpenAI-compat
+                        # rejects it (400 "Unknown name seed") and support is
+                        # inconsistent across providers. Engine determinism comes
+                        # from its own seeded structure + low temperature, not the
+                        # provider seed. `seed` kept in the signature for callers.
+                        "max_tokens": 2048,
                     },
                     timeout=180,
                 )
