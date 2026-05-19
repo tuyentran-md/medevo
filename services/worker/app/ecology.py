@@ -381,7 +381,17 @@ def _synthetic_units_for_year(bank: list[EvidenceUnit], year: int) -> list[Evide
 
 def _retrieve_catalog_sources(claim: ClaimSeed, real_sources: list[SourceRecord], year: int) -> list[SourceRecord]:
     clock = contamination_clock(year)
-    count = 2 if clock < 0.44 else 1
+    # Defect C fix: real grounding erodes to zero as contamination rises,
+    # symmetric across branches. Constrained retains real only via warranted
+    # lineage; free loses it -> lost_real becomes non-empty (SCALE_SPEC §4).
+    if clock < 0.40:
+        count = 2
+    elif clock < 0.70:
+        count = 1
+    else:
+        count = 0
+    if count == 0:
+        return []
     offset = _seed_int(f"catalog:{claim.claim_id}:{year}") % len(real_sources)
     return [real_sources[(offset + index) % len(real_sources)] for index in range(count)]
 
@@ -654,6 +664,18 @@ def admit_evidence_unit(
     )
     passed = graph_complete and cited_resolve and resolvable and bool(unit.cited_ids)
 
+    # Defect B fix: warrant integrity is the real-provenance fraction of the
+    # unit's citations, not a structural pass/fail binary. A well-formed unit
+    # carrying synthetic contamination scores low -> warrant invalid (< threshold)
+    # -> excluded from the constrained corpus while free still ingests it.
+    if cited_items:
+        real_cites = sum(
+            1 for item in cited_items if item.kind == "real" or item.resolved_real_ids
+        )
+        provenance_score = real_cites / len(cited_items)
+    else:
+        provenance_score = 0.0
+
     reasons = []
     if graph_complete:
         reasons.append("Traceable question-method-evidence-analysis-claim chain present.")
@@ -674,7 +696,7 @@ def admit_evidence_unit(
         year=year,
         status="ISSUED" if passed else "REFUSED",
         issued=False,
-        integrity_score=1.0 if passed else 0.0,
+        integrity_score=provenance_score if passed else 0.0,
         threshold=threshold,
     )
     verdict = CiverVerdict(
