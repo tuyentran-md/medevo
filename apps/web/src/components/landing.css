@@ -1,0 +1,146 @@
+/* MedEvo landing — ported from Claude Design handoff (home.html). Scoped tokens. */
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+.medevo-home {
+  --bg: #f6f0e6;
+  --bg-2: #f1eadf;
+  --paper: #fffcf7;
+  --paper-2: #faf5ec;
+  --ink: #11231e;
+  --ink-2: #2a3b35;
+  --muted: #5a6d67;
+  --line: rgba(17, 35, 30, 0.14);
+  --line-strong: rgba(17, 35, 30, 0.28);
+  --teal: #0f8d77;
+  --teal-soft: rgba(15, 141, 119, 0.1);
+  --ember: #f28e2b;
+  --ember-soft: rgba(242, 142, 43, 0.16);
+  --terracotta: #b54a34;
+  --terracotta-soft: rgba(181, 74, 52, 0.1);
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "Geist", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r-md: 16px;
+  --r-lg: 24px;
+
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.medevo-home::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(900px 600px at 12% 4%, rgba(15, 141, 119, 0.07), transparent 60%),
+    radial-gradient(800px 500px at 88% 8%, rgba(242, 142, 43, 0.07), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+.medevo-home a { color: inherit; text-decoration: none; }
+
+.medevo-home .home-page {
+  position: relative;
+  z-index: 1;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 28px 36px 80px;
+}
+
+.medevo-home .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 110px; }
+.medevo-home .brand { display: flex; align-items: center; gap: 12px; }
+.medevo-home .brand .mark { width: 28px; height: 28px; border-radius: 6px; background: var(--ink); position: relative; overflow: hidden; }
+.medevo-home .brand .mark::before, .medevo-home .brand .mark::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; opacity: 0.85; }
+.medevo-home .brand .mark::before { top: 8px; background: var(--ember); }
+.medevo-home .brand .mark::after { top: 16px; background: var(--teal); }
+.medevo-home .brand .name { font-family: var(--font-display); font-size: 19px; letter-spacing: -0.01em; }
+.medevo-home .brand .ver { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; margin-left: 8px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 99px; }
+.medevo-home .nav-links { display: flex; gap: 28px; align-items: center; }
+.medevo-home .nav-links a { font-size: 13.5px; color: var(--ink-2); transition: color 0.15s; }
+.medevo-home .nav-links a:hover { color: var(--ink); }
+
+.medevo-home .hero { max-width: 880px; margin-bottom: 96px; }
+.medevo-home .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); margin-bottom: 22px; display: inline-flex; align-items: center; gap: 10px; }
+.medevo-home .eyebrow .dot { width: 7px; height: 7px; border-radius: 99px; background: var(--teal); box-shadow: 0 0 0 4px var(--teal-soft); animation: medevo-pulse 2.4s ease-in-out infinite; }
+@keyframes medevo-pulse { 0%, 100% { box-shadow: 0 0 0 4px var(--teal-soft); } 50% { box-shadow: 0 0 0 8px rgba(15, 141, 119, 0.04); } }
+.medevo-home .hero h1 { font-family: var(--font-display); font-weight: 500; font-size: clamp(48px, 6vw, 76px); line-height: 1.02; letter-spacing: -0.018em; margin: 0 0 26px; text-wrap: balance; }
+.medevo-home .hero h1 em { font-style: italic; color: var(--teal); }
+.medevo-home .hero .lede { font-family: var(--font-display); font-size: 21px; line-height: 1.55; color: var(--ink-2); max-width: 700px; margin: 0 0 32px; }
+.medevo-home .hero-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.medevo-home .cta-primary { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; background: var(--ink); color: var(--paper); border-radius: 99px; font-size: 14px; font-weight: 500; transition: transform 0.15s, background 0.15s; }
+.medevo-home .cta-primary:hover { transform: translateY(-1px); background: #000; }
+.medevo-home .cta-primary .arrow { font-family: var(--font-mono); transition: transform 0.2s; }
+.medevo-home .cta-primary:hover .arrow { transform: translateX(3px); }
+.medevo-home .cta-secondary { padding: 14px 22px; font-size: 14px; color: var(--ink-2); border-radius: 99px; border: 1px solid var(--line-strong); transition: border-color 0.15s; }
+.medevo-home .cta-secondary:hover { border-color: var(--ink); }
+
+.medevo-home .section { margin: 96px 0; }
+.medevo-home .section-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+.medevo-home .section-h2 { font-family: var(--font-display); font-weight: 500; font-size: clamp(32px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.012em; margin: 0 0 18px; max-width: 760px; text-wrap: balance; }
+.medevo-home .section-lede { font-size: 17px; line-height: 1.65; color: var(--ink-2); max-width: 640px; margin: 0 0 48px; }
+
+.medevo-home .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--paper); overflow: hidden; }
+.medevo-home .flow-step { padding: 36px 32px; position: relative; display: flex; flex-direction: column; gap: 14px; }
+.medevo-home .flow-step + .flow-step { border-left: 1px solid var(--line); }
+.medevo-home .flow-step .step-num { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--muted); }
+.medevo-home .flow-step h3 { font-family: var(--font-display); font-size: 22px; margin: 0; line-height: 1.2; letter-spacing: -0.005em; }
+.medevo-home .flow-step p { font-size: 14px; line-height: 1.65; color: var(--ink-2); margin: 0; }
+.medevo-home .flow-step .glyph { width: 48px; height: 48px; margin-bottom: 6px; }
+
+.medevo-home .values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.medevo-home .value { padding: 28px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper); display: flex; flex-direction: column; gap: 12px; }
+.medevo-home .value .v-num { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2em; color: var(--muted); }
+.medevo-home .value h4 { font-family: var(--font-display); font-size: 19px; margin: 0; line-height: 1.28; letter-spacing: -0.005em; }
+.medevo-home .value p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0; }
+.medevo-home .value .v-tag { align-self: flex-start; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); padding: 4px 10px; border: 1px solid var(--line); border-radius: 99px; margin-top: 4px; }
+
+.medevo-home .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.medevo-home .branch-card { padding: 32px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--paper); display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden; }
+.medevo-home .branch-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.medevo-home .branch-card.free::before { background: var(--ember); }
+.medevo-home .branch-card.con::before { background: var(--teal); }
+.medevo-home .branch-card .b-eyebrow { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; }
+.medevo-home .branch-card.free .b-eyebrow { color: #8a4a08; }
+.medevo-home .branch-card.con .b-eyebrow { color: var(--teal); }
+.medevo-home .branch-card h3 { font-family: var(--font-display); font-size: 26px; margin: 0; line-height: 1.18; letter-spacing: -0.005em; }
+.medevo-home .branch-card p { font-size: 14px; line-height: 1.65; color: var(--ink-2); margin: 0; }
+.medevo-home .branch-strata { display: flex; height: 64px; gap: 3px; margin-top: 8px; border-radius: 6px; overflow: hidden; }
+.medevo-home .branch-strata .col-y { flex: 1; display: flex; flex-direction: column-reverse; gap: 1px; }
+.medevo-home .branch-strata .layer { flex: 1; min-height: 3px; }
+.medevo-home .branch-strata .real { background: var(--ink); }
+.medevo-home .branch-strata .synth { background: var(--ember); }
+
+.medevo-home .runs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.medevo-home .run-card { padding: 24px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper); display: flex; flex-direction: column; gap: 14px; cursor: pointer; transition: border-color 0.15s, transform 0.15s; color: inherit; }
+.medevo-home .run-card:hover { border-color: var(--ink); transform: translateY(-2px); }
+.medevo-home .run-card .r-header { display: flex; justify-content: space-between; align-items: center; }
+.medevo-home .run-card .r-id { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; }
+.medevo-home .run-card h3 { font-family: var(--font-display); font-size: 21px; margin: 0; line-height: 1.22; letter-spacing: -0.005em; }
+.medevo-home .run-card .r-desc { font-size: 13px; line-height: 1.6; color: var(--ink-2); }
+.medevo-home .run-card .verdict-stripe { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+
+.medevo-home .tag { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.7); padding: 4px 10px; border-radius: 999px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); font-family: var(--font-mono); }
+.medevo-home .tag-dot { width: 6px; height: 6px; border-radius: 99px; background: var(--muted); }
+.medevo-home .tag.tag-teal { color: var(--teal); border-color: rgba(15, 141, 119, 0.32); background: var(--teal-soft); }
+.medevo-home .tag.tag-teal .tag-dot { background: var(--teal); }
+.medevo-home .tag.tag-ember { color: #8a4a08; border-color: rgba(242, 142, 43, 0.36); background: var(--ember-soft); }
+.medevo-home .tag.tag-ember .tag-dot { background: var(--ember); }
+.medevo-home .tag.tag-terra { color: var(--terracotta); border-color: rgba(181, 74, 52, 0.32); background: var(--terracotta-soft); }
+.medevo-home .tag.tag-terra .tag-dot { background: var(--terracotta); }
+
+.medevo-home .home-footer { margin-top: 96px; padding-top: 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.medevo-home .home-footer p { margin: 0; max-width: 520px; }
+.medevo-home .home-footer .author { text-align: right; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; }
+
+@media (max-width: 880px) {
+  .medevo-home .nav { margin-bottom: 64px; }
+  .medevo-home .hero { margin-bottom: 64px; }
+  .medevo-home .section { margin: 64px 0; }
+  .medevo-home .flow, .medevo-home .values, .medevo-home .branches, .medevo-home .runs { grid-template-columns: 1fr; }
+  .medevo-home .flow-step + .flow-step { border-left: 0; border-top: 1px solid var(--line); }
+}

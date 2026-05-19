@@ -111,9 +111,9 @@ export function HomeShell() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-              Run the same input through two futures: one with ground-truth binding only,
-              one with GTB plus CIVER and BRIM. Inspect year 10, 20, and 30 outputs as
-              a distribution draw, not a forecast.
+              Run the same input through two futures: one free branch with no gate,
+              one constrained branch behind a provenance gate. Inspect year 10, 20, and 30
+              outputs as a distribution draw, not a forecast.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">

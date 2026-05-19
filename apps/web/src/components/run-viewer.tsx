@@ -321,7 +321,7 @@ export function RunViewer({ runId }: { runId: string }) {
           />
           <OutcomeCard
             title="Constrained branch"
-            subtitle="CIVER + BRIM active"
+            subtitle="provenance gate active"
             icon={<ShieldCheck className="h-5 w-5 text-[var(--accent)]" />}
             claim={constrainedClaim}
             lineage={constrainedLineage}
