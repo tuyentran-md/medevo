@@ -4,7 +4,7 @@ from app.models import Study
 from app.synthesis import synthesize_guideline_claim
 
 
-def _supporting_study(index: int, *, quality: float, provenance: str = "REAL") -> Study:
+def _supporting_study(index: int, *, quality: float, provenance: str = "GROUNDED") -> Study:
     return Study(
         id=f"s-{index}",
         claim_id="claim-1",
@@ -15,7 +15,7 @@ def _supporting_study(index: int, *, quality: float, provenance: str = "REAL") -
         n=500,
         quality=quality,
         provenance=provenance,
-        pmids=[str(index)] if provenance == "REAL" else [],
+        pmids=[str(index)] if provenance == "GROUNDED" else [],
         numeric=True,
         rationale="Supports the claim.",
         output_hash=f"h-{index}",
@@ -39,7 +39,7 @@ def test_level_moves_when_direction_is_held_fixed() -> None:
     weak = synthesize_guideline_claim(
         claim_id="claim-1",
         year=2025,
-        studies=[_supporting_study(1, quality=0.2, provenance="SYNTHETIC")],
+        studies=[_supporting_study(1, quality=0.2, provenance="UNGROUNDED")],
     )
     strong = synthesize_guideline_claim(
         claim_id="claim-1",
@@ -65,7 +65,7 @@ def test_conflicting_evidence_reduces_certainty_independently_of_count() -> None
             effect_ci=(1.1, 1.8),
             n=500,
             quality=0.9,
-            provenance="REAL",
+            provenance="GROUNDED",
             pmids=["999"],
             numeric=True,
             rationale="Refutes the claim.",

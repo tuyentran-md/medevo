@@ -107,8 +107,8 @@ def test_branch_gap_pairs_latest_guidelines_by_claim() -> None:
 def test_replay_counts_exposes_study_and_guideline_population_stats() -> None:
     counts = replay_counts(
         studies={
-            "free": [_study("real-1", provenance="REAL"), _study("syn-1", provenance="SYNTHETIC")],
-            "constrained": [_study("real-2", provenance="REAL")],
+            "free": [_study("real-1", provenance="GROUNDED"), _study("syn-1", provenance="UNGROUNDED")],
+            "constrained": [_study("real-2", provenance="GROUNDED")],
         },
         guidelines={
             "free": [_guideline("claim-1", 2020, direction="SUPPORTS", level="conditional-for")],

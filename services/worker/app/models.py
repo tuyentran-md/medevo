@@ -20,8 +20,8 @@ RecommendationLevel = Literal[
     "conditional-against",
     "strong-against",
 ]
-EvidenceProvenance = Literal["REAL", "SYNTHETIC"]
-EvidenceProducer = Literal["investigator", "contaminator"]
+EvidenceProvenance = Literal["GROUNDED", "UNGROUNDED"]
+EvidenceProducer = Literal["investigator"]
 WarrantStatus = Literal["ISSUED", "REFUSED", "REVOKED"]
 AuditSeverity = Literal["info", "warn", "block"]
 

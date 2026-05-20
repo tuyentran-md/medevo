@@ -90,7 +90,7 @@ def test_effect_extraction_reads_point_and_ci() -> None:
 
 def test_research_agent_emits_real_grounded_study(tmp_path: Path) -> None:
     client = PubMedClient(cache_dir=tmp_path, http=FakeHttp(), min_interval_seconds=0)
-    agent = ResearchAgent(pubmed=client, retmax=5)
+    agent = ResearchAgent(pubmed=client, retmax=5, failure_rate=0.0)
 
     study = agent.run(
         claim_id="claim-1",
@@ -98,7 +98,7 @@ def test_research_agent_emits_real_grounded_study(tmp_path: Path) -> None:
         simulated_year=2020,
     )
 
-    assert study.provenance == "REAL"
+    assert study.provenance == "GROUNDED"
     assert study.pmids == ["111"]
     assert study.year == 2020
     assert study.direction == "REFUTES"

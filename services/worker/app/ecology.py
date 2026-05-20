@@ -9,16 +9,11 @@ from datetime import UTC, datetime
 from statistics import fmean
 from typing import Any, Literal
 
-from app.agents import ResearchAgent, SrmaAgent
+from app.agents import DEFAULT_FAILURE_RATE, ResearchAgent, SrmaAgent
 from app.config import YEARS
 from app.db import insert_ecology_records, insert_guideline_claims, insert_tier3_study
 from app.harness import branch_gap, replay_counts
-from app.llm import (
-    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
-    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
-    LLMClient,
-    parse_direction,
-)
+from app.llm import LLMClient
 from app.models import (
     ArtifactBundle,
     AuditEvent,
@@ -48,7 +43,9 @@ ANCHORS = [
 
 CLAIM_LIMIT = 3
 REAL_SOURCES_PER_CLAIM = 4
-PRESEEDED_SYNTHETIC_UNITS = 3
+# DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
+# fraction placeholder; SPEC §11-A anchors it to A0 in a later slice. It drives
+# the EMERGENT ungrounded-study rate, NOT a harness injection rate.
 RELEASE_THRESHOLD = 0.60
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
@@ -110,6 +107,8 @@ class CallTelemetry:
 
 
 def contamination_clock(year: int) -> float:
+    # Retained ONLY as a non-injection sensitivity-band scale (see _panel_band).
+    # It no longer drives any contamination/injection rate (v2 role removed).
     return round(1 / (1 + math.exp(-0.115 * (year - 18))), 3)
 
 
@@ -131,21 +130,13 @@ def _digest_key(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _extract_rationale(text: str) -> str:
-    match = re.search(r"RATIONALE:\s*(.+)", text or "", re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    cleaned = " ".join((text or "").strip().split())
-    return cleaned or "No rationale returned."
-
-
 def _is_synthetic_citation_id(cited_id: str) -> bool:
     return cited_id.startswith("S-") or "-syn-" in cited_id
 
 
 def _carries_synthetic_substrate(unit: EvidenceUnit) -> bool:
     return (
-        unit.provenance == "SYNTHETIC"
+        unit.provenance == "UNGROUNDED"
         or not unit.resolved_real_ids
         or any(_is_synthetic_citation_id(cited_id) for cited_id in unit.cited_ids)
     )
@@ -248,44 +239,6 @@ def _invoke_model(
     return response
 
 
-def _mint_contamination_bank(
-    claim: ClaimSeed,
-    llm: LLMClient,
-    telemetry: CallTelemetry,
-) -> list[EvidenceUnit]:
-    units: list[EvidenceUnit] = []
-    for index in range(PRESEEDED_SYNTHETIC_UNITS):
-        prompt = SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.format(claim=claim.text)
-        response = _invoke_model(
-            llm,
-            telemetry,
-            f"contaminator/{claim.claim_id}/{index + 1}",
-            prompt,
-            seed=_seed_int(f"contaminator:{claim.claim_id}:{index + 1}"),
-        )
-        direction = parse_direction(response)
-        rationale = _extract_rationale(response)
-        unit = EvidenceUnit(
-            id=f"{claim.claim_id}-syn-{index + 1}",
-            claim_id=claim.claim_id,
-            year=0,
-            branch="free",
-            producer="contaminator",
-            cited_ids=[f"S-{claim.claim_id}-{index + 1}"],
-            provenance="SYNTHETIC",
-            direction=direction,
-            rationale=rationale,
-        )
-        unit.output_hash = _unit_output_hash(unit)
-        units.append(unit)
-    return units
-
-
-def _synthetic_units_for_year(bank: list[EvidenceUnit], year: int) -> list[EvidenceUnit]:
-    count = max(1, min(len(bank), math.ceil(contamination_clock(year) * len(bank))))
-    return bank[:count]
-
-
 def _research_study_for_year(
     *,
     research_agent: ResearchAgent,
@@ -309,7 +262,7 @@ def _research_study_for_year(
             year=year,
             direction="NEUTRAL",
             quality=0.0,
-            provenance="REAL",
+            provenance="UNGROUNDED",
             pmids=[],
             numeric=False,
             rationale=f"PubMed retrieval failed for cutoff {pubmed_cutoff_year(year)}.",
@@ -465,6 +418,17 @@ def _apply_release_gate(
     if branch == "free" or warrant is None:
         return warrant, True, "Release gate observational only in free branch."
 
+    # A unit refused at admission (Article I) stays refused: the release gate
+    # never resurrects an unresolvable / chain-broken output. This is what keeps
+    # ungrounded studies out of the constrained corpus even on non-scientific
+    # demo runs (previously a non-scientific override stamped REFUSED warrants
+    # ISSUED, letting ungrounded studies leak into constrained — gate bypass).
+    if warrant.status == "REFUSED":
+        warrant.issued = False
+        warrant.integrity_score = 0.0
+        warrant.threshold = threshold
+        return warrant, False, "Release gate upheld the Article I refusal; unresolvable output is not released."
+
     cleaned_score = _clean_integrity_score(claim_events, scientific)
     warrant.integrity_score = min(warrant.integrity_score, cleaned_score)
     warrant.threshold = threshold
@@ -536,9 +500,9 @@ def _study_to_evidence_unit(*, study: Study, branch: BranchName) -> EvidenceUnit
         provenance=study.provenance,
         direction=study.direction,
         rationale=study.rationale,
-        resolved_real_ids=list(study.pmids) if study.provenance == "REAL" else [],
+        resolved_real_ids=list(study.pmids) if study.provenance == "GROUNDED" else [],
         resolved_locators=[f"PMID:{pmid}" for pmid in study.pmids]
-        if study.provenance == "REAL"
+        if study.provenance == "GROUNDED"
         else [],
         output_hash=study.output_hash,
     )
@@ -573,33 +537,6 @@ def _reachable_lookup_from_study(study: Study) -> dict[str, CorpusItem]:
         )
         for pmid in study.pmids
     }
-
-
-def _synthetic_study_from_unit(unit: EvidenceUnit, *, year: int) -> Study:
-    seed = _seed_int(f"synthetic-study:{unit.id}:{year}")
-    fraction = (seed % 10_000) / 10_000
-    if unit.direction == "SUPPORTS":
-        effect_point = round(0.55 + (0.35 * fraction), 3)
-    elif unit.direction == "REFUTES":
-        effect_point = round(1.05 + (0.75 * fraction), 3)
-    else:
-        effect_point = round(0.92 + (0.16 * fraction), 3)
-    study = Study(
-        id=f"study-{unit.id}",
-        claim_id=unit.claim_id,
-        year=year,
-        direction=unit.direction,
-        effect_point=effect_point,
-        effect_ci=None,
-        n=60 + (seed % 440),
-        quality=round(0.15 + (0.55 * fraction), 3),
-        provenance="SYNTHETIC",
-        pmids=[],
-        numeric=True,
-        rationale=unit.rationale,
-    )
-    study.output_hash = _study_output_hash(study)
-    return study
 
 
 class Tier3RunStore:
@@ -773,18 +710,20 @@ def run_ecology(
     llm: LLMClient,
     pubmed_client: PubMedClient | DeterministicPubMedClient,
     run_id: str | None = None,
+    failure_rate: float = DEFAULT_FAILURE_RATE,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     years = horizon_years(request)
     claims = extract_claims(input_text, request.input_mode)
     claims = claims[: len(claim_graphs)]
     telemetry = CallTelemetry()
 
-    synthetic_bank = {
-        claim.claim_id: _mint_contamination_bank(claim, llm, telemetry) for claim in claims
-    }
     source_catalog: dict[str, list[SourceRecord]] = {claim.claim_id: [] for claim in claims}
     source_ids_seen: dict[str, set[str]] = {claim.claim_id: set() for claim in claims}
-    research_agent = ResearchAgent(pubmed=pubmed_client)
+    research_agent = ResearchAgent(
+        pubmed=pubmed_client,
+        failure_rate=failure_rate,
+        seed=_seed_int(f"run-failure-seed:{run_id or 'preview-run'}"),
+    )
     tier3_store = Tier3RunStore(run_id=run_id)
     srma_agent = SrmaAgent(study_reader=tier3_store)
     states: dict[tuple[str, BranchName], BranchState] = {
@@ -924,46 +863,6 @@ def run_ecology(
                     ):
                         surviving_units.append(investigator)
 
-                if branch == "free":
-                    for synthetic_template in _synthetic_units_for_year(
-                        synthetic_bank[claim.claim_id],
-                        year,
-                    ):
-                        synthetic_unit = synthetic_template.model_copy(
-                            update={
-                                "id": f"{synthetic_template.id}-year-{year}",
-                                "year": year,
-                                "branch": branch,
-                            },
-                            deep=True,
-                        )
-                        synthetic_study = _synthetic_study_from_unit(
-                            synthetic_unit,
-                            year=year,
-                        )
-                        synthetic_unit.output_hash = synthetic_study.output_hash
-                        evidence_units.append(synthetic_unit)
-                        if tier3_store.insert(branch=branch, study=synthetic_study):
-                            surviving_units.append(synthetic_unit)
-                        record_transition(
-                            audit_trail=audit_trail,
-                            audit_counters=audit_counters,
-                            last_hashes=last_hashes,
-                            run_id=run_id or "preview-run",
-                            claim_id=claim.claim_id,
-                            branch=branch,
-                            year=year,
-                            phase="contamination",
-                            event_type="synthetic-study-entered-db",
-                            severity="warn",
-                            integrity_score_before=1.0,
-                            integrity_score_after=0.0,
-                            message=(
-                                f"Synthetic contamination study {synthetic_study.id} "
-                                "entered the free Tier-3 DB."
-                            ),
-                        )
-
                 guideline = srma_agent.run(
                     run_id=run_id or "preview-run",
                     branch=branch,
@@ -1102,10 +1001,10 @@ def run_ecology(
         "temperature": 0.2,
         "seed_mode": "engine-seeded-structure",
         "prompt_template_digests": {
-            "synthetic_evidence": SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
             "tier1_pubmed": "entrez-date-cut",
             "srma_pooling": "deterministic-zero-llm",
         },
+        "failure_rate": failure_rate,
         "calls": [trace.__dict__ for trace in telemetry.traces],
     }
 

@@ -7,20 +7,21 @@ from app.simulator import simulate_run
 
 
 class FlakyClient(DeterministicFakeClient):
+    """A degraded LLM client.
+
+    Slice A1 makes no LLM calls (Tier-1 reads PubMed; SRMA pooling is
+    deterministic-zero-llm), so mid-run LLM degradation cannot be triggered by a
+    call counter here. We model the degraded end-state directly: the client is
+    born non-scientific with a degradation reason, and the bundle's end-of-run
+    ``scientific = llm.scientific and ...`` propagates it. When LLM-driven SRMA
+    lands (later slice), a call-count trigger becomes meaningful again.
+    """
+
     def __init__(self, fail_after: int) -> None:
         super().__init__()
-        self.scientific = True
-        self.degradation_reason = None
+        self.scientific = False
+        self.degradation_reason = "forced ecology failure"
         self._fail_after = fail_after
-        self._calls = 0
-
-    def generate(self, prompt: str, *, seed: int) -> str:
-        self._calls += 1
-        if self._calls > self._fail_after:
-            self.scientific = False
-            self.degradation_reason = "forced ecology failure"
-            return super().generate(prompt, seed=seed)
-        return super().generate(prompt, seed=seed)
 
 
 class StablePubMed:
@@ -64,7 +65,9 @@ def test_lineage_records_are_present_and_coherent() -> None:
         client=DeterministicFakeClient(),
     )
 
-    assert summary["llm_call_count"] == 9
+    # v3: no harness-authored contamination -> Tier-1 makes no contaminator LLM
+    # calls; the emergent-failure draw is deterministic (no model call).
+    assert summary["llm_call_count"] == 0
     assert bundle.lineage
     assert bundle.guideline_timeline["free"]
     assert bundle.population_stats["30"]["pair_count"] == 3

@@ -10,7 +10,13 @@ import requests
 from pypdf import PdfReader
 
 from app.config import DEFAULT_OLLAMA_BASE_URL, DEFAULT_OLLAMA_MODEL
-from app.ecology import ClaimSeed, contamination_clock, extract_claims, run_ecology
+from app.ecology import (
+    DEFAULT_FAILURE_RATE,
+    ClaimSeed,
+    contamination_clock,
+    extract_claims,
+    run_ecology,
+)
 from app.llm import (
     LLMClient,
     make_client,
@@ -116,6 +122,7 @@ def simulate_run(
     client: LLMClient | None = None,
     run_id: str | None = None,
     pubmed_client: PubMedClient | DeterministicPubMedClient | None = None,
+    failure_rate: float = DEFAULT_FAILURE_RATE,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     backend = resolve_backend(request)
     llm = client or make_client(
@@ -143,4 +150,5 @@ def simulate_run(
         llm=llm,
         pubmed_client=pubmed_client,
         run_id=run_id,
+        failure_rate=failure_rate,
     )

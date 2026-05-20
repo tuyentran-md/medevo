@@ -1,24 +1,12 @@
-import hashlib
-
-from app.llm import (
-    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
-    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
-    DeterministicFakeClient,
-)
+from app.llm import DeterministicFakeClient
 from app.models import RunRequestModel
 from app.pubmed import PubMedRecord, PubMedSearchResult
-from app.ecology import CallTelemetry, ClaimSeed, _mint_contamination_bank
 from app.simulator import contamination_clock, resolve_backend, simulate_run
 
 
 class RefutingUniverseClient(DeterministicFakeClient):
     scientific = True
     degradation_reason = None
-
-    def generate(self, prompt: str, *, seed: int) -> str:
-        if "possible contaminated literature carrier" in prompt:
-            return "DIRECTION: SUPPORTS\nRATIONALE: AI-generated carrier overstates benefit."
-        return super().generate(prompt, seed=seed)
 
 
 class RefutingPubMed:
@@ -112,15 +100,47 @@ def test_ecology_generates_branch_divergence_from_corpus_membership() -> None:
     )
 
 
-def test_synthetic_direction_comes_from_model_not_opposing_constant() -> None:
-    telemetry = CallTelemetry()
-    units = _mint_contamination_bank(
-        ClaimSeed("claim-x", "Routine antibiotics should be given for viral bronchiolitis.", "strong"),
-        RefutingUniverseClient(),
-        telemetry,
+def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_deterministic() -> None:
+    """SPEC v3 §0/§4/§8: contamination emerges from the agent's own failure.
+
+    With a non-zero failure_rate the Tier-1 agent emits UNGROUNDED studies whose
+    evidence chain does not resolve. The CIVER-gated constrained branch refuses
+    them (chain-resolvability only — the gate is never told GROUNDED/UNGROUNDED),
+    while the free branch ingests everything including the ungrounded studies.
+    The grounded/ungrounded pattern is deterministic under a fixed seed.
+    """
+    request = _request()
+
+    bundle, _summary = simulate_run(
+        request=request,
+        input_text=request.input_text or "",
+        client=DeterministicFakeClient(),
+        failure_rate=0.3,
     )
 
-    assert {unit.direction for unit in units} == {"SUPPORTS"}
+    # Emergent failure actually fired: free Tier-3 DB carries ungrounded studies.
+    final = bundle.db_growth[str(request.horizons[-1])]["studies"]
+    assert final["free"]["synthetic"] > 0, "expected emergent ungrounded studies in free"
+    # Constrained refuses every ungrounded study (gate blind to provenance label).
+    assert final["constrained"]["synthetic"] == 0
+    # Free is a strict superset: it inherits the grounded ones too.
+    assert final["free"]["real"] == final["constrained"]["real"]
+    assert final["free"]["count"] > final["constrained"]["count"]
+
+    # No harness-authored contamination: the v2 injection audit event is gone.
+    assert all(
+        event.event_type != "synthetic-study-entered-db" for event in bundle.audit_trail
+    )
+
+    # Determinism: a rerun with the same seed reproduces the identical pattern.
+    rerun, _ = simulate_run(
+        request=request,
+        input_text=request.input_text or "",
+        client=DeterministicFakeClient(),
+        failure_rate=0.3,
+    )
+    assert rerun.bundle_seal == bundle.bundle_seal
+    assert rerun.db_growth == bundle.db_growth
 
 
 def test_constrained_can_refute_when_pubmed_evidence_refutes_claim() -> None:
@@ -132,11 +152,14 @@ def test_constrained_can_refute_when_pubmed_evidence_refutes_claim() -> None:
         backend="ollama",
         horizons=[10],
     )
+    # failure_rate=0 isolates a fully-grounded scenario so the constrained
+    # branch ingests the refuting PubMed study.
     bundle, _summary = simulate_run(
         request=request,
         input_text=request.input_text or "",
         client=RefutingUniverseClient(),
         pubmed_client=RefutingPubMed(),
+        failure_rate=0.0,
     )
 
     constrained_claim = bundle.snapshots["constrained"][0].claims[0]
@@ -160,16 +183,6 @@ def test_fallback_run_is_marked_non_scientific() -> None:
     assert any("DEGRADED RUN" in note for note in bundle.validation_notes)
     assert bundle.degradation_reason is not None
     assert summary["scientific"] is False
-
-
-def test_synthetic_prompt_template_is_frozen() -> None:
-    assert (
-        hashlib.sha256(SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
-        == SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST
-    )
-    lowered = SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.lower()
-    for forbidden in ("year", "branch", "drift", "bias"):
-        assert forbidden not in lowered
 
 
 def test_backend_resolution_uses_fallback_when_ollama_unavailable() -> None:

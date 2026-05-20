@@ -13,7 +13,7 @@ def _study(
     *,
     claim_id: str = "claim-1",
     year: int = 2020,
-    provenance: str = "REAL",
+    provenance: str = "GROUNDED",
 ) -> Study:
     study = Study(
         id=study_id,
@@ -25,7 +25,7 @@ def _study(
         n=240,
         quality=0.9,
         provenance=provenance,
-        pmids=["111"] if provenance == "REAL" else [],
+        pmids=["111"] if provenance == "GROUNDED" else [],
         numeric=True,
         rationale="Admissible study record.",
         output_hash=f"hash-{study_id}",
@@ -56,7 +56,7 @@ def test_tier3_db_free_accepts_unwarranted_constrained_requires_warrant(tmp_path
     init_db()
 
     real_study = _study("study-real")
-    synthetic_study = _study("study-syn", provenance="SYNTHETIC")
+    synthetic_study = _study("study-syn", provenance="UNGROUNDED")
 
     assert insert_tier3_study(run_id="run-1", branch="free", study=synthetic_study) is True
     assert (

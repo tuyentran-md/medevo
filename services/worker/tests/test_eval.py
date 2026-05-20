@@ -30,6 +30,7 @@ def test_bundle_seal_verifies_and_tamper_fails() -> None:
         request=request,
         input_text=request.input_text or "",
         client=DeterministicFakeClient(),
+        failure_rate=0.0,
     )
     payload = bundle.model_dump(mode="json")
     assert verify_bundle_seal(payload) is True

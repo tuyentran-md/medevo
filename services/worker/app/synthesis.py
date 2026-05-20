@@ -67,7 +67,7 @@ def numeric_effect_component(study: Study) -> float | None:
 def study_weight(study: Study) -> float:
     n_weight = math.sqrt(study.n or 50) / math.sqrt(500)
     numeric_bonus = 0.15 if study.numeric else 0.0
-    provenance_penalty = 0.35 if study.provenance == "SYNTHETIC" else 0.0
+    provenance_penalty = 0.35 if study.provenance == "UNGROUNDED" else 0.0
     return max(0.05, min(1.5, study.quality + n_weight + numeric_bonus - provenance_penalty))
 
 
@@ -90,7 +90,7 @@ def recommendation_level(*, direction: ClaimDirection, certainty: float) -> Reco
 def certainty_score(studies: list[Study]) -> float:
     if not studies:
         return 0.0
-    real_quality = sum(study.quality for study in studies if study.provenance == "REAL")
+    real_quality = sum(study.quality for study in studies if study.provenance == "GROUNDED")
     total_quality = sum(study.quality for study in studies)
     real_fraction = 0.0 if total_quality == 0 else real_quality / total_quality
     quantity = min(1.0, len(studies) / 6)
@@ -127,4 +127,4 @@ def heterogeneity(studies: list[Study]) -> float:
 def synthetic_fraction(studies: list[Study]) -> float:
     if not studies:
         return 0.0
-    return sum(1 for study in studies if study.provenance == "SYNTHETIC") / len(studies)
+    return sum(1 for study in studies if study.provenance == "UNGROUNDED") / len(studies)
