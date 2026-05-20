@@ -165,6 +165,11 @@ def init_db() -> None:
                 year INTEGER NOT NULL,
                 direction TEXT NOT NULL,
                 level TEXT NOT NULL,
+                pooled_effect REAL,
+                certainty REAL NOT NULL DEFAULT 0,
+                study_count INTEGER NOT NULL DEFAULT 0,
+                synthetic_fraction REAL NOT NULL DEFAULT 0,
+                heterogeneity REAL NOT NULL DEFAULT 0,
                 PRIMARY KEY (run_id, branch, claim_id, year)
             );
             """
@@ -172,6 +177,16 @@ def init_db() -> None:
         _ensure_column(conn, "runs", "years_json", "TEXT NOT NULL DEFAULT '[]'")
         _ensure_column(conn, "source_catalog", "locator", "TEXT NOT NULL DEFAULT ''")
         _ensure_column(conn, "source_catalog", "direction", "TEXT NOT NULL DEFAULT 'NEUTRAL'")
+        _ensure_column(conn, "guideline_timeline", "pooled_effect", "REAL")
+        _ensure_column(conn, "guideline_timeline", "certainty", "REAL NOT NULL DEFAULT 0")
+        _ensure_column(conn, "guideline_timeline", "study_count", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(
+            conn,
+            "guideline_timeline",
+            "synthetic_fraction",
+            "REAL NOT NULL DEFAULT 0",
+        )
+        _ensure_column(conn, "guideline_timeline", "heterogeneity", "REAL NOT NULL DEFAULT 0")
         _ensure_column(
             conn,
             "evidence_units",
@@ -300,11 +315,24 @@ def insert_guideline_claims(
         conn.executemany(
             """
             INSERT OR REPLACE INTO guideline_timeline (
-                run_id, branch, claim_id, year, direction, level
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                run_id, branch, claim_id, year, direction, level, pooled_effect,
+                certainty, study_count, synthetic_fraction, heterogeneity
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
-                (run_id, branch, claim.claim_id, claim.year, claim.direction, claim.level)
+                (
+                    run_id,
+                    branch,
+                    claim.claim_id,
+                    claim.year,
+                    claim.direction,
+                    claim.level,
+                    claim.pooled_effect,
+                    claim.certainty,
+                    claim.study_count,
+                    claim.synthetic_fraction,
+                    claim.heterogeneity,
+                )
                 for claim in claims
             ],
         )

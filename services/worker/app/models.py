@@ -164,6 +164,11 @@ class GuidelineClaim(BaseModel):
     year: int
     direction: ClaimDirection
     level: RecommendationLevel
+    pooled_effect: float | None = None
+    certainty: float = 0.0
+    study_count: int = 0
+    synthetic_fraction: float = 0.0
+    heterogeneity: float = 0.0
 
 
 class CitationEdge(BaseModel):
@@ -253,6 +258,9 @@ class ArtifactBundle(BaseModel):
     lineage: list[LineageRecord] = Field(default_factory=list)
     audit_trail: list[AuditEvent] = Field(default_factory=list)
     warrants: list[ExecutionWarrant] = Field(default_factory=list)
+    db_growth: dict[str, Any] = Field(default_factory=dict)
+    guideline_timeline: dict[str, list[GuidelineClaim]] = Field(default_factory=dict)
+    population_stats: dict[str, Any] = Field(default_factory=dict)
     bundle_seal: str = ""
     provenance_log: dict[str, Any] = Field(default_factory=dict)
     degradation_reason: str | None = None

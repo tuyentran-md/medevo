@@ -5,7 +5,8 @@ import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from app.models import BranchName, ClaimDirection, GuidelineClaim, PubMedRecord, RecommendationLevel, Study
+from app.models import BranchName, GuidelineClaim, PubMedRecord, Study
+from app.synthesis import synthesize_guideline_claim
 
 if TYPE_CHECKING:
     from app.pubmed import PubMedClient
@@ -92,39 +93,7 @@ class SrmaAgent:
             claim_id=claim_id,
             up_to_year=year,
         )
-        return GuidelineClaim(
-            claim_id=claim_id,
-            year=year,
-            direction=_weighted_direction(studies),
-            level=_placeholder_level(studies),
-        )
-
-
-def _weighted_direction(studies: list[Study]) -> ClaimDirection:
-    scores = {"SUPPORTS": 1.0, "NEUTRAL": 0.0, "REFUTES": -1.0}
-    if not studies:
-        return "NEUTRAL"
-    total_weight = sum(max(study.quality, 0.01) for study in studies)
-    pooled = sum(scores[study.direction] * max(study.quality, 0.01) for study in studies) / total_weight
-    if pooled >= 0.25:
-        return "SUPPORTS"
-    if pooled <= -0.25:
-        return "REFUTES"
-    return "NEUTRAL"
-
-
-def _placeholder_level(studies: list[Study]) -> RecommendationLevel:
-    if not studies:
-        return "no-recommendation"
-    real_quality = sum(study.quality for study in studies if study.provenance == "REAL")
-    synthetic_quality = sum(study.quality for study in studies if study.provenance == "SYNTHETIC")
-    if real_quality >= 2.4 and synthetic_quality == 0:
-        return "strong-for" if _weighted_direction(studies) == "SUPPORTS" else "strong-against"
-    if _weighted_direction(studies) == "SUPPORTS":
-        return "conditional-for"
-    if _weighted_direction(studies) == "REFUTES":
-        return "conditional-against"
-    return "no-recommendation"
+        return synthesize_guideline_claim(claim_id=claim_id, year=year, studies=studies)
 
 
 def _select_record(records: list[PubMedRecord], *, claim_id: str, year: int) -> PubMedRecord | None:

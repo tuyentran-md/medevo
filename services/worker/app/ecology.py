@@ -11,13 +11,12 @@ from typing import Any, Literal
 
 from app.config import YEARS
 from app.db import insert_ecology_records
+from app.harness import branch_gap, replay_counts
 from app.llm import (
     EVIDENCE_UNIVERSE_PROMPT_TEMPLATE,
     EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
     PROMPT_TEMPLATE_DIGEST,
     RESEARCHER_PROMPT_TEMPLATE,
-    SYNTHESIST_PROMPT_TEMPLATE,
-    SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
     LLMClient,
@@ -35,10 +34,13 @@ from app.models import (
     DriftSnapshot,
     EvidenceUnit,
     ExecutionWarrant,
+    GuidelineClaim,
     LineageRecord,
     RecommendationStrength,
     RunRequestModel,
+    Study,
 )
+from app.synthesis import synthesize_guideline_claim
 
 
 ANCHORS = [
@@ -135,16 +137,6 @@ def _extract_rationale(text: str) -> str:
     return cleaned or "No rationale returned."
 
 
-def _strength_from_score(score: float, evidence_count: int) -> RecommendationStrength:
-    if evidence_count <= 1:
-        return "weak"
-    if abs(score) >= 0.66:
-        return "strong"
-    if abs(score) >= 0.34:
-        return "moderate"
-    return "weak"
-
-
 def _panel_direction(score: float) -> ClaimDirection:
     if score >= 0.34:
         return "SUPPORTS"
@@ -180,26 +172,6 @@ def _direction_from_items(
     if abs(evidence_score) >= 0.34:
         return _panel_direction(evidence_score)
     return model_direction
-
-
-def _pooled_panel_score(
-    *,
-    surviving_units: list[EvidenceUnit],
-    synth_direction: ClaimDirection,
-    prior_direction: ClaimDirection,
-) -> float:
-    scores: list[float] = []
-    for unit in surviving_units:
-        unit_score = _DIRECTION_VALUE[unit.direction]
-        # Panel scoring is evidence-first: the synthesist provides a summary,
-        # but cannot cancel a surviving admissible evidence unit by itself.
-        # Synthetic substrate still gets enough weight to model contaminated
-        # literature hardening into citable evidence in the free branch.
-        weight = 2 if _carries_synthetic_substrate(unit) else 3
-        scores.extend([unit_score] * weight)
-    scores.append(_DIRECTION_VALUE[synth_direction])
-    scores.append(_DIRECTION_VALUE[prior_direction] * 0.5)
-    return fmean(scores) if scores else _DIRECTION_VALUE[synth_direction]
 
 
 def _panel_band(year: int, branch_scores: list[float]) -> dict[str, float | str]:
@@ -743,36 +715,6 @@ def admit_evidence_unit(
     return verdict, warrant
 
 
-def _synthesist_verdict(
-    *,
-    claim: ClaimSeed,
-    year: int,
-    branch: BranchName,
-    surviving_units: list[EvidenceUnit],
-    llm: LLMClient,
-    telemetry: CallTelemetry,
-) -> tuple[ClaimDirection, str]:
-    if surviving_units:
-        evidence_lines = [
-            f"- Evidence unit {index}: {unit.direction}. {unit.rationale}"
-            for index, unit in enumerate(surviving_units, start=1)
-        ]
-    else:
-        evidence_lines = ["- No admissible evidence units survived the release gate."]
-    prompt = SYNTHESIST_PROMPT_TEMPLATE.format(
-        claim=claim.text,
-        evidence_block="\n".join(evidence_lines),
-    )
-    response = _invoke_model(
-        llm,
-        telemetry,
-        f"synthesist/{branch}/{claim.claim_id}/year-{year}",
-        prompt,
-        seed=_seed_int(f"synthesist:{claim.claim_id}:{year}:{_digest_key(prompt)}"),
-    )
-    return parse_direction(response), _extract_rationale(response)
-
-
 def _clean_integrity_score(events: list[AuditEvent], scientific: bool) -> float:
     if not scientific:
         return 0.0
@@ -849,21 +791,55 @@ def _lineage_record(
     )
 
 
+def _study_from_evidence_unit(unit: EvidenceUnit) -> Study:
+    synthetic = _carries_synthetic_substrate(unit)
+    if unit.direction == "SUPPORTS":
+        effect_point = 0.78 if not synthetic else 0.62
+    elif unit.direction == "REFUTES":
+        effect_point = 1.22 if not synthetic else 1.45
+    else:
+        effect_point = 1.0
+    quality = 0.82 if not synthetic else 0.38
+    study = Study(
+        id=f"study-{unit.id}",
+        claim_id=unit.claim_id,
+        year=unit.year,
+        direction=unit.direction,
+        effect_point=effect_point,
+        effect_ci=None,
+        n=320 if not synthetic else 90,
+        quality=quality,
+        provenance="SYNTHETIC" if synthetic else "REAL",
+        pmids=list(unit.resolved_real_ids),
+        numeric=True,
+        rationale=unit.rationale,
+        output_hash=unit.output_hash,
+    )
+    return study
+
+
+def _strength_from_guideline_level(level: str) -> RecommendationStrength:
+    if level.startswith("strong"):
+        return "strong"
+    if level.startswith("conditional"):
+        return "moderate"
+    return "weak"
+
+
 def _claim_snapshot(
     *,
     claim: ClaimSeed,
     year: int,
     branch: BranchName,
     verdict: CiverVerdict,
-    panel_direction: ClaimDirection,
-    pooled_score: float,
+    guideline: GuidelineClaim,
     synth_rationale: str,
     lineage: LineageRecord,
     cycle_events: list[AuditEvent],
     blocked_count: int,
     emitted_count: int,
 ) -> ClaimSnapshot:
-    strength = _strength_from_score(pooled_score, max(emitted_count, 1))
+    strength = _strength_from_guideline_level(guideline.level)
     brim_events = [
         BrimEvent(
             node_id=event.claim_id,
@@ -876,7 +852,8 @@ def _claim_snapshot(
     ]
     why_summary = (
         f"{branch.title()} branch at year {year}: panel moved from {lineage.verdict_before} to "
-        f"{panel_direction}. Real sources retained: {', '.join(lineage.surviving_real) or 'none'}. "
+        f"{guideline.direction} ({guideline.level}, certainty={guideline.certainty}). "
+        f"Real sources retained: {', '.join(lineage.surviving_real) or 'none'}. "
         f"Lost real sources: {', '.join(lineage.lost_real) or 'none'}. "
         f"Synthetic carriers: {', '.join(lineage.synthetic_carriers) or 'none'}. "
         f"Synthesist rationale: {synth_rationale}"
@@ -884,7 +861,7 @@ def _claim_snapshot(
     snapshot = ClaimSnapshot(
         claim_id=claim.claim_id,
         claim_text=claim.text,
-        direction=panel_direction,
+        direction=guideline.direction,
         strength=strength,
         emitted_count=emitted_count,
         blocked_count=blocked_count,
@@ -972,10 +949,18 @@ def run_ecology(
     audit_counters: dict[tuple[str, BranchName], int] = {}
     last_hashes: dict[tuple[str, BranchName], str] = {}
     graph_lookup = {graph.claim_id: graph for graph in claim_graphs}
+    tier3_studies: dict[BranchName, list[Study]] = {"free": [], "constrained": []}
+    guideline_timeline: dict[BranchName, list[GuidelineClaim]] = {
+        "free": [],
+        "constrained": [],
+    }
+    db_growth: dict[str, Any] = {}
+    population_stats: dict[str, Any] = {}
 
     for year in years:
         branch_scores: dict[str, list[float]] = {"free": [], "constrained": []}
         branch_claims: dict[str, list[ClaimSnapshot]] = {"free": [], "constrained": []}
+        branch_guidelines: dict[str, list[GuidelineClaim]] = {"free": [], "constrained": []}
 
         for branch in ("free", "constrained"):
             for claim in claims:
@@ -1084,20 +1069,26 @@ def run_ecology(
                     message=release_message,
                 )
                 surviving_units = [investigator] if released and (branch == "free" or _is_valid_warrant(warrant, investigator)) else []
-                synth_direction, synth_rationale = _synthesist_verdict(
-                    claim=claim,
+                if surviving_units:
+                    tier3_studies[branch].append(_study_from_evidence_unit(investigator))
+                studies_for_claim = [
+                    study
+                    for study in tier3_studies[branch]
+                    if study.claim_id == claim.claim_id and study.year <= year
+                ]
+                guideline = synthesize_guideline_claim(
+                    claim_id=claim.claim_id,
                     year=year,
-                    branch=branch,
-                    surviving_units=surviving_units,
-                    llm=llm,
-                    telemetry=telemetry,
+                    studies=studies_for_claim,
                 )
-                pooled_score = _pooled_panel_score(
-                    surviving_units=surviving_units,
-                    synth_direction=synth_direction,
-                    prior_direction=state.prior_direction,
+                guideline_timeline[branch].append(guideline)
+                branch_guidelines[branch].append(guideline)
+                pooled_score = guideline.pooled_effect or _DIRECTION_VALUE[guideline.direction]
+                synth_rationale = (
+                    "Tier-4 SRMA read the accumulated Tier-3 DB only: "
+                    f"{guideline.study_count} studies, synthetic_fraction="
+                    f"{guideline.synthetic_fraction}, heterogeneity={guideline.heterogeneity}."
                 )
-                panel_direction = _panel_direction(pooled_score)
                 lineage = _lineage_record(
                     claim_id=claim.claim_id,
                     year=year,
@@ -1105,7 +1096,7 @@ def run_ecology(
                     prior_state=state,
                     surviving_units=surviving_units,
                     verdict_before=state.prior_direction,
-                    verdict_after=panel_direction,
+                    verdict_after=guideline.direction,
                 )
                 record_transition(
                     audit_trail=audit_trail,
@@ -1141,8 +1132,7 @@ def run_ecology(
                     year=year,
                     branch=branch,
                     verdict=verdict,
-                    panel_direction=panel_direction,
-                    pooled_score=pooled_score,
+                    guideline=guideline,
                     synth_rationale=synth_rationale,
                     lineage=lineage,
                     cycle_events=cycle_events,
@@ -1164,10 +1154,31 @@ def run_ecology(
 
         branch_diff[str(year)] = {}
         for index, claim in enumerate(claims):
-            delta = abs(branch_scores["free"][index] - branch_scores["constrained"][index])
+            free_guideline = branch_guidelines["free"][index]
+            constrained_guideline = branch_guidelines["constrained"][index]
+            direction_delta = abs(
+                _DIRECTION_VALUE[free_guideline.direction]
+                - _DIRECTION_VALUE[constrained_guideline.direction]
+            ) / 2.0
+            level_gap = branch_gap(
+                free=[free_guideline],
+                constrained=[constrained_guideline],
+                iterations=1,
+            ).level.mean
+            delta = (direction_delta + level_gap) / 2.0
             branch_diff[str(year)][claim.claim_id] = round(delta, 3)
             branch_claims["free"][index].divergence_score = round(delta, 3)
             branch_claims["constrained"][index].divergence_score = round(delta, 3)
+        db_growth[str(year)] = replay_counts(
+            studies=tier3_studies,
+            guidelines=branch_guidelines,
+        )
+        population_stats[str(year)] = branch_gap(
+            free=branch_guidelines["free"],
+            constrained=branch_guidelines["constrained"],
+            iterations=500,
+            seed=year,
+        ).to_dict()
 
         for branch in ("free", "constrained"):
             snapshots[branch].append(
@@ -1196,7 +1207,7 @@ def run_ecology(
             "researcher": PROMPT_TEMPLATE_DIGEST,
             "source_universe": EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
             "synthetic_evidence": SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
-            "synthesist": SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
+            "srma_pooling": "deterministic-zero-llm",
         },
         "calls": [trace.__dict__ for trace in telemetry.traces],
     }
@@ -1211,7 +1222,7 @@ def run_ecology(
     else:
         validation_notes = [
             "Reachable-corpus divergence is branch-conditioned only at corpus construction, not selection scoring.",
-            "Researcher and synthesist prompts are byte-frozen and never mention year, branch, drift, bias, or contamination.",
+            "Researcher prompts are byte-frozen; Tier-4 SRMA pooling is deterministic and makes zero LLM calls.",
             "The release gate reads the hash-chained audit trail and never calls the LLM.",
         ]
         mode_banner = ""
@@ -1229,6 +1240,9 @@ def run_ecology(
         lineage=lineage_records,
         audit_trail=audit_trail,
         warrants=warrants,
+        db_growth=db_growth,
+        guideline_timeline=guideline_timeline,
+        population_stats=population_stats,
         provenance_log=provenance_log,
         degradation_reason=degradation_reason,
     )
@@ -1254,6 +1268,7 @@ def run_ecology(
             for snapshot in bundle.snapshots["constrained"]
             for claim in snapshot.claims
         ),
+        "population_stats": population_stats,
         "llm_call_count": telemetry.call_count,
         "degradation_reason": degradation_reason,
         "bundle_seal": bundle.bundle_seal,
