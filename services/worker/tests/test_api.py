@@ -13,13 +13,29 @@ from fastapi.testclient import TestClient
 def load_client(tmp_path, monkeypatch):
     monkeypatch.setenv("MEDEVO_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("MEDEVO_FORCE_FALLBACK", "1")
+    # Snapshot the app.* modules so the tmp_path/fallback-bound reload is undone on
+    # exit. Without this, popping + re-importing app.* leaves a duplicate module
+    # graph in sys.modules: any test collected BEFORE this one holds references to
+    # the original modules while the reloaded copies coexist, producing cross-graph
+    # type-identity Heisenbugs in unrelated downstream tests.
+    saved_modules = {
+        name: module
+        for name, module in sys.modules.items()
+        if name == "app" or name.startswith("app.")
+    }
     for module_name in list(sys.modules):
         if module_name.startswith("app"):
             sys.modules.pop(module_name)
 
-    main = importlib.import_module("app.main")
-    with TestClient(main.app) as client:
-        yield client
+    try:
+        main = importlib.import_module("app.main")
+        with TestClient(main.app) as client:
+            yield client
+    finally:
+        for module_name in list(sys.modules):
+            if module_name == "app" or module_name.startswith("app."):
+                sys.modules.pop(module_name, None)
+        sys.modules.update(saved_modules)
 
 
 def test_create_run_and_fetch_artifacts(tmp_path, monkeypatch) -> None:

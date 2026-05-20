@@ -1,0 +1,27 @@
+{
+  "_status": "UNVERIFIED — fill from USPSTF source before any real claim",
+  "_provenance": "PLACEHOLDER grades. NOT real USPSTF data. The scoring mechanism is the deliverable; a human must replace direction/level with verified USPSTF A/B/C/D/I grades (mapped to the GRADE-5 ordinal) from the primary source (https://www.uspreventiveservicestaskforce.org superseded HRT statements) before any scientific or external claim. Do not cite these values.",
+  "topic": "hrt_chronic_disease_prevention_post_whi_2002",
+  "scope_note": "HRT for chronic-disease prevention; the documented 180-degree reversal (pre-2002 recommended for CVD prevention -> WHI 2002 RCT -> recommended against). ~6 atomic claims when filled from source; only 3 placeholder claims here to match the demo ecology input.",
+  "level_ordinal": {
+    "strong-for": 2,
+    "conditional-for": 1,
+    "no-recommendation": 0,
+    "conditional-against": -1,
+    "strong-against": -2
+  },
+  "trajectory": {
+    "claim-1": [
+      {"year": 1, "direction": "SUPPORTS", "level": "conditional-for"},
+      {"year": 30, "direction": "REFUTES", "level": "strong-against"}
+    ],
+    "claim-2": [
+      {"year": 1, "direction": "SUPPORTS", "level": "conditional-for"},
+      {"year": 30, "direction": "REFUTES", "level": "conditional-against"}
+    ],
+    "claim-3": [
+      {"year": 1, "direction": "NEUTRAL", "level": "no-recommendation"},
+      {"year": 30, "direction": "REFUTES", "level": "strong-against"}
+    ]
+  }
+}

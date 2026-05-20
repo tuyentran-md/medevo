@@ -123,6 +123,7 @@ def simulate_run(
     run_id: str | None = None,
     pubmed_client: PubMedClient | DeterministicPubMedClient | None = None,
     failure_rate: float = DEFAULT_FAILURE_RATE,
+    study_sink: dict[str, list] | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     backend = resolve_backend(request)
     llm = client or make_client(
@@ -151,4 +152,5 @@ def simulate_run(
         pubmed_client=pubmed_client,
         run_id=run_id,
         failure_rate=failure_rate,
+        study_sink=study_sink,
     )

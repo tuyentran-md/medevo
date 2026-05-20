@@ -851,6 +851,7 @@ def run_ecology(
     pubmed_client: PubMedClient | DeterministicPubMedClient,
     run_id: str | None = None,
     failure_rate: float = DEFAULT_FAILURE_RATE,
+    study_sink: dict[BranchName, list[Study]] | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     years = horizon_years(request)
     claims = extract_claims(input_text, request.input_mode)
@@ -1233,4 +1234,11 @@ def run_ecology(
         if bundle.calibration_matrix
         else None,
     }
+    if study_sink is not None:
+        # Per-branch accumulated Tier-3 corpora (free = all emitted studies;
+        # constrained = warranted survivors). Surfaced via an opt-in sink, NOT on
+        # the bundle or the persisted summary, because the raw Study objects are a
+        # Slice-C evaluation/control input (re-pooled offline), not a sealed
+        # scientific artifact — and they are not JSON-serialisable into meta.json.
+        study_sink.update(tier3_store.all_studies())
     return bundle, summary
