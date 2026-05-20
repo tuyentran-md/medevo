@@ -13,6 +13,13 @@ BackendKind = Literal["ollama", "openai-compatible", "gemini", "anthropic"]
 RunStatus = Literal["queued", "running", "completed", "failed"]
 ClaimDirection = Literal["SUPPORTS", "REFUTES", "NEUTRAL"]
 RecommendationStrength = Literal["weak", "moderate", "strong"]
+RecommendationLevel = Literal[
+    "strong-for",
+    "conditional-for",
+    "no-recommendation",
+    "conditional-against",
+    "strong-against",
+]
 EvidenceProvenance = Literal["REAL", "SYNTHETIC"]
 EvidenceProducer = Literal["investigator", "contaminator"]
 WarrantStatus = Literal["ISSUED", "REFUSED", "REVOKED"]
@@ -118,6 +125,45 @@ class EvidenceUnit(BaseModel):
     resolved_real_ids: list[str] = Field(default_factory=list)
     resolved_locators: list[str] = Field(default_factory=list)
     output_hash: str | None = None
+
+
+class PubMedRecord(BaseModel):
+    pmid: str
+    title: str = ""
+    abstract: str = ""
+    year: int
+    journal: str = ""
+    locator: str = ""
+
+
+class EffectEstimate(BaseModel):
+    point: float | None = None
+    ci_low: float | None = None
+    ci_high: float | None = None
+    measure: str | None = None
+
+
+class Study(BaseModel):
+    id: str
+    claim_id: str
+    year: int
+    direction: ClaimDirection
+    effect_point: float | None = None
+    effect_ci: tuple[float, float] | None = None
+    n: int | None = None
+    quality: float
+    provenance: EvidenceProvenance
+    pmids: list[str] = Field(default_factory=list)
+    numeric: bool
+    rationale: str
+    output_hash: str | None = None
+
+
+class GuidelineClaim(BaseModel):
+    claim_id: str
+    year: int
+    direction: ClaimDirection
+    level: RecommendationLevel
 
 
 class CitationEdge(BaseModel):

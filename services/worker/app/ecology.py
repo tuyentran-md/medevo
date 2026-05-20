@@ -13,11 +13,13 @@ from app.config import YEARS
 from app.db import insert_ecology_records
 from app.llm import (
     EVIDENCE_UNIVERSE_PROMPT_TEMPLATE,
+    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
     PROMPT_TEMPLATE_DIGEST,
     RESEARCHER_PROMPT_TEMPLATE,
     SYNTHESIST_PROMPT_TEMPLATE,
     SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
+    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
     LLMClient,
     parse_direction,
 )
@@ -1192,6 +1194,8 @@ def run_ecology(
         "seed_mode": "engine-seeded-structure",
         "prompt_template_digests": {
             "researcher": PROMPT_TEMPLATE_DIGEST,
+            "source_universe": EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
+            "synthetic_evidence": SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
             "synthesist": SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
         },
         "calls": [trace.__dict__ for trace in telemetry.traces],

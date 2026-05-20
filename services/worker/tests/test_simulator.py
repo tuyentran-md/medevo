@@ -1,10 +1,14 @@
 import hashlib
 
 from app.llm import (
+    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE,
+    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
     PROMPT_TEMPLATE_DIGEST,
     RESEARCHER_PROMPT_TEMPLATE,
     SYNTHESIST_PROMPT_TEMPLATE,
     SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
+    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
+    SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
     DeterministicFakeClient,
 )
 from app.models import RunRequestModel
@@ -172,6 +176,17 @@ def test_synthesist_prompt_template_is_frozen() -> None:
     lowered = SYNTHESIST_PROMPT_TEMPLATE.lower()
     for forbidden in ("year", "branch", "drift", "bias", "contaminat", "ai-generated"):
         assert forbidden not in lowered
+
+
+def test_source_and_synthetic_prompt_templates_are_frozen() -> None:
+    assert (
+        hashlib.sha256(EVIDENCE_UNIVERSE_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
+        == EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST
+    )
+    assert (
+        hashlib.sha256(SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
+        == SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST
+    )
 
 
 def test_backend_resolution_uses_fallback_when_ollama_unavailable() -> None:
