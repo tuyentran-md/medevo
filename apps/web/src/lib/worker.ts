@@ -1,7 +1,10 @@
 import type {
   BackendKind,
+  BranchGapReport,
   DriftSnapshot,
+  GuidelineClaim,
   InputMode,
+  ReplayCounts,
   RunRequest,
   RunStatus,
 } from "@medevo/contracts";
@@ -93,6 +96,9 @@ export interface ArtifactResponse {
       verdict_before: "SUPPORTS" | "REFUTES" | "NEUTRAL";
       verdict_after: "SUPPORTS" | "REFUTES" | "NEUTRAL";
     }>;
+    guideline_timeline?: Record<"free" | "constrained", GuidelineClaim[]>;
+    db_growth?: Record<string, ReplayCounts>;
+    population_stats?: Record<string, BranchGapReport>;
     audit_trail?: Array<{
       run_id: string;
       claim_id: string;
@@ -129,6 +135,7 @@ export interface ArtifactResponse {
       claim_count: number;
       years: number[];
       has_blocked_outputs: boolean;
+      population_stats?: Record<string, BranchGapReport>;
       llm_call_count?: number;
       degradation_reason?: string | null;
     };

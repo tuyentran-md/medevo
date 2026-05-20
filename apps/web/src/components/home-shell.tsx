@@ -118,8 +118,8 @@ export function HomeShell() {
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
-                "Tier-1 studies and Tier-2 reviews stay agentic.",
-                "Tier-3 recommendation panel stays deterministic.",
+                "Tier-1 studies stay agentic.",
+                "Tier-4 SR/MA stays deterministic.",
                 "Paid APIs remain opt-in, never the build default.",
               ].map((item) => (
                 <div

@@ -1,113 +1,214 @@
 # MedEvo
 
-**An interactive research instrument that simulates how clinical guidelines and study
-conclusions may *drift* over 10, 20, and 30 years as AI-generated text accumulates in the
-biomedical literature.**
+MedEvo is a research instrument for simulating how an AI-contaminated biomedical
+literature can change downstream clinical recommendations.
 
-You paste in a guideline excerpt or a paper's conclusion. MedEvo extracts its core claims,
-then lets those claims *evolve* under a model of evidence contamination — and renders three
-horizon panels showing where the claim landscape might sit a decade, two decades, and three
-decades out.
+The core question is narrow:
 
-> Every horizon panel is **one draw from a distribution, not a forecast.** MedEvo does not
-> predict the future of any guideline. It makes the *fragility* of a claim under shifting
-> evidence visible and arguable.
+> If synthetic or poorly grounded studies enter the inheritable evidence corpus,
+> does a later guideline drift in direction or recommendation level, and does a
+> provenance gate reduce that drift?
 
-## Why this exists
+MedEvo is not clinical decision support and does not predict the future of any
+real guideline. It simulates provenance dynamics: what happens when a guideline
+panel synthesizes from a corpus whose contents may have been contaminated.
 
-Evidence-based medicine assumes the literature it rests on is a roughly faithful record of
-what was studied. As AI-generated text enters biomedical publishing, that assumption weakens:
-synthetic claims can be cited, re-synthesized, and hardened into apparent consensus without
-new underlying data. MedEvo is a sandbox for reasoning about that failure mode — a way to ask
-*which clinical claims are robust to contamination, and which quietly rot* — rather than a
-prediction engine.
+## Current Status
 
-It is built as a translation layer between evidence and deployment: concrete, manipulable,
-and honest about its own limits.
+This repo now implements the v2 engine shape:
 
-## How it works
+- Tier-1 research agents produce structured study records.
+- Tier-2 admission gates decide what enters the constrained inheritable corpus.
+- Tier-3 stores an accumulating, branch-partitioned study database.
+- Tier-4 performs deterministic simulated SR/MA over that database.
+- Direction and recommendation level are separate outputs.
+- Runs emit sealed artifacts with lineage, warrants, audit events, DB growth,
+  guideline timelines, and branch-gap population statistics.
 
+What is not complete yet: a scored scientific proof run. The code can produce
+the artifact and validation surfaces, but a real Phase A/Phase B experiment still
+needs a chosen historical window, gold set, real model backend, and repeated runs
+for confidence intervals. Fallback or showcase runs are mechanism demos only.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A["Guideline or paper text"] --> B["Claim extraction"]
+    B --> C["Tier 1: Research agents"]
+    C --> D["Structured Study records"]
+    D --> E{"Tier 2: Admission gate"}
+    E -->|"free branch: no enforcement"| F["Free Tier-3 DB"]
+    E -->|"constrained branch: valid warrant required"| G["Constrained Tier-3 DB"]
+    F --> H["Tier 4: deterministic SR/MA"]
+    G --> H
+    H --> I["Guideline claim: direction + GRADE-style level"]
+    I --> J["Sealed replay artifact + branch-gap stats"]
 ```
-guideline / paper text
-        │
-        ▼
-  claim extraction        ── core claims isolated (capped, deterministic ordering)
-        │
-        ▼
-  emergent simulation     ── claims evolve under a contamination model across YEARS = (10, 20, 30)
-        │  CIVER  verdicts on claim survival / inversion
-        │  BRIM   discrete drift events along the trajectory
-        ▼
-  3 horizon panels        ── each a single draw from a distribution, never a point forecast
-```
 
-Anchors held fixed by the engine:
+The two branches run the same engine:
 
-- Pre-2023 literature contamination approximated near zero.
-- Rising AI-text prevalence in biomedical publishing is treated as an empirical anchor, not a tuned knob.
-- Every year-10/20/30 panel is rendered as **one draw**, never a forecast.
+- `free`: admits generated studies and contamination without enforcing the gate.
+- `constrained`: only warranted outputs enter the inheritable Tier-3 corpus.
 
-CIVER and BRIM are internal engine components (claim-verdict and drift-event models). They are
-research scaffolding within this instrument — no commercial or intellectual-property claims are
-made here.
+The branch contrast is the point. A useful run must show whether the constrained
+corpus changes guideline outcomes relative to the free corpus, and whether that
+gap survives controls.
 
-## Scientific honesty
+## Scientific Boundaries
 
-A run is **scientific only when a real generative model produces the trajectory.** If no model
-is reachable, the worker degrades to a deterministic local simulator so the app still runs
-without a paid API — but that output is explicitly **non-scientific** and the UI flags it.
-"It still worked" is not the same as "it was a valid run."
+MedEvo does not claim clinical truth.
 
-The three bundled showcases (`Illustrative` sepsis, bronchiolitis, antibiotic stewardship) use
-**synthetic, demo-only** clinical text. No patient data, no real guideline is reproduced.
+- Real PubMed-grounded studies may carry extracted effect estimates when present.
+- Qualitative real-grounded studies are allowed when abstracts do not expose a
+  clean numeric effect.
+- Synthetic studies are deliberate contamination carriers.
+- The pooled effect in MedEvo is a simulated synthesis signal, not a publication
+  grade meta-analysis.
+- A run is marked non-scientific if it uses the deterministic fallback client.
 
-## Monorepo layout
+The result to interpret is evidentiary lineage and corpus contamination, not a
+medical recommendation for patient care.
+
+## Engine Modules
 
 ```text
-apps/web            Next.js public UI
-packages/contracts  Shared TypeScript types + JSON schemas
-services/worker     FastAPI API + background simulation worker
+apps/web
+  Next.js UI for creating runs and replaying sealed artifacts.
+
+packages/contracts
+  Shared TypeScript contracts used by the web app.
+
+services/worker/app
+  agents.py       Tier-1 ResearchAgent and Tier-4 SrmaAgent
+  db.py           SQLite runs, audit trail, warrants, Tier-3 study DB
+  ecology.py      branch simulation loop, audit chain, artifact assembly
+  harness.py      Phase A/Phase B validation bars and bootstrap CI
+  llm.py          model clients, frozen prompts, fallback firewall
+  pubmed.py       PubMed client, date-cut search, cache, effect extraction
+  synthesis.py    deterministic SR/MA pooling and recommendation level logic
 ```
 
-## Local development
+## Artifact Schema
 
-### Worker (`:8000`)
+Completed runs expose:
+
+- `snapshots`: horizon views for `free` and `constrained` branches.
+- `branch_diff`: per-year, per-claim 2D drift score.
+- `lineage`: surviving real sources, lost real sources, synthetic carriers.
+- `warrants`: execution warrant state for constrained outputs.
+- `audit_trail`: hash-chained process events.
+- `guideline_timeline`: per-claim direction and recommendation level by year.
+- `db_growth`: replay counts for produced studies and emitted guidelines.
+- `population_stats`: bootstrap CI for direction and level branch gaps.
+- `bundle_seal`: tamper check for the sealed bundle.
+
+## Validation Bars
+
+The code includes two validation surfaces:
+
+1. Phase A retrospective validation: clean-arm final guideline must beat
+   baselines and remain stable across the final window.
+2. Phase B forward value: free-vs-constrained branch gap must have bootstrap CI
+   excluding zero on both direction and recommendation level, and must beat
+   controls such as volume-matched or random-gate comparisons.
+
+These bars are implemented in `services/worker/app/harness.py`; they do not by
+themselves prove MedEvo's scientific claim. They are the scoring machinery for a
+proper experiment.
+
+## Local Development
+
+Install JavaScript dependencies from the repo root:
+
+```bash
+npm install
+```
+
+Set up the worker:
 
 ```bash
 cd services/worker
 python3.11 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
-On first boot the worker generates the showcase bundles synchronously through the local
-model, so the initial startup is intentionally slow. Subsequent boots are fast.
+Start the web app:
 
-Optional local-model variables (defaults shown):
+```bash
+NEXT_PUBLIC_MEDEVO_WORKER_URL=http://127.0.0.1:8000 npm run dev:web
+```
+
+Default worker endpoint: `http://127.0.0.1:8000`
+
+Default web endpoint: `http://127.0.0.1:3000`
+
+## Model Backends
+
+The worker supports:
+
+- `ollama` with `MEDEVO_OLLAMA_BASE_URL` and `MEDEVO_OLLAMA_MODEL`.
+- OpenAI-compatible chat-completions endpoints via per-request `base_url`,
+  `model`, and BYOK API key.
+
+Defaults:
 
 ```bash
 MEDEVO_OLLAMA_BASE_URL=http://127.0.0.1:11434
 MEDEVO_OLLAMA_MODEL=gemma3:12b
+MEDEVO_MAX_CONCURRENT_RUNS=3
 ```
 
-To run a real scientific pass locally: `ollama pull gemma3:12b` before starting the worker.
+If the selected backend is unreachable, MedEvo falls back to a deterministic
+client and stamps the run as illustrative, not scientific.
 
-### Web (`:3000`)
+## Tests
+
+Backend:
 
 ```bash
-npm install
-NEXT_PUBLIC_MEDEVO_WORKER_URL=http://127.0.0.1:8000 npm run dev:web
+cd services/worker
+./.venv/bin/pytest
 ```
 
-You can also bring your own API key at request time (BYOK) — keys are passed per-request and
-are never persisted to disk or the database.
+Web:
+
+```bash
+npm run lint:web
+npm run build:web
+```
+
+Current backend test coverage includes:
+
+- PubMed date-cut/cache behavior.
+- SRMA no-PubMed import isolation.
+- independent recommendation level movement with direction held fixed.
+- admission gate behavior for free vs constrained Tier-3 DB.
+- audit-chain and bundle-seal verification.
+- Phase A/Phase B harness behavior.
+
+## Running A Proper Scientific Pass
+
+A meaningful run requires:
+
+1. Choose a historical guideline window and a later real guideline target.
+2. Build a gold set for evidentiary lineage outcomes, not medical truth claims.
+3. Run Phase A clean-arm validation against baselines.
+4. Run Phase B free-vs-constrained forward simulation.
+5. Report CI for direction and level gaps, plus volume-matched and random-gate
+   controls.
+
+If Phase A fails, Phase B is uninterpretable. If Phase B's CI includes zero or
+the gap disappears under controls, the constitution/gate did not show measurable
+value in that experiment.
 
 ## Author
 
-Tuyen Tran, MD — pediatric surgeon, building tools at the intersection of evidence-based
-medicine, AI, and low-resource clinical settings. ORCID
+Tuyen Tran, MD — pediatric surgeon building tools at the intersection of
+evidence-based medicine, AI, and low-resource clinical settings. ORCID
 [0009-0003-0535-6225](https://orcid.org/0009-0003-0535-6225).
 
-This is a research instrument, not clinical decision support. Nothing it outputs should
-inform the care of an actual patient.
+This is a research instrument, not clinical decision support. Nothing it outputs
+should inform the care of an actual patient.

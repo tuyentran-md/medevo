@@ -9,6 +9,12 @@ export type RunStatus = "queued" | "running" | "completed" | "failed";
 export type BranchName = "free" | "constrained";
 export type ClaimDirection = "SUPPORTS" | "REFUTES" | "NEUTRAL";
 export type RecommendationStrength = "weak" | "moderate" | "strong";
+export type RecommendationLevel =
+  | "strong-for"
+  | "conditional-for"
+  | "no-recommendation"
+  | "conditional-against"
+  | "strong-against";
 export type EvidenceProducer = "investigator" | "contaminator";
 export type EvidenceProvenance = "REAL" | "SYNTHETIC";
 
@@ -126,6 +132,49 @@ export interface LineageRecord {
   synthetic_carriers: string[];
   verdict_before: ClaimDirection;
   verdict_after: ClaimDirection;
+}
+
+export interface GuidelineClaim {
+  claim_id: string;
+  year: number;
+  direction: ClaimDirection;
+  level: RecommendationLevel;
+  pooled_effect?: number | null;
+  certainty: number;
+  study_count: number;
+  synthetic_fraction: number;
+  heterogeneity: number;
+}
+
+export interface BootstrapInterval {
+  mean: number;
+  low: number;
+  high: number;
+}
+
+export interface BranchGapReport {
+  pair_count: number;
+  direction: BootstrapInterval;
+  level: BootstrapInterval;
+}
+
+export interface ReplayCounts {
+  studies: Record<
+    BranchName,
+    {
+      count: number;
+      real: number;
+      synthetic: number;
+    }
+  >;
+  guidelines: Record<
+    BranchName,
+    {
+      count: number;
+      claim_count: number;
+      years: number[];
+    }
+  >;
 }
 
 export interface ExecutionWarrant {
