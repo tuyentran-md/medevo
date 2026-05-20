@@ -7,9 +7,12 @@ coverage
 
 services/worker/.venv
 services/worker/__pycache__
+**/__pycache__/
+*.pyc
 services/worker/.pytest_cache
 services/worker/data/artifacts
 services/worker/data/medevo.db
 
 apps/web/.env.local
 services/worker/.env
+.claude/

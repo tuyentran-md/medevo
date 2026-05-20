@@ -9,11 +9,14 @@ from app.config import DB_PATH
 from app.models import (
     AuditEvent,
     BackendConfigModel,
+    BranchName,
     EvidenceUnit,
     ExecutionWarrant,
+    GuidelineClaim,
     LineageRecord,
     RunSummary,
     SimulationRunModel,
+    Study,
 )
 
 
@@ -133,6 +136,37 @@ def init_db() -> None:
                 message TEXT NOT NULL,
                 PRIMARY KEY (run_id, claim_id, branch, event_index)
             );
+
+            CREATE TABLE IF NOT EXISTS study_db (
+                run_id TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                study_id TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                direction TEXT NOT NULL,
+                effect_point REAL,
+                ci_low REAL,
+                ci_high REAL,
+                n INTEGER,
+                quality REAL NOT NULL,
+                provenance TEXT NOT NULL,
+                pmids_json TEXT NOT NULL,
+                numeric INTEGER NOT NULL,
+                rationale TEXT NOT NULL,
+                output_hash TEXT,
+                warrant_id TEXT,
+                PRIMARY KEY (run_id, branch, study_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS guideline_timeline (
+                run_id TEXT NOT NULL,
+                branch TEXT NOT NULL,
+                claim_id TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                direction TEXT NOT NULL,
+                level TEXT NOT NULL,
+                PRIMARY KEY (run_id, branch, claim_id, year)
+            );
             """
         )
         _ensure_column(conn, "runs", "years_json", "TEXT NOT NULL DEFAULT '[]'")
@@ -152,6 +186,146 @@ def init_db() -> None:
         )
         _ensure_column(conn, "evidence_units", "output_hash", "TEXT")
         conn.commit()
+
+
+def _valid_study_warrant(study: Study, warrant: ExecutionWarrant | None) -> bool:
+    if warrant is None:
+        return False
+    if warrant.status != "ISSUED" or not warrant.issued:
+        return False
+    if warrant.integrity_score < warrant.threshold:
+        return False
+    if warrant.output_id != study.id:
+        return False
+    return warrant.output_hash == study.output_hash
+
+
+def insert_tier3_study(
+    *,
+    run_id: str,
+    branch: BranchName,
+    study: Study,
+    warrant: ExecutionWarrant | None = None,
+    require_warrant: bool = False,
+) -> bool:
+    if require_warrant and not _valid_study_warrant(study, warrant):
+        return False
+    ci_low, ci_high = study.effect_ci if study.effect_ci is not None else (None, None)
+    with closing(get_conn()) as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO study_db (
+                run_id, branch, study_id, claim_id, year, direction, effect_point,
+                ci_low, ci_high, n, quality, provenance, pmids_json, numeric,
+                rationale, output_hash, warrant_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                branch,
+                study.id,
+                study.claim_id,
+                study.year,
+                study.direction,
+                study.effect_point,
+                ci_low,
+                ci_high,
+                study.n,
+                study.quality,
+                study.provenance,
+                json.dumps(study.pmids),
+                int(study.numeric),
+                study.rationale,
+                study.output_hash,
+                warrant.id if warrant is not None else None,
+            ),
+        )
+        conn.commit()
+    return True
+
+
+def list_tier3_studies(
+    *,
+    run_id: str,
+    branch: BranchName,
+    claim_id: str | None = None,
+    up_to_year: int | None = None,
+) -> list[Study]:
+    clauses = ["run_id = ?", "branch = ?"]
+    params: list[object] = [run_id, branch]
+    if claim_id is not None:
+        clauses.append("claim_id = ?")
+        params.append(claim_id)
+    if up_to_year is not None:
+        clauses.append("year <= ?")
+        params.append(up_to_year)
+    query = f"""
+        SELECT * FROM study_db
+        WHERE {' AND '.join(clauses)}
+        ORDER BY year, study_id
+    """
+    with closing(get_conn()) as conn:
+        rows = conn.execute(query, params).fetchall()
+    studies: list[Study] = []
+    for row in rows:
+        ci_low = row["ci_low"]
+        ci_high = row["ci_high"]
+        studies.append(
+            Study(
+                id=row["study_id"],
+                claim_id=row["claim_id"],
+                year=row["year"],
+                direction=row["direction"],
+                effect_point=row["effect_point"],
+                effect_ci=(ci_low, ci_high) if ci_low is not None and ci_high is not None else None,
+                n=row["n"],
+                quality=row["quality"],
+                provenance=row["provenance"],
+                pmids=json.loads(row["pmids_json"] or "[]"),
+                numeric=bool(row["numeric"]),
+                rationale=row["rationale"],
+                output_hash=row["output_hash"],
+            )
+        )
+    return studies
+
+
+def insert_guideline_claims(
+    *,
+    run_id: str,
+    branch: BranchName,
+    claims: list[GuidelineClaim],
+) -> None:
+    with closing(get_conn()) as conn:
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO guideline_timeline (
+                run_id, branch, claim_id, year, direction, level
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (run_id, branch, claim.claim_id, claim.year, claim.direction, claim.level)
+                for claim in claims
+            ],
+        )
+        conn.commit()
+
+
+class Tier3StudyStore:
+    def list_studies(
+        self,
+        *,
+        run_id: str,
+        branch: BranchName,
+        claim_id: str,
+        up_to_year: int,
+    ) -> list[Study]:
+        return list_tier3_studies(
+            run_id=run_id,
+            branch=branch,
+            claim_id=claim_id,
+            up_to_year=up_to_year,
+        )
 
 
 def insert_run(
