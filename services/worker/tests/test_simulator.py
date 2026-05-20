@@ -1,17 +1,12 @@
 import hashlib
 
 from app.llm import (
-    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE,
-    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
-    PROMPT_TEMPLATE_DIGEST,
-    RESEARCHER_PROMPT_TEMPLATE,
-    SYNTHESIST_PROMPT_TEMPLATE,
-    SYNTHESIST_PROMPT_TEMPLATE_DIGEST,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
     DeterministicFakeClient,
 )
 from app.models import RunRequestModel
+from app.pubmed import PubMedRecord, PubMedSearchResult
 from app.ecology import CallTelemetry, ClaimSeed, _mint_contamination_bank
 from app.simulator import contamination_clock, resolve_backend, simulate_run
 
@@ -21,20 +16,30 @@ class RefutingUniverseClient(DeterministicFakeClient):
     degradation_reason = None
 
     def generate(self, prompt: str, *, seed: int) -> str:
-        if "Create exactly four admissible source records" in prompt:
-            return "\n".join(
-                (
-                    f"SOURCE {index}\n"
-                    "DIRECTION: REFUTES\n"
-                    "FINDING: Simulated admissible evidence reports no net benefit and potential harm."
-                )
-                for index in range(1, 5)
-            )
         if "possible contaminated literature carrier" in prompt:
             return "DIRECTION: SUPPORTS\nRATIONALE: AI-generated carrier overstates benefit."
-        if "Real source" in prompt and "REFUTES" in prompt:
-            return "DIRECTION: REFUTES\nRATIONALE: admissible evidence refutes the claim."
         return super().generate(prompt, seed=seed)
+
+
+class RefutingPubMed:
+    def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+        record = PubMedRecord(
+            pmid="111",
+            title="Antibiotics did not reduce bronchiolitis admissions",
+            abstract=(
+                "Randomized trial n=240 found antibiotics did not reduce admissions; "
+                "RR 1.08, 95% CI 0.92 to 1.26."
+            ),
+            year=min(max_year, 2025),
+            journal="Test Journal",
+            locator="PMID:111",
+        )
+        return PubMedSearchResult(
+            query=query,
+            max_year=max_year,
+            pmids=["111"],
+            records=[record],
+        )
 
 
 def _request() -> RunRequestModel:
@@ -118,7 +123,7 @@ def test_synthetic_direction_comes_from_model_not_opposing_constant() -> None:
     assert {unit.direction for unit in units} == {"SUPPORTS"}
 
 
-def test_constrained_can_refute_when_admissible_universe_refutes_claim() -> None:
+def test_constrained_can_refute_when_pubmed_evidence_refutes_claim() -> None:
     request = RunRequestModel(
         title="Refuting universe",
         input_mode="guideline",
@@ -131,6 +136,7 @@ def test_constrained_can_refute_when_admissible_universe_refutes_claim() -> None
         request=request,
         input_text=request.input_text or "",
         client=RefutingUniverseClient(),
+        pubmed_client=RefutingPubMed(),
     )
 
     constrained_claim = bundle.snapshots["constrained"][0].claims[0]
@@ -156,37 +162,14 @@ def test_fallback_run_is_marked_non_scientific() -> None:
     assert summary["scientific"] is False
 
 
-def test_researcher_prompt_template_is_frozen() -> None:
-    """Prompt invariance guard: the template must not silently change, and
-    must not leak year/branch/drift/bias instructions into the model."""
-    assert (
-        hashlib.sha256(RESEARCHER_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
-        == PROMPT_TEMPLATE_DIGEST
-    )
-    lowered = RESEARCHER_PROMPT_TEMPLATE.lower()
-    for forbidden in ("year", "branch", "drift", "bias", "contaminat", "ai-generated"):
-        assert forbidden not in lowered
-
-
-def test_synthesist_prompt_template_is_frozen() -> None:
-    assert (
-        hashlib.sha256(SYNTHESIST_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
-        == SYNTHESIST_PROMPT_TEMPLATE_DIGEST
-    )
-    lowered = SYNTHESIST_PROMPT_TEMPLATE.lower()
-    for forbidden in ("year", "branch", "drift", "bias", "contaminat", "ai-generated"):
-        assert forbidden not in lowered
-
-
-def test_source_and_synthetic_prompt_templates_are_frozen() -> None:
-    assert (
-        hashlib.sha256(EVIDENCE_UNIVERSE_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
-        == EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST
-    )
+def test_synthetic_prompt_template_is_frozen() -> None:
     assert (
         hashlib.sha256(SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.encode("utf-8")).hexdigest()
         == SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST
     )
+    lowered = SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE.lower()
+    for forbidden in ("year", "branch", "drift", "bias"):
+        assert forbidden not in lowered
 
 
 def test_backend_resolution_uses_fallback_when_ollama_unavailable() -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.llm import DeterministicFakeClient
 from app.models import RunRequestModel
+from app.pubmed import PubMedRecord, PubMedSearchResult
 from app.simulator import simulate_run
 
 
@@ -20,6 +21,24 @@ class FlakyClient(DeterministicFakeClient):
             self.degradation_reason = "forced ecology failure"
             return super().generate(prompt, seed=seed)
         return super().generate(prompt, seed=seed)
+
+
+class StablePubMed:
+    def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+        record = PubMedRecord(
+            pmid="222",
+            title="Supportive care improved outcomes",
+            abstract="Randomized trial n=220 reported improved outcomes; RR 0.76, 95% CI 0.64 to 0.91.",
+            year=min(max_year, 2025),
+            journal="Test Journal",
+            locator="PMID:222",
+        )
+        return PubMedSearchResult(
+            query=query,
+            max_year=max_year,
+            pmids=["222"],
+            records=[record],
+        )
 
 
 def _request(text: str) -> RunRequestModel:
@@ -45,7 +64,7 @@ def test_lineage_records_are_present_and_coherent() -> None:
         client=DeterministicFakeClient(),
     )
 
-    assert summary["llm_call_count"] == 30
+    assert summary["llm_call_count"] == 9
     assert bundle.lineage
     assert bundle.guideline_timeline["free"]
     assert bundle.population_stats["30"]["pair_count"] == 3
@@ -89,6 +108,7 @@ def test_degraded_reason_is_explicit_when_client_fails_mid_run() -> None:
         request=request,
         input_text=request.input_text or "",
         client=FlakyClient(fail_after=4),
+        pubmed_client=StablePubMed(),
     )
 
     assert bundle.scientific is False

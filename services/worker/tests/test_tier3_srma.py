@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import app.agents
 from app.agents import SrmaAgent
 from app.db import Tier3StudyStore, init_db, insert_tier3_study, list_tier3_studies
 from app.models import ExecutionWarrant, Study
@@ -98,9 +99,7 @@ def test_srma_agent_reads_tier3_db_without_pubmed_import(tmp_path, monkeypatch) 
         require_warrant=True,
     )
 
-    source = Path("/Users/admin/repos/medevo/services/worker/app/agents.py").read_text(
-        encoding="utf-8"
-    )
+    source = Path(app.agents.__file__).read_text(encoding="utf-8")
     source = source[source.index("class SrmaAgent") : source.index("def _select_record")]
     assert "pubmed" not in source.lower()
 

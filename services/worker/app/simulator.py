@@ -23,6 +23,7 @@ from app.models import (
     ClaimNode,
     RunRequestModel,
 )
+from app.pubmed import DeterministicPubMedClient, PubMedClient
 
 
 def digest_text(text: str) -> str:
@@ -114,6 +115,7 @@ def simulate_run(
     input_text: str,
     client: LLMClient | None = None,
     run_id: str | None = None,
+    pubmed_client: PubMedClient | DeterministicPubMedClient | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     backend = resolve_backend(request)
     llm = client or make_client(
@@ -123,6 +125,14 @@ def simulate_run(
         backend=backend.backend,
         api_key=request.api_key,
     )
+    if pubmed_client is None:
+        pubmed_client = (
+            DeterministicPubMedClient()
+            if client is not None and not client.scientific
+            else DeterministicPubMedClient()
+            if client is None and backend.using_fallback
+            else PubMedClient()
+        )
 
     claims = extract_claims(input_text, request.input_mode)
     claim_graphs = [build_claim_graph(claim) for claim in claims]
@@ -131,5 +141,6 @@ def simulate_run(
         input_text=input_text,
         claim_graphs=claim_graphs,
         llm=llm,
+        pubmed_client=pubmed_client,
         run_id=run_id,
     )

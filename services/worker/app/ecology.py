@@ -9,14 +9,11 @@ from datetime import UTC, datetime
 from statistics import fmean
 from typing import Any, Literal
 
+from app.agents import ResearchAgent, SrmaAgent
 from app.config import YEARS
-from app.db import insert_ecology_records
+from app.db import insert_ecology_records, insert_guideline_claims, insert_tier3_study
 from app.harness import branch_gap, replay_counts
 from app.llm import (
-    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE,
-    EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
-    PROMPT_TEMPLATE_DIGEST,
-    RESEARCHER_PROMPT_TEMPLATE,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE,
     SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
     LLMClient,
@@ -40,7 +37,7 @@ from app.models import (
     RunRequestModel,
     Study,
 )
-from app.synthesis import synthesize_guideline_claim
+from app.pubmed import DeterministicPubMedClient, PubMedClient
 
 
 ANCHORS = [
@@ -54,6 +51,7 @@ REAL_SOURCES_PER_CLAIM = 4
 PRESEEDED_SYNTHETIC_UNITS = 3
 RELEASE_THRESHOLD = 0.60
 GENESIS_HASH = "GENESIS"
+PUBMED_FORWARD_CEILING_YEAR = 2025
 _DIRECTION_VALUE = {"SUPPORTS": 1.0, "NEUTRAL": 0.0, "REFUTES": -1.0}
 
 
@@ -121,6 +119,10 @@ def horizon_years(request: RunRequestModel) -> list[int]:
     return cleaned or list(YEARS)
 
 
+def pubmed_cutoff_year(year: int) -> int:
+    return year if year >= 1900 else PUBMED_FORWARD_CEILING_YEAR
+
+
 def _seed_int(key: str) -> int:
     return int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:12], 16)
 
@@ -137,14 +139,6 @@ def _extract_rationale(text: str) -> str:
     return cleaned or "No rationale returned."
 
 
-def _panel_direction(score: float) -> ClaimDirection:
-    if score >= 0.34:
-        return "SUPPORTS"
-    if score <= -0.34:
-        return "REFUTES"
-    return "NEUTRAL"
-
-
 def _is_synthetic_citation_id(cited_id: str) -> bool:
     return cited_id.startswith("S-") or "-syn-" in cited_id
 
@@ -155,23 +149,6 @@ def _carries_synthetic_substrate(unit: EvidenceUnit) -> bool:
         or not unit.resolved_real_ids
         or any(_is_synthetic_citation_id(cited_id) for cited_id in unit.cited_ids)
     )
-
-
-def _direction_from_items(
-    cited_items: list[CorpusItem],
-    model_direction: ClaimDirection,
-) -> ClaimDirection:
-    directional_scores = [
-        _DIRECTION_VALUE[item.direction]
-        for item in cited_items
-        if item.direction != "NEUTRAL"
-    ]
-    if not directional_scores:
-        return model_direction
-    evidence_score = fmean(directional_scores)
-    if abs(evidence_score) >= 0.34:
-        return _panel_direction(evidence_score)
-    return model_direction
 
 
 def _panel_band(year: int, branch_scores: list[float]) -> dict[str, float | str]:
@@ -242,7 +219,7 @@ def _is_valid_warrant(warrant: ExecutionWarrant | None, output: EvidenceUnit | N
         return False
     if output is None:
         return True
-    return warrant.output_hash == _unit_output_hash(output)
+    return warrant.output_hash == (output.output_hash or _unit_output_hash(output))
 
 
 def _invoke_model(
@@ -269,77 +246,6 @@ def _invoke_model(
         failure_reason = getattr(llm, "degradation_reason", None) or "model call degraded"
         telemetry.degradation_reason = f"{label}: {failure_reason}"
     return response
-
-
-def _parse_source_universe(response: str) -> list[tuple[ClaimDirection, str]]:
-    records: list[tuple[ClaimDirection, str]] = []
-    blocks = re.split(r"(?=SOURCE\s+\d+)", response or "", flags=re.IGNORECASE)
-    for block in blocks:
-        direction_match = re.search(
-            r"DIRECTION:\s*(SUPPORTS|REFUTES|NEUTRAL)",
-            block,
-            re.IGNORECASE,
-        )
-        finding_match = re.search(
-            r"FINDING:\s*(.+?)(?=\n\s*SOURCE\s+\d+|\Z)",
-            block,
-            re.IGNORECASE | re.DOTALL,
-        )
-        if direction_match is None:
-            continue
-        direction = direction_match.group(1).upper()
-        finding = " ".join((finding_match.group(1) if finding_match else block).split())
-        records.append((direction, finding or "Simulated source returned no finding."))
-    return records
-
-
-def mint_source_catalog(
-    claims: list[ClaimSeed],
-    input_text: str,
-    llm: LLMClient,
-    telemetry: CallTelemetry,
-) -> dict[str, list[SourceRecord]]:
-    chunks = _sentence_chunks(input_text)
-    if not chunks:
-        chunks = [claim.text for claim in claims]
-
-    catalog: dict[str, list[SourceRecord]] = {}
-    for claim_index, claim in enumerate(claims):
-        prompt = EVIDENCE_UNIVERSE_PROMPT_TEMPLATE.format(
-            claim=claim.text,
-            context="\n".join(chunks[:6]),
-        )
-        response = _invoke_model(
-            llm,
-            telemetry,
-            f"source-universe/{claim.claim_id}",
-            prompt,
-            seed=_seed_int(f"source-universe:{claim.claim_id}:{_digest_key(input_text)}"),
-        )
-        universe_records = _parse_source_universe(response)
-        sources: list[SourceRecord] = []
-        for source_index in range(REAL_SOURCES_PER_CLAIM):
-            if source_index < len(universe_records):
-                direction, text = universe_records[source_index]
-                locator = f"simulated-source:{source_index + 1}"
-            else:
-                chunk_index = (claim_index + source_index) % len(chunks)
-                text = chunks[chunk_index]
-                direction = "NEUTRAL"
-                locator = f"input-context:{chunk_index + 1}"
-            source_id = f"R-{claim.claim_id}-{source_index + 1}"
-            sources.append(
-                SourceRecord(
-                    source_id=source_id,
-                    claim_id=claim.claim_id,
-                    label=f"Catalog source {source_index + 1}",
-                    locator=locator,
-                    direction=direction,
-                    text=text,
-                )
-            )
-        catalog[claim.claim_id] = sources
-    return catalog
 
 
 def _mint_contamination_bank(
@@ -380,215 +286,36 @@ def _synthetic_units_for_year(bank: list[EvidenceUnit], year: int) -> list[Evide
     return bank[:count]
 
 
-def _retrieve_catalog_sources(claim: ClaimSeed, real_sources: list[SourceRecord], year: int) -> list[SourceRecord]:
-    clock = contamination_clock(year)
-    # Defect C fix: real grounding erodes to zero as contamination rises,
-    # symmetric across branches. Constrained retains real only via warranted
-    # lineage; free loses it -> lost_real becomes non-empty (SCALE_SPEC §4).
-    if clock < 0.40:
-        count = 2
-    elif clock < 0.70:
-        count = 1
-    else:
-        count = 0
-    if count == 0:
-        return []
-    offset = _seed_int(f"catalog:{claim.claim_id}:{year}") % len(real_sources)
-    return [real_sources[(offset + index) % len(real_sources)] for index in range(count)]
-
-
-def build_reachable_corpus(
+def _research_study_for_year(
     *,
-    branch: BranchName,
-    year: int,
-    claim: ClaimSeed,
-    state: BranchState,
-    retrieved_sources: list[SourceRecord],
-    synthetic_units: list[EvidenceUnit],
-    warrants_by_output: dict[str, ExecutionWarrant],
-) -> list[CorpusItem]:
-    reachable: list[CorpusItem] = [
-        CorpusItem(
-            item_id=source.source_id,
-            kind="real",
-            text=source.text,
-            rationale=source.text,
-            direction=source.direction,
-            cited_ids=[source.source_id],
-            resolved_real_ids=[source.source_id],
-            resolved_locators=[source.locator],
-        )
-        for source in retrieved_sources
-    ]
-
-    if branch == "constrained":
-        prior_outputs = [
-            unit
-            for unit in state.output_history
-            if _is_valid_warrant(warrants_by_output.get(unit.id), unit)
-        ]
-    else:
-        prior_outputs = list(state.output_history)
-
-    reachable.extend(
-        CorpusItem(
-            item_id=unit.id,
-            kind="prior",
-            text=unit.rationale,
-            rationale=unit.rationale,
-            direction=unit.direction,
-            cited_ids=list(unit.cited_ids),
-            resolved_real_ids=list(unit.resolved_real_ids),
-            resolved_locators=list(unit.resolved_locators),
-        )
-        for unit in prior_outputs[-6:]
-    )
-
-    if branch == "free":
-        reachable.extend(
-            CorpusItem(
-                item_id=unit.id,
-                kind="synthetic",
-                text=unit.rationale,
-                rationale=unit.rationale,
-                direction=unit.direction,
-                cited_ids=list(unit.cited_ids),
-                resolved_real_ids=[],
-                resolved_locators=[],
-            )
-            for unit in synthetic_units
-        )
-
-    deduped: dict[str, CorpusItem] = {}
-    for item in reachable:
-        deduped[item.item_id] = item
-    return list(deduped.values())
-
-
-def _citation_score(
-    item: CorpusItem,
-    *,
-    year: int,
-    claim_id: str,
-    citation_memory: list[str],
-) -> float:
-    clock = contamination_clock(year)
-    if item.kind == "real":
-        score = 1.05 - (clock * 0.78)
-    elif item.kind == "prior":
-        score = 0.62 + (0.18 if item.resolved_real_ids else -0.12)
-    else:
-        score = 0.10 + (clock * 1.05)
-
-    if item.item_id in citation_memory:
-        score += 0.18
-    if item.resolved_real_ids and clock < 0.82:
-        score += 0.08
-
-    jitter = (_seed_int(f"score:{claim_id}:{year}:{item.item_id}") % 1000) / 10000
-    return score + jitter
-
-
-def _select_citations(
-    *,
+    research_agent: ResearchAgent,
     claim: ClaimSeed,
     year: int,
-    citation_memory: list[str],
-    reachable_corpus: list[CorpusItem],
-) -> tuple[list[CorpusItem], list[str]]:
-    ranked = sorted(
-        reachable_corpus,
-        key=lambda item: _citation_score(
-            item,
-            year=year,
-            claim_id=claim.claim_id,
-            citation_memory=citation_memory,
-        ),
-        reverse=True,
-    )
-    selected = ranked[:3] if ranked else []
-    debug = [f"{item.kind}:{item.item_id}" for item in selected]
-    return selected, debug
-
-
-def _build_evidence_block(cited_items: list[CorpusItem], citation_memory: list[str]) -> str:
-    lines: list[str] = []
-    for index, item in enumerate(cited_items, start=1):
-        source_tag = f"source-{index}"
-        if item.kind == "real":
-            locator = item.resolved_locators[0] if item.resolved_locators else "locator:unknown"
-            lines.append(
-                f"- [{source_tag}] Real source ({locator}) reports {item.direction}: {item.text}"
-            )
-        elif item.kind == "prior":
-            lines.append(
-                f"- [{source_tag}] Prior warranted output concluded {item.direction}: {item.rationale}"
-            )
-        else:
-            lines.append(
-                f"- [{source_tag}] Synthetic carrier reported {item.direction}: {item.rationale}"
-            )
-    if citation_memory:
-        lines.append(f"- Citation memory currently foregrounds: {', '.join(citation_memory[:3])}.")
-    return "\n".join(lines) or "- No admissible evidence block available."
-
-
-def _investigator_unit(
-    *,
-    claim: ClaimSeed,
-    year: int,
-    branch: BranchName,
-    branch_state: BranchState,
-    reachable_corpus: list[CorpusItem],
-    llm: LLMClient,
     telemetry: CallTelemetry,
-) -> tuple[EvidenceUnit, list[str]]:
-    cited_items, selection_debug = _select_citations(
-        claim=claim,
-        year=year,
-        citation_memory=branch_state.citation_memory,
-        reachable_corpus=reachable_corpus,
-    )
-    evidence_block = _build_evidence_block(cited_items, branch_state.citation_memory)
-    prompt = RESEARCHER_PROMPT_TEMPLATE.format(claim=claim.text, evidence_block=evidence_block)
-    response = _invoke_model(
-        llm,
-        telemetry,
-        f"investigator/{branch}/{claim.claim_id}/year-{year}",
-        prompt,
-        seed=_seed_int(f"investigator:{claim.claim_id}:{year}:{_digest_key(evidence_block)}"),
-    )
-    resolved_real_ids = sorted(
-        {
-            real_id
-            for item in cited_items
-            for real_id in item.resolved_real_ids
-        }
-    )
-    resolved_locators = sorted(
-        {
-            locator
-            for item in cited_items
-            for locator in item.resolved_locators
-        }
-    )
-    model_direction = parse_direction(response)
-    evidence_direction = _direction_from_items(cited_items, model_direction)
-    unit = EvidenceUnit(
-        id=f"{claim.claim_id}-{branch}-investigator-{year}",
-        claim_id=claim.claim_id,
-        year=year,
-        branch=branch,
-        producer="investigator",
-        cited_ids=[item.item_id for item in cited_items],
-        provenance="REAL" if resolved_real_ids else "SYNTHETIC",
-        direction=evidence_direction,
-        rationale=_extract_rationale(response),
-        resolved_real_ids=resolved_real_ids,
-        resolved_locators=resolved_locators,
-    )
-    unit.output_hash = _unit_output_hash(unit)
-    return unit, selection_debug
+) -> Study:
+    try:
+        return research_agent.run(
+            claim_id=claim.claim_id,
+            claim_text=claim.text,
+            simulated_year=year,
+            max_pubmed_year=pubmed_cutoff_year(year),
+        )
+    except Exception as exc:
+        if telemetry.degradation_reason is None:
+            telemetry.degradation_reason = f"pubmed/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
+        study = Study(
+            id=f"{claim.claim_id}-study-{year}-pubmed-error",
+            claim_id=claim.claim_id,
+            year=year,
+            direction="NEUTRAL",
+            quality=0.0,
+            provenance="REAL",
+            pmids=[],
+            numeric=False,
+            rationale=f"PubMed retrieval failed for cutoff {pubmed_cutoff_year(year)}.",
+        )
+        study.output_hash = _study_output_hash(study)
+        return study
 
 
 def record_transition(
@@ -791,31 +518,153 @@ def _lineage_record(
     )
 
 
-def _study_from_evidence_unit(unit: EvidenceUnit) -> Study:
-    synthetic = _carries_synthetic_substrate(unit)
+def _study_output_hash(study: Study) -> str:
+    payload = study.model_dump(mode="json")
+    payload.pop("output_hash", None)
+    return _canonical_sha256(payload)
+
+
+def _study_to_evidence_unit(*, study: Study, branch: BranchName) -> EvidenceUnit:
+    cited_ids = list(study.pmids)
+    unit = EvidenceUnit(
+        id=study.id,
+        claim_id=study.claim_id,
+        year=study.year,
+        branch=branch,
+        producer="investigator",
+        cited_ids=cited_ids,
+        provenance=study.provenance,
+        direction=study.direction,
+        rationale=study.rationale,
+        resolved_real_ids=list(study.pmids) if study.provenance == "REAL" else [],
+        resolved_locators=[f"PMID:{pmid}" for pmid in study.pmids]
+        if study.provenance == "REAL"
+        else [],
+        output_hash=study.output_hash,
+    )
+    return unit
+
+
+def _source_records_from_study(study: Study) -> list[SourceRecord]:
+    return [
+        SourceRecord(
+            source_id=pmid,
+            claim_id=study.claim_id,
+            label=f"PubMed source {pmid}",
+            locator=f"PMID:{pmid}",
+            direction=study.direction,
+            text=study.rationale,
+        )
+        for pmid in study.pmids
+    ]
+
+
+def _reachable_lookup_from_study(study: Study) -> dict[str, CorpusItem]:
+    return {
+        pmid: CorpusItem(
+            item_id=pmid,
+            kind="real",
+            text=study.rationale,
+            rationale=study.rationale,
+            direction=study.direction,
+            cited_ids=[pmid],
+            resolved_real_ids=[pmid],
+            resolved_locators=[f"PMID:{pmid}"],
+        )
+        for pmid in study.pmids
+    }
+
+
+def _synthetic_study_from_unit(unit: EvidenceUnit, *, year: int) -> Study:
+    seed = _seed_int(f"synthetic-study:{unit.id}:{year}")
+    fraction = (seed % 10_000) / 10_000
     if unit.direction == "SUPPORTS":
-        effect_point = 0.78 if not synthetic else 0.62
+        effect_point = round(0.55 + (0.35 * fraction), 3)
     elif unit.direction == "REFUTES":
-        effect_point = 1.22 if not synthetic else 1.45
+        effect_point = round(1.05 + (0.75 * fraction), 3)
     else:
-        effect_point = 1.0
-    quality = 0.82 if not synthetic else 0.38
+        effect_point = round(0.92 + (0.16 * fraction), 3)
     study = Study(
         id=f"study-{unit.id}",
         claim_id=unit.claim_id,
-        year=unit.year,
+        year=year,
         direction=unit.direction,
         effect_point=effect_point,
         effect_ci=None,
-        n=320 if not synthetic else 90,
-        quality=quality,
-        provenance="SYNTHETIC" if synthetic else "REAL",
-        pmids=list(unit.resolved_real_ids),
+        n=60 + (seed % 440),
+        quality=round(0.15 + (0.55 * fraction), 3),
+        provenance="SYNTHETIC",
+        pmids=[],
         numeric=True,
         rationale=unit.rationale,
-        output_hash=unit.output_hash,
     )
+    study.output_hash = _study_output_hash(study)
     return study
+
+
+class Tier3RunStore:
+    def __init__(self, *, run_id: str | None) -> None:
+        self.run_id = run_id
+        self._studies: dict[BranchName, list[Study]] = {"free": [], "constrained": []}
+
+    def insert(
+        self,
+        *,
+        branch: BranchName,
+        study: Study,
+        warrant: ExecutionWarrant | None = None,
+        require_warrant: bool = False,
+    ) -> bool:
+        if self.run_id is not None:
+            inserted = insert_tier3_study(
+                run_id=self.run_id,
+                branch=branch,
+                study=study,
+                warrant=warrant,
+                require_warrant=require_warrant,
+            )
+        else:
+            inserted = not require_warrant or _valid_study_warrant_for_study(study, warrant)
+        if inserted:
+            branch_studies = self._studies[branch]
+            self._studies[branch] = [item for item in branch_studies if item.id != study.id]
+            self._studies[branch].append(study)
+        return inserted
+
+    def list_studies(
+        self,
+        *,
+        run_id: str,
+        branch: BranchName,
+        claim_id: str,
+        up_to_year: int,
+    ) -> list[Study]:
+        return [
+            study
+            for study in self._studies[branch]
+            if study.claim_id == claim_id and study.year <= up_to_year
+        ]
+
+    def all_studies(self) -> dict[BranchName, list[Study]]:
+        return {
+            "free": list(self._studies["free"]),
+            "constrained": list(self._studies["constrained"]),
+        }
+
+
+def _valid_study_warrant_for_study(
+    study: Study,
+    warrant: ExecutionWarrant | None,
+) -> bool:
+    if warrant is None:
+        return False
+    if warrant.status != "ISSUED" or not warrant.issued:
+        return False
+    if warrant.integrity_score < warrant.threshold:
+        return False
+    if warrant.output_id != study.id:
+        return False
+    return warrant.output_hash == study.output_hash
 
 
 def _strength_from_guideline_level(level: str) -> RecommendationStrength:
@@ -922,6 +771,7 @@ def run_ecology(
     input_text: str,
     claim_graphs: list[ClaimGraph],
     llm: LLMClient,
+    pubmed_client: PubMedClient | DeterministicPubMedClient,
     run_id: str | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     years = horizon_years(request)
@@ -929,10 +779,14 @@ def run_ecology(
     claims = claims[: len(claim_graphs)]
     telemetry = CallTelemetry()
 
-    source_catalog = mint_source_catalog(claims, input_text, llm, telemetry)
     synthetic_bank = {
         claim.claim_id: _mint_contamination_bank(claim, llm, telemetry) for claim in claims
     }
+    source_catalog: dict[str, list[SourceRecord]] = {claim.claim_id: [] for claim in claims}
+    source_ids_seen: dict[str, set[str]] = {claim.claim_id: set() for claim in claims}
+    research_agent = ResearchAgent(pubmed=pubmed_client)
+    tier3_store = Tier3RunStore(run_id=run_id)
+    srma_agent = SrmaAgent(study_reader=tier3_store)
     states: dict[tuple[str, BranchName], BranchState] = {
         (claim.claim_id, branch): BranchState()
         for claim in claims
@@ -949,7 +803,6 @@ def run_ecology(
     audit_counters: dict[tuple[str, BranchName], int] = {}
     last_hashes: dict[tuple[str, BranchName], str] = {}
     graph_lookup = {graph.claim_id: graph for graph in claim_graphs}
-    tier3_studies: dict[BranchName, list[Study]] = {"free": [], "constrained": []}
     guideline_timeline: dict[BranchName, list[GuidelineClaim]] = {
         "free": [],
         "constrained": [],
@@ -962,30 +815,22 @@ def run_ecology(
         branch_claims: dict[str, list[ClaimSnapshot]] = {"free": [], "constrained": []}
         branch_guidelines: dict[str, list[GuidelineClaim]] = {"free": [], "constrained": []}
 
-        for branch in ("free", "constrained"):
-            for claim in claims:
+        for claim in claims:
+            research_study = _research_study_for_year(
+                research_agent=research_agent,
+                claim=claim,
+                year=year,
+                telemetry=telemetry,
+            )
+            for source in _source_records_from_study(research_study):
+                if source.source_id not in source_ids_seen[claim.claim_id]:
+                    source_catalog[claim.claim_id].append(source)
+                    source_ids_seen[claim.claim_id].add(source.source_id)
+
+            for branch in ("free", "constrained"):
                 state = states[(claim.claim_id, branch)]
-                retrieved_sources = _retrieve_catalog_sources(claim, source_catalog[claim.claim_id], year)
-                synthetic_units = _synthetic_units_for_year(synthetic_bank[claim.claim_id], year)
-                reachable_corpus = build_reachable_corpus(
-                    branch=branch,
-                    year=year,
-                    claim=claim,
-                    state=state,
-                    retrieved_sources=retrieved_sources,
-                    synthetic_units=synthetic_units,
-                    warrants_by_output=warrants_by_output,
-                )
-                reachable_lookup = {item.item_id: item for item in reachable_corpus}
-                investigator, selection_debug = _investigator_unit(
-                    claim=claim,
-                    year=year,
-                    branch=branch,
-                    branch_state=state,
-                    reachable_corpus=reachable_corpus,
-                    llm=llm,
-                    telemetry=telemetry,
-                )
+                branch_study = research_study.model_copy(deep=True)
+                investigator = _study_to_evidence_unit(study=branch_study, branch=branch)
                 evidence_units.append(investigator)
                 record_transition(
                     audit_trail=audit_trail,
@@ -999,8 +844,12 @@ def run_ecology(
                     event_type="investigator-emitted",
                     severity="info",
                     integrity_score_before=1.0,
-                    integrity_score_after=1.0,
-                    message=f"Investigator emitted {investigator.id} from {', '.join(selection_debug) or 'empty corpus'}.",
+                    integrity_score_after=1.0 if branch_study.pmids else 0.0,
+                    message=(
+                        f"ResearchAgent emitted {branch_study.id} from "
+                        f"{', '.join(branch_study.pmids) or 'no PubMed record'} "
+                        f"with cutoff {pubmed_cutoff_year(year)}."
+                    ),
                 )
                 verdict, warrant = admit_evidence_unit(
                     run_id=run_id or "preview-run",
@@ -1009,7 +858,7 @@ def run_ecology(
                     branch=branch,
                     year=year,
                     unit=investigator,
-                    reachable_lookup=reachable_lookup,
+                    reachable_lookup=_reachable_lookup_from_study(branch_study),
                     warrants_by_output=warrants_by_output,
                     threshold=RELEASE_THRESHOLD,
                 )
@@ -1032,12 +881,6 @@ def run_ecology(
                     message=" ".join(verdict.reasons),
                 )
 
-                claim_key = (claim.claim_id, branch)
-                cycle_events = [
-                    event
-                    for event in audit_trail
-                    if event.claim_id == claim.claim_id and event.branch == branch and event.year == year
-                ]
                 warrant, released, release_message = _apply_release_gate(
                     branch=branch,
                     warrant=warrant,
@@ -1068,19 +911,67 @@ def run_ecology(
                     ),
                     message=release_message,
                 )
-                surviving_units = [investigator] if released and (branch == "free" or _is_valid_warrant(warrant, investigator)) else []
-                if surviving_units:
-                    tier3_studies[branch].append(_study_from_evidence_unit(investigator))
-                studies_for_claim = [
-                    study
-                    for study in tier3_studies[branch]
-                    if study.claim_id == claim.claim_id and study.year <= year
-                ]
-                guideline = synthesize_guideline_claim(
+                surviving_units: list[EvidenceUnit] = []
+                if branch == "free":
+                    if tier3_store.insert(branch=branch, study=branch_study):
+                        surviving_units.append(investigator)
+                elif released and warrant is not None:
+                    if tier3_store.insert(
+                        branch=branch,
+                        study=branch_study,
+                        warrant=warrant,
+                        require_warrant=True,
+                    ):
+                        surviving_units.append(investigator)
+
+                if branch == "free":
+                    for synthetic_template in _synthetic_units_for_year(
+                        synthetic_bank[claim.claim_id],
+                        year,
+                    ):
+                        synthetic_unit = synthetic_template.model_copy(
+                            update={
+                                "id": f"{synthetic_template.id}-year-{year}",
+                                "year": year,
+                                "branch": branch,
+                            },
+                            deep=True,
+                        )
+                        synthetic_study = _synthetic_study_from_unit(
+                            synthetic_unit,
+                            year=year,
+                        )
+                        synthetic_unit.output_hash = synthetic_study.output_hash
+                        evidence_units.append(synthetic_unit)
+                        if tier3_store.insert(branch=branch, study=synthetic_study):
+                            surviving_units.append(synthetic_unit)
+                        record_transition(
+                            audit_trail=audit_trail,
+                            audit_counters=audit_counters,
+                            last_hashes=last_hashes,
+                            run_id=run_id or "preview-run",
+                            claim_id=claim.claim_id,
+                            branch=branch,
+                            year=year,
+                            phase="contamination",
+                            event_type="synthetic-study-entered-db",
+                            severity="warn",
+                            integrity_score_before=1.0,
+                            integrity_score_after=0.0,
+                            message=(
+                                f"Synthetic contamination study {synthetic_study.id} "
+                                "entered the free Tier-3 DB."
+                            ),
+                        )
+
+                guideline = srma_agent.run(
+                    run_id=run_id or "preview-run",
+                    branch=branch,
                     claim_id=claim.claim_id,
                     year=year,
-                    studies=studies_for_claim,
                 )
+                if run_id is not None:
+                    insert_guideline_claims(run_id=run_id, branch=branch, claims=[guideline])
                 guideline_timeline[branch].append(guideline)
                 branch_guidelines[branch].append(guideline)
                 pooled_score = guideline.pooled_effect or _DIRECTION_VALUE[guideline.direction]
@@ -1146,10 +1037,7 @@ def run_ecology(
                 state.prior_strength = snapshot.strength
                 state.citation_memory = (investigator.cited_ids + state.citation_memory)[:6]
                 state.surviving_real = set(lineage.surviving_real)
-                if branch == "free":
-                    state.output_history.append(investigator)
-                elif warrant is not None and _is_valid_warrant(warrant, investigator):
-                    state.output_history.append(investigator)
+                state.output_history.extend(surviving_units)
                 state.output_history = state.output_history[-8:]
 
         branch_diff[str(year)] = {}
@@ -1170,7 +1058,7 @@ def run_ecology(
             branch_claims["free"][index].divergence_score = round(delta, 3)
             branch_claims["constrained"][index].divergence_score = round(delta, 3)
         db_growth[str(year)] = replay_counts(
-            studies=tier3_studies,
+            studies=tier3_store.all_studies(),
             guidelines=branch_guidelines,
         )
         population_stats[str(year)] = branch_gap(
@@ -1192,9 +1080,19 @@ def run_ecology(
             )
 
     descriptor = llm.describe()
-    scientific = llm.scientific
-    degradation_reason = telemetry.degradation_reason or (
-        getattr(llm, "degradation_reason", None) if not scientific else None
+    scientific = (
+        llm.scientific
+        and telemetry.degradation_reason is None
+        and not isinstance(pubmed_client, DeterministicPubMedClient)
+    )
+    degradation_reason = (
+        telemetry.degradation_reason
+        or (
+            "deterministic PubMed fixture"
+            if isinstance(pubmed_client, DeterministicPubMedClient)
+            else None
+        )
+        or (getattr(llm, "degradation_reason", None) if not llm.scientific else None)
     )
     provenance_log = {
         "model": descriptor.name,
@@ -1204,9 +1102,8 @@ def run_ecology(
         "temperature": 0.2,
         "seed_mode": "engine-seeded-structure",
         "prompt_template_digests": {
-            "researcher": PROMPT_TEMPLATE_DIGEST,
-            "source_universe": EVIDENCE_UNIVERSE_PROMPT_TEMPLATE_DIGEST,
             "synthetic_evidence": SYNTHETIC_EVIDENCE_PROMPT_TEMPLATE_DIGEST,
+            "tier1_pubmed": "entrez-date-cut",
             "srma_pooling": "deterministic-zero-llm",
         },
         "calls": [trace.__dict__ for trace in telemetry.traces],
@@ -1222,7 +1119,7 @@ def run_ecology(
     else:
         validation_notes = [
             "Reachable-corpus divergence is branch-conditioned only at corpus construction, not selection scoring.",
-            "Researcher prompts are byte-frozen; Tier-4 SRMA pooling is deterministic and makes zero LLM calls.",
+            "Tier-1 studies are produced by ResearchAgent over PubMed/date-cut records; Tier-4 SRMA pooling is deterministic and makes zero LLM calls.",
             "The release gate reads the hash-chained audit trail and never calls the LLM.",
         ]
         mode_banner = ""

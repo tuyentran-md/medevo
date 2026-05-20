@@ -23,10 +23,11 @@ class ResearchAgent:
         claim_id: str,
         claim_text: str,
         simulated_year: int,
+        max_pubmed_year: int | None = None,
     ) -> Study:
         result = self.pubmed.search(
             query=claim_text,
-            max_year=simulated_year,
+            max_year=max_pubmed_year or simulated_year,
             retmax=self.retmax,
         )
         record = _select_record(result.records, claim_id=claim_id, year=simulated_year)

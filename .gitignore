@@ -12,6 +12,7 @@ services/worker/__pycache__
 services/worker/.pytest_cache
 services/worker/data/artifacts
 services/worker/data/medevo.db
+services/worker/data/pubmed_cache
 
 apps/web/.env.local
 services/worker/.env

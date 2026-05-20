@@ -147,6 +147,43 @@ class PubMedClient:
         ]
 
 
+class DeterministicPubMedClient:
+    """Non-network PubMed-shaped fixture for fallback/demo runs.
+
+    The simulator marks runs using this path non-scientific; it exists so local
+    demos and tests still exercise the Tier-1 -> Tier-3 -> Tier-4 wiring without
+    claiming PubMed grounding.
+    """
+
+    def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+        digest = hashlib.sha256(f"{query}:{max_year}:{retmax}".encode("utf-8")).hexdigest()
+        bucket = int(digest[:8], 16) % 3
+        if bucket == 0:
+            title = "Simulated admissible source reporting reduced risk"
+            abstract = "Randomized trial n=320 reported reduced risk; RR 0.74, 95% CI 0.62 to 0.88."
+        elif bucket == 1:
+            title = "Simulated admissible source reporting no benefit"
+            abstract = "Randomized trial n=240 found no benefit and did not reduce failure; RR 1.08, 95% CI 0.92 to 1.26."
+        else:
+            title = "Simulated admissible source reporting uncertain effect"
+            abstract = "Cohort study n=180 found no significant difference; RR 0.98, 95% CI 0.78 to 1.22."
+        pmid = f"SIM-{digest[:10]}"
+        record = PubMedRecord(
+            pmid=pmid,
+            title=title,
+            abstract=abstract,
+            year=min(max_year, 2025),
+            journal="Deterministic fallback fixture",
+            locator=f"fixture:{pmid}",
+        )
+        return PubMedSearchResult(
+            query=query,
+            max_year=max_year,
+            pmids=[pmid],
+            records=[record],
+        )
+
+
 def _parse_pubmed_xml(xml_text: str) -> list[PubMedRecord]:
     root = ET.fromstring(xml_text)
     records: list[PubMedRecord] = []

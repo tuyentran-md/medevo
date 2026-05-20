@@ -56,8 +56,20 @@ def test_create_run_and_fetch_artifacts(tmp_path, monkeypatch) -> None:
                 "SELECT COUNT(*) FROM lineage_records WHERE run_id = ?",
                 (run_id,),
             ).fetchone()
+            study_row = conn.execute(
+                "SELECT COUNT(*) FROM study_db WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+            guideline_row = conn.execute(
+                "SELECT COUNT(*) FROM guideline_timeline WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
         assert row is not None
         assert row[0] > 0
+        assert study_row is not None
+        assert study_row[0] > 0
+        assert guideline_row is not None
+        assert guideline_row[0] > 0
 
 
 def test_byok_request_does_not_persist_api_key(tmp_path, monkeypatch) -> None:
