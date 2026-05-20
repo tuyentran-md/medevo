@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from app.ecology import (
+    SCOPE_TOLERANCE_YEARS,
+    ClaimSeed,
+    CorpusItem,
+    admit_evidence_unit,
+    compute_calibration_matrix,
+)
 from app.llm import DeterministicFakeClient
-from app.models import RunRequestModel
+from app.models import EvidenceScope, EvidenceUnit, RunRequestModel
 from app.pubmed import PubMedRecord, PubMedSearchResult
-from app.simulator import simulate_run
+from app.simulator import build_claim_graph, simulate_run
 
 
 class FlakyClient(DeterministicFakeClient):
@@ -119,3 +126,135 @@ def test_degraded_reason_is_explicit_when_client_fails_mid_run() -> None:
     assert "forced ecology failure" in bundle.degradation_reason
     assert summary["scientific"] is False
     assert summary["degradation_reason"] == bundle.degradation_reason
+
+
+def _admit(unit: EvidenceUnit, lookup: dict[str, CorpusItem]):
+    claim = ClaimSeed("claim-1", "Some clinical claim.", "moderate")
+    graph = build_claim_graph(claim)
+    return admit_evidence_unit(
+        run_id="run-1",
+        claim=claim,
+        claim_graph=graph,
+        branch="constrained",
+        year=2020,
+        unit=unit,
+        reachable_lookup=lookup,
+        warrants_by_output={},
+        threshold=0.6,
+    )
+
+
+def _unit(*, cited_ids: list[str], claimed_scope: EvidenceScope) -> EvidenceUnit:
+    return EvidenceUnit(
+        id="u-1",
+        claim_id="claim-1",
+        year=2020,
+        branch="constrained",
+        producer="investigator",
+        cited_ids=cited_ids,
+        provenance="GROUNDED",  # gate must ignore this; ground truth is harness-only
+        direction="SUPPORTS",
+        rationale="x",
+        resolved_real_ids=cited_ids,
+        claimed_scope=claimed_scope,
+    )
+
+
+def _real_item(scope: EvidenceScope) -> CorpusItem:
+    return CorpusItem(
+        item_id="PMID-1",
+        kind="real",
+        text="src",
+        rationale="src",
+        direction="NEUTRAL",
+        cited_ids=["PMID-1"],
+        resolved_real_ids=["PMID-1"],
+        resolved_locators=["PMID:PMID-1"],
+        scope=scope,
+    )
+
+
+def test_scope_clause_refuses_resolvable_but_overreaching_claim() -> None:
+    source = EvidenceScope(population_low=40, population_high=60, year_start=2015, year_end=2018)
+    lookup = {"PMID-1": _real_item(source)}
+
+    # Aggressive over-reach: well beyond tolerance on every axis -> refused
+    # EVEN THOUGH the cite resolves (Mode-2 caught by the scope clause).
+    over = _unit(
+        cited_ids=["PMID-1"],
+        claimed_scope=EvidenceScope(
+            population_low=10, population_high=90, year_start=2000, year_end=2025
+        ),
+    )
+    verdict, _ = _admit(over, lookup)
+    assert verdict.passed is False
+    assert any("scope clause" in reason for reason in verdict.reasons)
+
+    # Within-scope claim with the same resolvable cite -> admitted.
+    within = _unit(cited_ids=["PMID-1"], claimed_scope=source.model_copy(deep=True))
+    verdict, _ = _admit(within, lookup)
+    assert verdict.passed is True
+
+
+def test_mild_scope_overreach_within_tolerance_slips_gate() -> None:
+    source = EvidenceScope(population_low=40, population_high=60, year_start=2015, year_end=2018)
+    lookup = {"PMID-1": _real_item(source)}
+    mild = _unit(
+        cited_ids=["PMID-1"],
+        claimed_scope=EvidenceScope(
+            population_low=40,
+            population_high=60 + SCOPE_TOLERANCE_YEARS,  # exactly at tolerance edge
+            year_start=2015,
+            year_end=2018,
+        ),
+    )
+    verdict, _ = _admit(mild, lookup)
+    # A mild over-reach within tolerance is NOT caught -> this is the mechanism
+    # by which FNR can be > 0 (the gate is imperfect, not tautological).
+    assert verdict.passed is True
+
+
+def test_calibration_matrix_counts_and_rates() -> None:
+    observations = [
+        ("GROUNDED", True),  # TP
+        ("GROUNDED", True),  # TP
+        ("UNGROUNDED", False),  # TN
+        ("UNGROUNDED", True),  # FN (gate missed contamination)
+        ("GROUNDED", False),  # FP (gate over-blocked)
+    ]
+    matrix = compute_calibration_matrix(observations)
+    assert matrix.true_positive == 2
+    assert matrix.true_negative == 1
+    assert matrix.false_negative == 1
+    assert matrix.false_positive == 1
+    assert matrix.fnr == 0.5  # 1 / 2 ungrounded
+    assert matrix.fpr == round(1 / 3, 4)  # 1 / 3 grounded
+
+
+def test_calibration_matrix_in_bundle_with_realistic_mix_allows_nonzero_fnr() -> None:
+    request = _request(
+        "Children with suspected sepsis should receive cultures before antibiotics when feasible. "
+        "Broad-spectrum antibiotics should begin within one hour for septic shock. "
+        "Escalate to ICU support if shock persists despite fluids and vasoactive therapy."
+    )
+    # Many eras -> enough ungrounded emissions to realize a mild Mode-2 slip.
+    request.horizons = list(range(1, 30))
+    bundle, summary = simulate_run(
+        request=request,
+        input_text=request.input_text or "",
+        client=DeterministicFakeClient(),
+        failure_rate=0.4,
+    )
+
+    matrix = bundle.calibration_matrix
+    assert matrix is not None
+    assert matrix.branch == "constrained"
+    assert summary["calibration_matrix"]["ungrounded_total"] == matrix.ungrounded_total
+    # The realistic failure-mode mix produces some ungrounded studies.
+    assert matrix.ungrounded_total > 0
+    # The gate is NOT tautological: at least one ungrounded study slips (FNR>0),
+    # via a mild scope over-reach within tolerance.
+    assert matrix.false_negative > 0
+    assert matrix.fnr > 0.0
+    # No grounded study is wrongly refused in the deterministic fixture.
+    assert matrix.false_positive == 0

@@ -92,12 +92,13 @@ def test_research_agent_emits_real_grounded_study(tmp_path: Path) -> None:
     client = PubMedClient(cache_dir=tmp_path, http=FakeHttp(), min_interval_seconds=0)
     agent = ResearchAgent(pubmed=client, retmax=5, failure_rate=0.0)
 
-    study = agent.run(
+    study, catalog = agent.run(
         claim_id="claim-1",
         claim_text="Routine antibiotics should be given for acute viral bronchiolitis in infants.",
         simulated_year=2020,
     )
 
+    assert [record.pmid for record in catalog] == ["111"]
     assert study.provenance == "GROUNDED"
     assert study.pmids == ["111"]
     assert study.year == 2020

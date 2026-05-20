@@ -19,15 +19,18 @@ from app.models import (
     AuditEvent,
     BranchName,
     BrimEvent,
+    CalibrationMatrix,
     ClaimDirection,
     ClaimGraph,
     ClaimSnapshot,
     CiverVerdict,
     DriftSnapshot,
+    EvidenceScope,
     EvidenceUnit,
     ExecutionWarrant,
     GuidelineClaim,
     LineageRecord,
+    PubMedRecord,
     RecommendationStrength,
     RunRequestModel,
     Study,
@@ -47,6 +50,12 @@ REAL_SOURCES_PER_CLAIM = 4
 # fraction placeholder; SPEC §11-A anchors it to A0 in a later slice. It drives
 # the EMERGENT ungrounded-study rate, NOT a harness injection rate.
 RELEASE_THRESHOLD = 0.60
+# Article I scope clause tolerance (years). A claimed scope wider than the
+# evidence's by MORE than this is refused; a mild over-reach within tolerance
+# slips the gate (the gate is imperfect, not tautological — FNR can be > 0).
+# Declared here as the single source for the predicate (audit §8.2: no magic
+# literal buried in logic). Paired with agents.SCOPE_INFLATION_MIN/MAX.
+SCOPE_TOLERANCE_YEARS = 3
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
 _DIRECTION_VALUE = {"SUPPORTS": 1.0, "NEUTRAL": 0.0, "REFUTES": -1.0}
@@ -79,6 +88,7 @@ class CorpusItem:
     cited_ids: list[str]
     resolved_real_ids: list[str]
     resolved_locators: list[str]
+    scope: EvidenceScope = field(default_factory=EvidenceScope)
 
 
 @dataclass
@@ -245,7 +255,7 @@ def _research_study_for_year(
     claim: ClaimSeed,
     year: int,
     telemetry: CallTelemetry,
-) -> Study:
+) -> tuple[Study, list[PubMedRecord]]:
     try:
         return research_agent.run(
             claim_id=claim.claim_id,
@@ -268,7 +278,7 @@ def _research_study_for_year(
             rationale=f"PubMed retrieval failed for cutoff {pubmed_cutoff_year(year)}.",
         )
         study.output_hash = _study_output_hash(study)
-        return study
+        return study, []
 
 
 def record_transition(
@@ -335,6 +345,11 @@ def admit_evidence_unit(
         )
         return verdict, None
 
+    # Gate blindness (CONSTITUTION §1; SPEC §8.3): admission reads ONLY the claim
+    # graph, the unit's cited ids, the claimed scope, and the authoritative
+    # catalog (reachable_lookup) / prior warrants. It NEVER reads unit.provenance
+    # or unit.failure_mode — those are ground-truth labels the harness keeps for
+    # scoring only and must not reach the gate or corpus selection.
     required_nodes = {"QUESTION", "METHOD", "EVIDENCE", "ANALYSIS", "CLAIM"}
     graph_node_types = {node.node_type for node in claim_graph.nodes}
     graph_complete = required_nodes.issubset(graph_node_types)
@@ -345,7 +360,20 @@ def admit_evidence_unit(
         or _is_valid_warrant(warrants_by_output.get(item.item_id))
         for item in cited_items
     )
-    passed = graph_complete and cited_resolve and resolvable and bool(unit.cited_ids)
+    # Article I scope clause: the claim's scope (population/timeframe) may not
+    # exceed any cited evidence's authoritative source scope (beyond tolerance).
+    # This catches Mode-2 over-reach, which RESOLVES (real PMID) yet over-claims.
+    scope_within_evidence = not any(
+        unit.claimed_scope.exceeds(item.scope, tolerance=SCOPE_TOLERANCE_YEARS)
+        for item in cited_items
+    )
+    passed = (
+        graph_complete
+        and cited_resolve
+        and resolvable
+        and scope_within_evidence
+        and bool(unit.cited_ids)
+    )
 
     # Defect B fix: warrant integrity is the real-provenance fraction of the
     # unit's citations, not a structural pass/fail binary. A well-formed unit
@@ -368,6 +396,10 @@ def admit_evidence_unit(
         reasons.append("Every cited evidence unit resolves to a catalog source or valid prior warrant.")
     else:
         reasons.append("One or more cited evidence units failed Article I resolvability.")
+    if scope_within_evidence:
+        reasons.append("Claim scope is within the cited evidence's supported population and timeframe.")
+    else:
+        reasons.append("Claim scope exceeds the cited evidence's supported scope (Article I scope clause).")
 
     warrant = ExecutionWarrant(
         id=f"W-{claim.claim_id}-{branch}-{year}",
@@ -482,14 +514,64 @@ def _lineage_record(
     )
 
 
+def compute_calibration_matrix(
+    observations: list[tuple[str, bool]],
+    *,
+    branch: BranchName = "constrained",
+) -> CalibrationMatrix:
+    """Confusion matrix of gate verdict vs TRUE provenance (SPEC §7c).
+
+    ``observations`` = (true_provenance, gate_admitted) per scored study. True
+    provenance is the harness's ground truth, used for scoring only; the gate
+    that produced ``gate_admitted`` never saw it (§8.3). FN = admitted-but-
+    ungrounded (gate missed contamination); FP = refused-but-grounded.
+    """
+    tp = tn = fn = fp = 0
+    grounded = ungrounded = 0
+    for provenance, admitted in observations:
+        if provenance == "GROUNDED":
+            grounded += 1
+            if admitted:
+                tp += 1
+            else:
+                fp += 1
+        else:
+            ungrounded += 1
+            if admitted:
+                fn += 1
+            else:
+                tn += 1
+    return CalibrationMatrix(
+        branch=branch,
+        true_positive=tp,
+        true_negative=tn,
+        false_negative=fn,
+        false_positive=fp,
+        grounded_total=grounded,
+        ungrounded_total=ungrounded,
+        fnr=round(fn / ungrounded, 4) if ungrounded else 0.0,
+        fpr=round(fp / grounded, 4) if grounded else 0.0,
+    )
+
+
 def _study_output_hash(study: Study) -> str:
     payload = study.model_dump(mode="json")
     payload.pop("output_hash", None)
     return _canonical_sha256(payload)
 
 
-def _study_to_evidence_unit(*, study: Study, branch: BranchName) -> EvidenceUnit:
+def _study_to_evidence_unit(
+    *,
+    study: Study,
+    branch: BranchName,
+    catalog_pmids: set[str],
+) -> EvidenceUnit:
+    # Gate blindness: resolved_real_ids is computed by CATALOG INTERSECTION, not
+    # from study.provenance. A Mode-2 over-reach cites a real (resolvable) PMID
+    # and so carries it here; a Mode-1 fabricated PMID is not in the catalog and
+    # drops out. The provenance label never gates resolvability.
     cited_ids = list(study.pmids)
+    resolved = [pmid for pmid in cited_ids if pmid in catalog_pmids]
     unit = EvidenceUnit(
         id=study.id,
         claim_id=study.claim_id,
@@ -500,10 +582,9 @@ def _study_to_evidence_unit(*, study: Study, branch: BranchName) -> EvidenceUnit
         provenance=study.provenance,
         direction=study.direction,
         rationale=study.rationale,
-        resolved_real_ids=list(study.pmids) if study.provenance == "GROUNDED" else [],
-        resolved_locators=[f"PMID:{pmid}" for pmid in study.pmids]
-        if study.provenance == "GROUNDED"
-        else [],
+        resolved_real_ids=resolved,
+        resolved_locators=[f"PMID:{pmid}" for pmid in resolved],
+        claimed_scope=study.claimed_scope.model_copy(deep=True),
         output_hash=study.output_hash,
     )
     return unit
@@ -523,19 +604,26 @@ def _source_records_from_study(study: Study) -> list[SourceRecord]:
     ]
 
 
-def _reachable_lookup_from_study(study: Study) -> dict[str, CorpusItem]:
+def _reachable_lookup_from_catalog(catalog: list[PubMedRecord]) -> dict[str, CorpusItem]:
+    """The authoritative source universe the agent actually retrieved.
+
+    Built from the catalog records (not the study's claimed pmids), so a
+    fabricated Mode-1 cite is absent (fails resolvability) and a real Mode-2 cite
+    is present with its TRUE source scope (so the scope clause does the work).
+    """
     return {
-        pmid: CorpusItem(
-            item_id=pmid,
+        record.pmid: CorpusItem(
+            item_id=record.pmid,
             kind="real",
-            text=study.rationale,
-            rationale=study.rationale,
-            direction=study.direction,
-            cited_ids=[pmid],
-            resolved_real_ids=[pmid],
-            resolved_locators=[f"PMID:{pmid}"],
+            text=record.abstract or record.title,
+            rationale=record.abstract or record.title,
+            direction="NEUTRAL",
+            cited_ids=[record.pmid],
+            resolved_real_ids=[record.pmid],
+            resolved_locators=[record.locator or f"PMID:{record.pmid}"],
+            scope=record.scope.model_copy(deep=True),
         )
-        for pmid in study.pmids
+        for record in catalog
     }
 
 
@@ -702,6 +790,58 @@ def extract_claims(text: str, input_mode: str) -> list[ClaimSeed]:
     return claims
 
 
+def mean_branch_divergence(bundle: ArtifactBundle) -> float:
+    """Mean free-constrained divergence over all (year, claim) cells.
+
+    ``branch_diff`` already holds the per-cell free-vs-constrained gap; this
+    collapses it to one number so a sweep can report how the divergence responds
+    to the failure-rate anchor.
+    """
+    cells = [value for per_year in bundle.branch_diff.values() for value in per_year.values()]
+    return round(fmean(cells), 4) if cells else 0.0
+
+
+def sweep_failure_rate(
+    *,
+    request: RunRequestModel,
+    input_text: str,
+    claim_graphs: list[ClaimGraph],
+    llm: LLMClient,
+    pubmed_client: PubMedClient | DeterministicPubMedClient,
+    rates: list[float],
+) -> list[dict[str, Any]]:
+    """Sensitivity sweep over the A0-anchor failure-rate (SPEC §11-A / §7c).
+
+    ``failure_rate`` is a placeholder for A0's measured LLM error rate (κ pending,
+    not finalized), so we report how the free-constrained divergence and the gate
+    error rates (FNR/FPR) respond as it varies — rather than committing to one
+    hand-picked number. Each rate runs the full ecology and reports a row.
+    """
+    rows: list[dict[str, Any]] = []
+    for rate in rates:
+        bundle, _summary = run_ecology(
+            request=request,
+            input_text=input_text,
+            claim_graphs=[graph.model_copy(deep=True) for graph in claim_graphs],
+            llm=llm,
+            pubmed_client=pubmed_client,
+            run_id=None,
+            failure_rate=rate,
+        )
+        matrix = bundle.calibration_matrix or CalibrationMatrix()
+        rows.append(
+            {
+                "failure_rate": rate,
+                "free_minus_constrained_divergence": mean_branch_divergence(bundle),
+                "fnr": matrix.fnr,
+                "fpr": matrix.fpr,
+                "grounded_total": matrix.grounded_total,
+                "ungrounded_total": matrix.ungrounded_total,
+            }
+        )
+    return rows
+
+
 def run_ecology(
     *,
     request: RunRequestModel,
@@ -735,6 +875,10 @@ def run_ecology(
     snapshots: dict[str, list[DriftSnapshot]] = {"free": [], "constrained": []}
     branch_diff: dict[str, dict[str, float]] = {}
     lineage_records: list[LineageRecord] = []
+    # (true_provenance, gate_admitted) pairs for the constrained branch only.
+    # true_provenance is read from the study for SCORING ONLY and is never passed
+    # to admit_evidence_unit (gate blindness, SPEC §8.3).
+    calibration_observations: list[tuple[str, bool]] = []
     evidence_units: list[EvidenceUnit] = []
     warrants: list[ExecutionWarrant] = []
     warrants_by_output: dict[str, ExecutionWarrant] = {}
@@ -755,12 +899,14 @@ def run_ecology(
         branch_guidelines: dict[str, list[GuidelineClaim]] = {"free": [], "constrained": []}
 
         for claim in claims:
-            research_study = _research_study_for_year(
+            research_study, catalog_records = _research_study_for_year(
                 research_agent=research_agent,
                 claim=claim,
                 year=year,
                 telemetry=telemetry,
             )
+            catalog_pmids = {record.pmid for record in catalog_records}
+            reachable_lookup = _reachable_lookup_from_catalog(catalog_records)
             for source in _source_records_from_study(research_study):
                 if source.source_id not in source_ids_seen[claim.claim_id]:
                     source_catalog[claim.claim_id].append(source)
@@ -769,7 +915,11 @@ def run_ecology(
             for branch in ("free", "constrained"):
                 state = states[(claim.claim_id, branch)]
                 branch_study = research_study.model_copy(deep=True)
-                investigator = _study_to_evidence_unit(study=branch_study, branch=branch)
+                investigator = _study_to_evidence_unit(
+                    study=branch_study,
+                    branch=branch,
+                    catalog_pmids=catalog_pmids,
+                )
                 evidence_units.append(investigator)
                 record_transition(
                     audit_trail=audit_trail,
@@ -797,13 +947,21 @@ def run_ecology(
                     branch=branch,
                     year=year,
                     unit=investigator,
-                    reachable_lookup=_reachable_lookup_from_study(branch_study),
+                    reachable_lookup=reachable_lookup,
                     warrants_by_output=warrants_by_output,
                     threshold=RELEASE_THRESHOLD,
                 )
                 if warrant is not None:
                     warrants_by_output[warrant.output_id] = warrant
                     warrants.append(warrant)
+                if branch == "constrained":
+                    # Score the gate's Article-I verdict against TRUE provenance.
+                    # branch_study.provenance is the harness's ground truth, read
+                    # here ONLY for calibration — the gate above received no such
+                    # field.
+                    calibration_observations.append(
+                        (branch_study.provenance, verdict.passed)
+                    )
                 record_transition(
                     audit_trail=audit_trail,
                     audit_counters=audit_counters,
@@ -1040,6 +1198,7 @@ def run_ecology(
         guideline_timeline=guideline_timeline,
         population_stats=population_stats,
         provenance_log=provenance_log,
+        calibration_matrix=compute_calibration_matrix(calibration_observations),
         degradation_reason=degradation_reason,
     )
     bundle.bundle_seal = _canonical_sha256(_bundle_payload(bundle))
@@ -1069,5 +1228,9 @@ def run_ecology(
         "degradation_reason": degradation_reason,
         "bundle_seal": bundle.bundle_seal,
         "provenance_log": provenance_log,
+        "failure_rate": failure_rate,
+        "calibration_matrix": bundle.calibration_matrix.model_dump()
+        if bundle.calibration_matrix
+        else None,
     }
     return bundle, summary

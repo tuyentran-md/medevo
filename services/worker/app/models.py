@@ -46,6 +46,37 @@ class BackendConfigModel(BaseModel):
     using_fallback: bool
 
 
+class EvidenceScope(BaseModel):
+    """The population + timeframe an evidence unit or claim covers.
+
+    ``population`` is an inclusive age band (low, high) in years; ``timeframe`` is
+    an inclusive publication/observation year band (start, end). A claim's scope
+    EXCEEDS the evidence's when it asserts coverage beyond either band (Article I
+    scope clause). Authoritative source scope is derived from the catalog record,
+    never from the agent's emitted study.
+    """
+
+    population_low: int = 0
+    population_high: int = 120
+    year_start: int = 1900
+    year_end: int = 2100
+
+    def exceeds(self, source: "EvidenceScope", *, tolerance: int) -> bool:
+        """True if THIS (claimed) scope over-reaches ``source`` beyond tolerance.
+
+        A small inflation within ``tolerance`` is treated as within-bounds — this
+        is what lets mild over-reach slip the gate (the gate is imperfect, FNR>0),
+        while aggressive over-reach is caught. ``tolerance`` is a declared
+        constant in ``app.ecology`` (no magic literal in the predicate).
+        """
+        return (
+            self.population_low < source.population_low - tolerance
+            or self.population_high > source.population_high + tolerance
+            or self.year_start < source.year_start - tolerance
+            or self.year_end > source.year_end + tolerance
+        )
+
+
 class ClaimNode(BaseModel):
     id: str
     label: str
@@ -124,6 +155,9 @@ class EvidenceUnit(BaseModel):
     rationale: str
     resolved_real_ids: list[str] = Field(default_factory=list)
     resolved_locators: list[str] = Field(default_factory=list)
+    # Scope the unit ASSERTS it covers. The gate compares this against the
+    # authoritative source scope carried by the cited catalog item.
+    claimed_scope: EvidenceScope = Field(default_factory=EvidenceScope)
     output_hash: str | None = None
 
 
@@ -134,6 +168,10 @@ class PubMedRecord(BaseModel):
     year: int
     journal: str = ""
     locator: str = ""
+    # Authoritative scope of the source itself. For real PubMed we cannot parse a
+    # precise population band, so it defaults broad; the deterministic fixture
+    # sets a narrow band so scope over-reach is observable in tests/demos.
+    scope: EvidenceScope = Field(default_factory=EvidenceScope)
 
 
 class EffectEstimate(BaseModel):
@@ -156,6 +194,13 @@ class Study(BaseModel):
     pmids: list[str] = Field(default_factory=list)
     numeric: bool
     rationale: str
+    # ``claimed_scope`` = what the agent asserts; ``source_scope`` = authoritative
+    # scope of the cited catalog record (never inflated by a Mode-2 over-reach).
+    # The gate compares the two; a study is only ground-truth GROUNDED when its
+    # claimed scope does not exceed its source scope (and the cite resolves).
+    claimed_scope: EvidenceScope = Field(default_factory=EvidenceScope)
+    source_scope: EvidenceScope = Field(default_factory=EvidenceScope)
+    failure_mode: Literal["none", "unresolvable", "scope-overreach"] = "none"
     output_hash: str | None = None
 
 
@@ -217,6 +262,26 @@ class AuditEvent(BaseModel):
     message: str
 
 
+class CalibrationMatrix(BaseModel):
+    """Gate calibration scored against TRUE provenance (SPEC §7c).
+
+    True provenance is known to the harness ONLY for scoring and is NEVER passed
+    to ``admit_evidence_unit`` or corpus selection (gate blindness, §8.3). FN =
+    admitted-but-ungrounded; FP = refused-but-grounded. Scored on the constrained
+    branch only (the free branch runs no gate).
+    """
+
+    branch: BranchName = "constrained"
+    true_positive: int = 0  # grounded + admitted
+    true_negative: int = 0  # ungrounded + refused
+    false_negative: int = 0  # ungrounded + admitted (gate missed contamination)
+    false_positive: int = 0  # grounded + refused (gate over-blocked)
+    grounded_total: int = 0
+    ungrounded_total: int = 0
+    fnr: float = 0.0  # false_negative / ungrounded_total
+    fpr: float = 0.0  # false_positive / grounded_total
+
+
 class SimulationRunModel(BaseModel):
     id: str
     status: RunStatus
@@ -263,4 +328,5 @@ class ArtifactBundle(BaseModel):
     population_stats: dict[str, Any] = Field(default_factory=dict)
     bundle_seal: str = ""
     provenance_log: dict[str, Any] = Field(default_factory=dict)
+    calibration_matrix: CalibrationMatrix | None = None
     degradation_reason: str | None = None

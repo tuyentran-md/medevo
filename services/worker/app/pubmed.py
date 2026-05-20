@@ -12,7 +12,7 @@ from typing import Any, Protocol
 import requests
 
 from app.config import DATA_DIR
-from app.models import ClaimDirection, EffectEstimate, PubMedRecord
+from app.models import ClaimDirection, EffectEstimate, EvidenceScope, PubMedRecord
 
 
 ENTREZ_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -168,13 +168,25 @@ class DeterministicPubMedClient:
             title = "Simulated admissible source reporting uncertain effect"
             abstract = "Cohort study n=180 found no significant difference; RR 0.98, 95% CI 0.78 to 1.22."
         pmid = f"SIM-{digest[:10]}"
+        # A narrow, deterministic source scope keyed on the digest so the gate has
+        # a real population/timeframe band to compare a claimed scope against. A
+        # real-PubMed record keeps the broad default (we cannot parse a precise
+        # population band offline); the fixture deliberately narrows it.
+        pop_low = 18 + int(digest[8:10], 16) % 30
+        record_year = min(max_year, 2025)
         record = PubMedRecord(
             pmid=pmid,
             title=title,
             abstract=abstract,
-            year=min(max_year, 2025),
+            year=record_year,
             journal="Deterministic fallback fixture",
             locator=f"fixture:{pmid}",
+            scope=EvidenceScope(
+                population_low=pop_low,
+                population_high=pop_low + 25,
+                year_start=record_year - 3,
+                year_end=record_year,
+            ),
         )
         return PubMedSearchResult(
             query=query,
