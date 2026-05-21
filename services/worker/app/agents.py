@@ -47,9 +47,22 @@ class ResearchAgent:
     A grounded attempt resolves a real PubMed record into a GROUNDED study with
     resolvable PMIDs. A weak/over-reaching attempt FAILS the way a real fallible
     LLM researcher fails: it emits an UNGROUNDED study whose evidence chain does
-    not resolve (no real PMID). Whether a given (claim, era) attempt fails is a
-    DETERMINISTIC seeded draw against ``failure_rate`` — the contamination is the
-    agent's own emitted output, never authored or labelled by the harness.
+    not resolve (no real PMID). Whether a given (claim, era, replicate) attempt
+    fails is a DETERMINISTIC seeded draw against ``failure_rate`` — the
+    contamination is the agent's own emitted output, never authored or labelled by
+    the harness.
+
+    DATA-GROUNDING (SPEC §1): the agent's analysis is bound to what it actually
+    retrieves from the real source universe (the PubMed catalog), never invented
+    from prior/parametric knowledge. A grounded study mirrors its cited record's
+    scope/effect; a failed attempt over-reaches or fabricates rather than fill the
+    gap from memory. Forcing data-grounding is what gives CIVER something real to
+    bite on — see the data-grounding note on ``app.agents._srma_prompt``.
+
+    ``run`` accepts a ``replicate`` index so multiple distinct studies are emitted
+    per (claim, era): each replicate is its own seeded draw (grounded/ungrounded,
+    record selection, failure mode), yielding ~k studies per claim per era (config
+    constant ``app.ecology.STUDIES_PER_CLAIM_PER_ERA``).
     """
 
     pubmed: "PubMedClient"
@@ -64,6 +77,7 @@ class ResearchAgent:
         claim_text: str,
         simulated_year: int,
         max_pubmed_year: int | None = None,
+        replicate: int = 0,
     ) -> tuple[Study, list[PubMedRecord]]:
         """Emit a Study plus the authoritative catalog the agent actually saw.
 
@@ -71,8 +85,13 @@ class ResearchAgent:
         resolves cites against — NOT the study's own claimed pmids. This is what
         makes Mode-1 fabricated cites fail to resolve while Mode-2 real cites
         resolve (and are caught instead by the scope clause).
+
+        ``replicate`` distinguishes multiple study attempts within one (claim,
+        era), each a distinct seeded draw and distinct study id.
         """
-        attempt_fails = self._attempt_fails(claim_id=claim_id, year=simulated_year)
+        attempt_fails = self._attempt_fails(
+            claim_id=claim_id, year=simulated_year, replicate=replicate
+        )
 
         result = self.pubmed.search(
             query=claim_text,
@@ -80,7 +99,9 @@ class ResearchAgent:
             retmax=self.retmax,
         )
         catalog = list(result.records)
-        record = _select_record(catalog, claim_id=claim_id, year=simulated_year)
+        record = _select_record(
+            catalog, claim_id=claim_id, year=simulated_year, replicate=replicate
+        )
 
         if attempt_fails:
             # The weak agent fails the way a real fallible LLM researcher fails.
@@ -94,6 +115,7 @@ class ResearchAgent:
                     claim_text=claim_text,
                     simulated_year=simulated_year,
                     record=record,
+                    replicate=replicate,
                 ),
                 catalog,
             )
@@ -107,6 +129,7 @@ class ResearchAgent:
                     claim_text=claim_text,
                     simulated_year=simulated_year,
                     record=None,
+                    replicate=replicate,
                 ),
                 catalog,
             )
@@ -117,7 +140,7 @@ class ResearchAgent:
         direction = infer_direction_from_record(record, claim_text=claim_text)
         numeric = effect.point is not None
         study = Study(
-            id=f"{claim_id}-study-{simulated_year}-{record.pmid}",
+            id=f"{claim_id}-study-{simulated_year}-r{replicate}-{record.pmid}",
             claim_id=claim_id,
             year=simulated_year,
             direction=direction,
@@ -144,14 +167,14 @@ class ResearchAgent:
         study.output_hash = _study_hash(study)
         return study, catalog
 
-    def _attempt_fails(self, *, claim_id: str, year: int) -> bool:
+    def _attempt_fails(self, *, claim_id: str, year: int, replicate: int = 0) -> bool:
         if self.failure_rate <= 0.0:
             return False
         if self.failure_rate >= 1.0:
             return True
         # Deterministic seeded draw: reruns with the same seed reproduce the same
         # grounded/ungrounded pattern (cache-friendly, SPEC §9).
-        key = f"failure:{claim_id}:{year}:{self.seed}"
+        key = f"failure:{claim_id}:{year}:{replicate}:{self.seed}"
         draw = (int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:8], 16) % 10_000) / 10_000
         return draw < self.failure_rate
 
@@ -228,10 +251,12 @@ class SrmaAgent:
         return parse_srma_review(response, study_ids=[study.id for study in studies])
 
 
-def _select_record(records: list[PubMedRecord], *, claim_id: str, year: int) -> PubMedRecord | None:
+def _select_record(
+    records: list[PubMedRecord], *, claim_id: str, year: int, replicate: int = 0
+) -> PubMedRecord | None:
     if not records:
         return None
-    index = int(hashlib.sha256(f"{claim_id}:{year}".encode("utf-8")).hexdigest()[:8], 16)
+    index = int(hashlib.sha256(f"{claim_id}:{year}:{replicate}".encode("utf-8")).hexdigest()[:8], 16)
     return records[index % len(records)]
 
 
@@ -241,6 +266,7 @@ def _ungrounded_study(
     claim_text: str,
     simulated_year: int,
     record: PubMedRecord | None,
+    replicate: int = 0,
 ) -> Study:
     """A weak/over-reaching agent's failed attempt — a seeded MIX of two modes.
 
@@ -255,17 +281,19 @@ def _ungrounded_study(
     The harness never labels this as contamination: UNGROUNDED + the over-reach
     are properties the agent itself emits.
     """
-    direction = _overreach_direction(claim_id=claim_id, year=simulated_year)
+    direction = _overreach_direction(
+        claim_id=claim_id, year=simulated_year, replicate=replicate
+    )
 
     # Mode 2 only possible when a real record is available to cite.
     wants_scope_mode = (
         record is not None
-        and _failure_mode_is_scope(claim_id=claim_id, year=simulated_year)
+        and _failure_mode_is_scope(claim_id=claim_id, year=simulated_year, replicate=replicate)
     )
 
     if wants_scope_mode:
         assert record is not None
-        inflation = _scope_inflation(claim_id=claim_id, year=simulated_year)
+        inflation = _scope_inflation(claim_id=claim_id, year=simulated_year, replicate=replicate)
         source = record.scope
         claimed = EvidenceScope(
             population_low=max(0, source.population_low - inflation),
@@ -274,7 +302,7 @@ def _ungrounded_study(
             year_end=source.year_end + inflation,
         )
         study = Study(
-            id=f"{claim_id}-study-{simulated_year}-overreach-{record.pmid}",
+            id=f"{claim_id}-study-{simulated_year}-r{replicate}-overreach-{record.pmid}",
             claim_id=claim_id,
             year=simulated_year,
             direction=direction,
@@ -295,9 +323,9 @@ def _ungrounded_study(
         return study
 
     # Mode 1: unresolvable fabricated citation.
-    fabricated_pmid = _fabricated_pmid(claim_id=claim_id, year=simulated_year)
+    fabricated_pmid = _fabricated_pmid(claim_id=claim_id, year=simulated_year, replicate=replicate)
     study = Study(
-        id=f"{claim_id}-study-{simulated_year}-ungrounded",
+        id=f"{claim_id}-study-{simulated_year}-r{replicate}-ungrounded",
         claim_id=claim_id,
         year=simulated_year,
         direction=direction,
@@ -315,29 +343,29 @@ def _ungrounded_study(
     return study
 
 
-def _failure_mode_is_scope(*, claim_id: str, year: int) -> bool:
+def _failure_mode_is_scope(*, claim_id: str, year: int, replicate: int = 0) -> bool:
     if SCOPE_OVERREACH_SHARE <= 0.0:
         return False
     if SCOPE_OVERREACH_SHARE >= 1.0:
         return True
-    key = f"failmode:{claim_id}:{year}"
+    key = f"failmode:{claim_id}:{year}:{replicate}"
     draw = (int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:8], 16) % 10_000) / 10_000
     return draw < SCOPE_OVERREACH_SHARE
 
 
-def _scope_inflation(*, claim_id: str, year: int) -> int:
+def _scope_inflation(*, claim_id: str, year: int, replicate: int = 0) -> int:
     span = SCOPE_INFLATION_MAX - SCOPE_INFLATION_MIN + 1
-    bucket = int(hashlib.sha256(f"inflation:{claim_id}:{year}".encode("utf-8")).hexdigest()[:8], 16) % span
+    bucket = int(hashlib.sha256(f"inflation:{claim_id}:{year}:{replicate}".encode("utf-8")).hexdigest()[:8], 16) % span
     return SCOPE_INFLATION_MIN + bucket
 
 
-def _fabricated_pmid(*, claim_id: str, year: int) -> str:
-    digest = hashlib.sha256(f"fabricated:{claim_id}:{year}".encode("utf-8")).hexdigest()[:10]
+def _fabricated_pmid(*, claim_id: str, year: int, replicate: int = 0) -> str:
+    digest = hashlib.sha256(f"fabricated:{claim_id}:{year}:{replicate}".encode("utf-8")).hexdigest()[:10]
     return f"FAKE-{digest}"
 
 
-def _overreach_direction(*, claim_id: str, year: int) -> ClaimDirection:
-    bucket = int(hashlib.sha256(f"overreach:{claim_id}:{year}".encode("utf-8")).hexdigest()[:8], 16) % 3
+def _overreach_direction(*, claim_id: str, year: int, replicate: int = 0) -> ClaimDirection:
+    bucket = int(hashlib.sha256(f"overreach:{claim_id}:{year}:{replicate}".encode("utf-8")).hexdigest()[:8], 16) % 3
     return ("SUPPORTS", "REFUTES", "NEUTRAL")[bucket]
 
 
@@ -401,9 +429,21 @@ def _srma_prompt(
             }
         )
     payload = json.dumps(rows, ensure_ascii=True, sort_keys=True)
+    # DATA-GROUNDING HARD INSTRUCTION (SPEC §1; CONSTITUTION §1). This is what
+    # makes CIVER's value VISIBLE: a model that shortcuts via prior/parametric
+    # knowledge instead of the retrieved evidence produces an over-reaching /
+    # unresolvable chain that the gate then catches. We are NOT trying to erase
+    # the model's prior — only to force it to ground in the supplied corpus so the
+    # gate has something real to bite on. If the evidence is insufficient, the
+    # model must SAY SO rather than fill the gap from memory.
     return (
         "You are appraising a Tier-4 SR/MA corpus for one claim. "
-        "Do not re-query external sources. Use only the study list below. "
+        "HARD RULE: derive your appraisal and conclusion STRICTLY from the study "
+        "list provided below. Do NOT re-query external sources, and do NOT assert "
+        "anything from your prior/parametric knowledge or beyond what these studies "
+        "actually show. If the supplied evidence is insufficient to appraise the "
+        "claim, say so explicitly (lower certainty, neutral summary) — never fill "
+        "the gap from memory. Use only the study list below. "
         "Return JSON only with keys: "
         '"study_appraisals" (array of {"study_id","weight_multiplier","concern"}), '
         '"certainty_adjustment" (number from -0.18 to 0.18), '

@@ -220,13 +220,13 @@
             "claim_text": "Menopausal hormone therapy with estrogen should be offered to postmenopausal women for the primary prevention of coronary heart disease.",
             "direction": "REFUTES",
             "strength": "moderate",
-            "emitted_count": 1,
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 1 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Free branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.655). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1, SIM-747b559ab6. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-1-study-2000-r1-SIM-747b559ab6",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -253,23 +253,23 @@
                 "node_id": "claim-1",
                 "event_type": "lineage-delta",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-747b559ab6']; lost ['none']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-2",
             "claim_text": "Hormone replacement therapy reduces the long-term risk of cardiovascular events in menopausal women.",
-            "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "direction": "NEUTRAL",
+            "strength": "weak",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 1 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Free branch at year 2000: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.475). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2, SIM-eb3633355a. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.35.",
             "civer": [
               {
-                "node_id": "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-2-study-2000-r1-SIM-eb3633355a",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -296,8 +296,8 @@
                 "node_id": "claim-2",
                 "event_type": "lineage-delta",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-eb3633355a']; lost ['none']; ungrounded carriers ['none']."
               }
             ]
           },
@@ -306,13 +306,13 @@
             "claim_text": "Estrogen plus progestin should be considered to prevent chronic disease and all-cause mortality after menopause.",
             "direction": "REFUTES",
             "strength": "moderate",
-            "emitted_count": 1,
+            "emitted_count": 2,
             "blocked_count": 0,
-            "divergence_score": 0.375,
-            "why_summary": "Free branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.288). Real sources retained: none. Lost real sources: none. Ungrounded carriers: claim-3-study-2000-ungrounded. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 1 studies, ungrounded_fraction=1.0, heterogeneity=0.0.",
+            "divergence_score": 0.0,
+            "why_summary": "Free branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: SIM-f9b96fef6b. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-3-study-2000-ungrounded",
+                "node_id": "claim-3-study-2000-r1-SIM-f9b96fef6b",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -339,15 +339,15 @@
                 "node_id": "claim-3",
                 "event_type": "lineage-delta",
                 "severity": "info",
-                "integrity_score": 0.0,
-                "message": "Real sources retained ['none']; lost ['none']; ungrounded carriers ['claim-3-study-2000-ungrounded']."
+                "integrity_score": 0.25,
+                "message": "Real sources retained ['SIM-f9b96fef6b']; lost ['none']; ungrounded carriers ['none']."
               }
             ]
           }
         ],
         "band": {
-          "low": -0.847,
-          "high": -0.287,
+          "low": -0.513,
+          "high": 0.047,
           "label": "Sensitivity band scaled by contamination-clock pressure."
         },
         "anchors": [
@@ -364,14 +364,14 @@
             "claim_id": "claim-1",
             "claim_text": "Menopausal hormone therapy with estrogen should be offered to postmenopausal women for the primary prevention of coronary heart disease.",
             "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "strength": "strong",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2010: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Free branch at year 2010: panel moved from REFUTES to REFUTES (strong-against, certainty=0.805). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1, SIM-5c42d23ba4. Lost real sources: SIM-747b559ab6. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 4 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-1-study-2010-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-1-study-2010-r1-SIM-5c42d23ba4",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -397,24 +397,24 @@
               {
                 "node_id": "claim-1",
                 "event_type": "lineage-delta",
-                "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-5c42d23ba4']; lost ['SIM-747b559ab6']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-2",
             "claim_text": "Hormone replacement therapy reduces the long-term risk of cardiovascular events in menopausal women.",
-            "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "direction": "NEUTRAL",
+            "strength": "weak",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2010: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Free branch at year 2010: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.625). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2, SIM-4ec1d3dc9d. Lost real sources: SIM-eb3633355a. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 4 studies, ungrounded_fraction=0.0, heterogeneity=0.35.",
             "civer": [
               {
-                "node_id": "claim-2-study-2010-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-2-study-2010-r1-SIM-4ec1d3dc9d",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -440,9 +440,9 @@
               {
                 "node_id": "claim-2",
                 "event_type": "lineage-delta",
-                "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-4ec1d3dc9d']; lost ['SIM-eb3633355a']; ungrounded carriers ['none']."
               }
             ]
           },
@@ -450,14 +450,14 @@
             "claim_id": "claim-3",
             "claim_text": "Estrogen plus progestin should be considered to prevent chronic disease and all-cause mortality after menopause.",
             "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "strength": "strong",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2010: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.4944). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.5, heterogeneity=0.325.",
+            "why_summary": "Free branch at year 2010: panel moved from REFUTES to REFUTES (strong-against, certainty=0.8775). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3, SIM-fde725329b. Lost real sources: SIM-f9b96fef6b. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 4 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-3-study-2010-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-3-study-2010-r1-SIM-fde725329b",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -483,16 +483,16 @@
               {
                 "node_id": "claim-3",
                 "event_type": "lineage-delta",
-                "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-fde725329b']; lost ['SIM-f9b96fef6b']; ungrounded carriers ['none']."
               }
             ]
           }
         ],
         "band": {
-          "low": -0.652,
-          "high": -0.092,
+          "low": -0.513,
+          "high": 0.047,
           "label": "Sensitivity band scaled by contamination-clock pressure."
         },
         "anchors": [
@@ -509,14 +509,14 @@
             "claim_id": "claim-1",
             "claim_text": "Menopausal hormone therapy with estrogen should be offered to postmenopausal women for the primary prevention of coronary heart disease.",
             "direction": "REFUTES",
-            "strength": "strong",
-            "emitted_count": 1,
+            "strength": "moderate",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2020: panel moved from REFUTES to REFUTES (strong-against, certainty=0.7644). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 3 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Free branch at year 2020: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.625). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1, SIM-d04742e4fa. Lost real sources: SIM-5c42d23ba4. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 6 studies, ungrounded_fraction=0.0, heterogeneity=0.2609.",
             "civer": [
               {
-                "node_id": "claim-1-study-2020-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-1-study-2020-r1-SIM-d04742e4fa",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -542,24 +542,24 @@
               {
                 "node_id": "claim-1",
                 "event_type": "lineage-delta",
-                "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-d04742e4fa']; lost ['SIM-5c42d23ba4']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-2",
             "claim_text": "Hormone replacement therapy reduces the long-term risk of cardiovascular events in menopausal women.",
-            "direction": "REFUTES",
-            "strength": "strong",
-            "emitted_count": 1,
+            "direction": "NEUTRAL",
+            "strength": "weak",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2020: panel moved from REFUTES to REFUTES (strong-against, certainty=0.7644). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 3 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Free branch at year 2020: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.625). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2, SIM-264a4c3b38. Lost real sources: SIM-4ec1d3dc9d. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 6 studies, ungrounded_fraction=0.0, heterogeneity=0.33.",
             "civer": [
               {
-                "node_id": "claim-2-study-2020-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-2-study-2020-r1-SIM-264a4c3b38",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -585,9 +585,9 @@
               {
                 "node_id": "claim-2",
                 "event_type": "lineage-delta",
-                "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-264a4c3b38']; lost ['SIM-4ec1d3dc9d']; ungrounded carriers ['none']."
               }
             ]
           },
@@ -596,13 +596,13 @@
             "claim_text": "Estrogen plus progestin should be considered to prevent chronic disease and all-cause mortality after menopause.",
             "direction": "REFUTES",
             "strength": "moderate",
-            "emitted_count": 1,
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Free branch at year 2020: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.5973). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 3 studies, ungrounded_fraction=0.3333, heterogeneity=0.3064.",
+            "why_summary": "Free branch at year 2020: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.6733). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3, SIM-41b057839c. Lost real sources: SIM-fde725329b. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 6 studies, ungrounded_fraction=0.0, heterogeneity=0.2609.",
             "civer": [
               {
-                "node_id": "claim-3-study-2020-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-3-study-2020-r1-SIM-41b057839c",
                 "passed": true,
                 "reasons": [
                   "Experimental branch: execution warrant not enforced."
@@ -628,16 +628,16 @@
               {
                 "node_id": "claim-3",
                 "event_type": "lineage-delta",
-                "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-41b057839c']; lost ['SIM-fde725329b']; ungrounded carriers ['none']."
               }
             ]
           }
         ],
         "band": {
-          "low": -0.641,
-          "high": -0.081,
+          "low": -0.474,
+          "high": 0.086,
           "label": "Sensitivity band scaled by contamination-clock pressure."
         },
         "anchors": [
@@ -657,13 +657,13 @@
             "claim_text": "Menopausal hormone therapy with estrogen should be offered to postmenopausal women for the primary prevention of coronary heart disease.",
             "direction": "REFUTES",
             "strength": "moderate",
-            "emitted_count": 1,
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 1 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.655). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1, SIM-747b559ab6. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-1-study-2000-r1-SIM-747b559ab6",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -676,13 +676,6 @@
             "brim": [
               {
                 "node_id": "claim-1",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-1",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -690,25 +683,32 @@
               },
               {
                 "node_id": "claim-1",
+                "event_type": "guideline-issued",
+                "severity": "info",
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-1",
                 "event_type": "lineage-delta",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-747b559ab6']; lost ['none']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-2",
             "claim_text": "Hormone replacement therapy reduces the long-term risk of cardiovascular events in menopausal women.",
-            "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "direction": "NEUTRAL",
+            "strength": "weak",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 1 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2000: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.475). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2, SIM-eb3633355a. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.35.",
             "civer": [
               {
-                "node_id": "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-2-study-2000-r1-SIM-eb3633355a",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -721,13 +721,6 @@
             "brim": [
               {
                 "node_id": "claim-2",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-2",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -735,55 +728,62 @@
               },
               {
                 "node_id": "claim-2",
+                "event_type": "guideline-issued",
+                "severity": "info",
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-2",
                 "event_type": "lineage-delta",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-eb3633355a']; lost ['none']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-3",
             "claim_text": "Estrogen plus progestin should be considered to prevent chronic disease and all-cause mortality after menopause.",
-            "direction": "NEUTRAL",
-            "strength": "weak",
-            "emitted_count": 0,
-            "blocked_count": 1,
-            "divergence_score": 0.375,
-            "why_summary": "Constrained branch at year 2000: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.0). Real sources retained: none. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 0 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "direction": "REFUTES",
+            "strength": "moderate",
+            "emitted_count": 2,
+            "blocked_count": 0,
+            "divergence_score": 0.0,
+            "why_summary": "Constrained branch at year 2000: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: SIM-f9b96fef6b. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-3-study-2000-ungrounded",
-                "passed": false,
+                "node_id": "claim-3-study-2000-r1-SIM-f9b96fef6b",
+                "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
-                  "One or more cited evidence units failed Article I resolvability.",
+                  "Every cited evidence unit resolves to a catalog source or valid prior warrant.",
                   "Claim scope is within the cited evidence's supported population and timeframe."
                 ],
-                "certificate_id": null
+                "certificate_id": "W-claim-3-constrained-2000"
               }
             ],
             "brim": [
               {
                 "node_id": "claim-3",
-                "event_type": "article-i-refused",
-                "severity": "warn",
-                "integrity_score": 0.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. One or more cited evidence units failed Article I resolvability. Claim scope is within the cited evidence's supported population and timeframe."
+                "event_type": "release-issued",
+                "severity": "info",
+                "integrity_score": 1.0,
+                "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
               },
               {
                 "node_id": "claim-3",
-                "event_type": "release-revoked",
-                "severity": "warn",
-                "integrity_score": 0.0,
-                "message": "Release gate upheld the Article I refusal; unresolvable output is not released."
+                "event_type": "guideline-issued",
+                "severity": "info",
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
               },
               {
                 "node_id": "claim-3",
                 "event_type": "lineage-delta",
                 "severity": "info",
-                "integrity_score": 0.0,
-                "message": "Real sources retained ['none']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 0.25,
+                "message": "Real sources retained ['SIM-f9b96fef6b']; lost ['none']; ungrounded carriers ['none']."
               }
             ]
           }
@@ -807,14 +807,14 @@
             "claim_id": "claim-1",
             "claim_text": "Menopausal hormone therapy with estrogen should be offered to postmenopausal women for the primary prevention of coronary heart disease.",
             "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "strength": "strong",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2010: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2010: panel moved from REFUTES to REFUTES (strong-against, certainty=0.805). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1, SIM-5c42d23ba4. Lost real sources: SIM-747b559ab6. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 4 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-1-study-2010-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-1-study-2010-r1-SIM-5c42d23ba4",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -827,13 +827,6 @@
             "brim": [
               {
                 "node_id": "claim-1",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-1",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -841,25 +834,32 @@
               },
               {
                 "node_id": "claim-1",
-                "event_type": "lineage-delta",
+                "event_type": "guideline-issued",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-1",
+                "event_type": "lineage-delta",
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-5c42d23ba4']; lost ['SIM-747b559ab6']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-2",
             "claim_text": "Hormone replacement therapy reduces the long-term risk of cardiovascular events in menopausal women.",
-            "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "direction": "NEUTRAL",
+            "strength": "weak",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2010: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2010: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.625). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2, SIM-4ec1d3dc9d. Lost real sources: SIM-eb3633355a. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 4 studies, ungrounded_fraction=0.0, heterogeneity=0.35.",
             "civer": [
               {
-                "node_id": "claim-2-study-2010-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-2-study-2010-r1-SIM-4ec1d3dc9d",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -872,13 +872,6 @@
             "brim": [
               {
                 "node_id": "claim-2",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-2",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -886,10 +879,17 @@
               },
               {
                 "node_id": "claim-2",
-                "event_type": "lineage-delta",
+                "event_type": "guideline-issued",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-2",
+                "event_type": "lineage-delta",
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-4ec1d3dc9d']; lost ['SIM-eb3633355a']; ungrounded carriers ['none']."
               }
             ]
           },
@@ -897,14 +897,14 @@
             "claim_id": "claim-3",
             "claim_text": "Estrogen plus progestin should be considered to prevent chronic disease and all-cause mortality after menopause.",
             "direction": "REFUTES",
-            "strength": "moderate",
-            "emitted_count": 1,
+            "strength": "strong",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2010: panel moved from NEUTRAL to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 1 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2010: panel moved from REFUTES to REFUTES (strong-against, certainty=0.8775). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3, SIM-fde725329b. Lost real sources: SIM-f9b96fef6b. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 4 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
             "civer": [
               {
-                "node_id": "claim-3-study-2010-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-3-study-2010-r1-SIM-fde725329b",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -917,13 +917,6 @@
             "brim": [
               {
                 "node_id": "claim-3",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-3",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -931,17 +924,24 @@
               },
               {
                 "node_id": "claim-3",
-                "event_type": "lineage-delta",
+                "event_type": "guideline-issued",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-3",
+                "event_type": "lineage-delta",
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-fde725329b']; lost ['SIM-f9b96fef6b']; ungrounded carriers ['none']."
               }
             ]
           }
         ],
         "band": {
-          "low": -0.63,
-          "high": -0.07,
+          "low": -0.513,
+          "high": 0.047,
           "label": "Sensitivity band scaled by contamination-clock pressure."
         },
         "anchors": [
@@ -958,14 +958,14 @@
             "claim_id": "claim-1",
             "claim_text": "Menopausal hormone therapy with estrogen should be offered to postmenopausal women for the primary prevention of coronary heart disease.",
             "direction": "REFUTES",
-            "strength": "strong",
-            "emitted_count": 1,
+            "strength": "moderate",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2020: panel moved from REFUTES to REFUTES (strong-against, certainty=0.7644). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 3 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2020: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.625). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1, SIM-d04742e4fa. Lost real sources: SIM-5c42d23ba4. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 6 studies, ungrounded_fraction=0.0, heterogeneity=0.2609.",
             "civer": [
               {
-                "node_id": "claim-1-study-2020-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-1-study-2020-r1-SIM-d04742e4fa",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -978,13 +978,6 @@
             "brim": [
               {
                 "node_id": "claim-1",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-1",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -992,25 +985,32 @@
               },
               {
                 "node_id": "claim-1",
-                "event_type": "lineage-delta",
+                "event_type": "guideline-issued",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-1",
+                "event_type": "lineage-delta",
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-d04742e4fa']; lost ['SIM-5c42d23ba4']; ungrounded carriers ['none']."
               }
             ]
           },
           {
             "claim_id": "claim-2",
             "claim_text": "Hormone replacement therapy reduces the long-term risk of cardiovascular events in menopausal women.",
-            "direction": "REFUTES",
-            "strength": "strong",
-            "emitted_count": 1,
+            "direction": "NEUTRAL",
+            "strength": "weak",
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2020: panel moved from REFUTES to REFUTES (strong-against, certainty=0.7644). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 3 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2020: panel moved from NEUTRAL to NEUTRAL (no-recommendation, certainty=0.625). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2, SIM-264a4c3b38. Lost real sources: SIM-4ec1d3dc9d. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 6 studies, ungrounded_fraction=0.0, heterogeneity=0.33.",
             "civer": [
               {
-                "node_id": "claim-2-study-2020-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-2-study-2020-r1-SIM-264a4c3b38",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -1023,13 +1023,6 @@
             "brim": [
               {
                 "node_id": "claim-2",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-2",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -1037,10 +1030,17 @@
               },
               {
                 "node_id": "claim-2",
-                "event_type": "lineage-delta",
+                "event_type": "guideline-issued",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-2",
+                "event_type": "lineage-delta",
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-264a4c3b38']; lost ['SIM-4ec1d3dc9d']; ungrounded carriers ['none']."
               }
             ]
           },
@@ -1049,13 +1049,13 @@
             "claim_text": "Estrogen plus progestin should be considered to prevent chronic disease and all-cause mortality after menopause.",
             "direction": "REFUTES",
             "strength": "moderate",
-            "emitted_count": 1,
+            "emitted_count": 2,
             "blocked_count": 0,
             "divergence_score": 0.0,
-            "why_summary": "Constrained branch at year 2020: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.68). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3. Lost real sources: none. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 2 studies, ungrounded_fraction=0.0, heterogeneity=0.0.",
+            "why_summary": "Constrained branch at year 2020: panel moved from REFUTES to REFUTES (conditional-against, certainty=0.6733). Real sources retained: NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3, SIM-41b057839c. Lost real sources: SIM-fde725329b. Ungrounded carriers: none. Synthesist rationale: Tier-4 SRMA read the accumulated Tier-3 DB only: 6 studies, ungrounded_fraction=0.0, heterogeneity=0.2609.",
             "civer": [
               {
-                "node_id": "claim-3-study-2020-nhanes-hrt-cardiometabolic",
+                "node_id": "claim-3-study-2020-r1-SIM-41b057839c",
                 "passed": true,
                 "reasons": [
                   "Traceable question-method-evidence-analysis-claim chain present.",
@@ -1068,13 +1068,6 @@
             "brim": [
               {
                 "node_id": "claim-3",
-                "event_type": "article-i-issued",
-                "severity": "info",
-                "integrity_score": 1.0,
-                "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
-              },
-              {
-                "node_id": "claim-3",
                 "event_type": "release-issued",
                 "severity": "info",
                 "integrity_score": 1.0,
@@ -1082,17 +1075,24 @@
               },
               {
                 "node_id": "claim-3",
-                "event_type": "lineage-delta",
+                "event_type": "guideline-issued",
                 "severity": "info",
-                "integrity_score": 0.25,
-                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+                "integrity_score": 1.0,
+                "message": "Guideline traces to warranted evidence within supported strength."
+              },
+              {
+                "node_id": "claim-3",
+                "event_type": "lineage-delta",
+                "severity": "warn",
+                "integrity_score": 0.5,
+                "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-41b057839c']; lost ['SIM-fde725329b']; ungrounded carriers ['none']."
               }
             ]
           }
         ],
         "band": {
-          "low": -0.63,
-          "high": -0.07,
+          "low": -0.474,
+          "high": 0.086,
           "label": "Sensitivity band scaled by contamination-clock pressure."
         },
         "anchors": [
@@ -1107,7 +1107,7 @@
     "2000": {
       "claim-1": 0.0,
       "claim-2": 0.0,
-      "claim-3": 0.375
+      "claim-3": 0.0
     },
     "2010": {
       "claim-1": 0.0,
@@ -1142,7 +1142,8 @@
       "year": 2000,
       "branch": "free",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1",
+        "SIM-747b559ab6"
       ],
       "lost_real": [],
       "ungrounded_carriers": [],
@@ -1154,7 +1155,8 @@
       "year": 2000,
       "branch": "constrained",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1",
+        "SIM-747b559ab6"
       ],
       "lost_real": [],
       "ungrounded_carriers": [],
@@ -1166,113 +1168,45 @@
       "year": 2000,
       "branch": "free",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2",
+        "SIM-eb3633355a"
       ],
-      "lost_real": [],
-      "ungrounded_carriers": [],
-      "verdict_before": "NEUTRAL",
-      "verdict_after": "REFUTES"
-    },
-    {
-      "claim_id": "claim-2",
-      "year": 2000,
-      "branch": "constrained",
-      "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2"
-      ],
-      "lost_real": [],
-      "ungrounded_carriers": [],
-      "verdict_before": "NEUTRAL",
-      "verdict_after": "REFUTES"
-    },
-    {
-      "claim_id": "claim-3",
-      "year": 2000,
-      "branch": "free",
-      "surviving_real": [],
-      "lost_real": [],
-      "ungrounded_carriers": [
-        "claim-3-study-2000-ungrounded"
-      ],
-      "verdict_before": "NEUTRAL",
-      "verdict_after": "REFUTES"
-    },
-    {
-      "claim_id": "claim-3",
-      "year": 2000,
-      "branch": "constrained",
-      "surviving_real": [],
       "lost_real": [],
       "ungrounded_carriers": [],
       "verdict_before": "NEUTRAL",
       "verdict_after": "NEUTRAL"
     },
     {
-      "claim_id": "claim-1",
-      "year": 2010,
-      "branch": "free",
-      "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1"
-      ],
-      "lost_real": [],
-      "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
-      "verdict_after": "REFUTES"
-    },
-    {
-      "claim_id": "claim-1",
-      "year": 2010,
+      "claim_id": "claim-2",
+      "year": 2000,
       "branch": "constrained",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2",
+        "SIM-eb3633355a"
       ],
       "lost_real": [],
       "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
-      "verdict_after": "REFUTES"
+      "verdict_before": "NEUTRAL",
+      "verdict_after": "NEUTRAL"
     },
     {
-      "claim_id": "claim-2",
-      "year": 2010,
+      "claim_id": "claim-3",
+      "year": 2000,
       "branch": "free",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2"
+        "SIM-f9b96fef6b"
       ],
       "lost_real": [],
       "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
-      "verdict_after": "REFUTES"
-    },
-    {
-      "claim_id": "claim-2",
-      "year": 2010,
-      "branch": "constrained",
-      "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2"
-      ],
-      "lost_real": [],
-      "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
+      "verdict_before": "NEUTRAL",
       "verdict_after": "REFUTES"
     },
     {
       "claim_id": "claim-3",
-      "year": 2010,
-      "branch": "free",
-      "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3"
-      ],
-      "lost_real": [],
-      "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
-      "verdict_after": "REFUTES"
-    },
-    {
-      "claim_id": "claim-3",
-      "year": 2010,
+      "year": 2000,
       "branch": "constrained",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3"
+        "SIM-f9b96fef6b"
       ],
       "lost_real": [],
       "ungrounded_carriers": [],
@@ -1281,12 +1215,105 @@
     },
     {
       "claim_id": "claim-1",
+      "year": 2010,
+      "branch": "free",
+      "surviving_real": [
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1",
+        "SIM-5c42d23ba4"
+      ],
+      "lost_real": [
+        "SIM-747b559ab6"
+      ],
+      "ungrounded_carriers": [],
+      "verdict_before": "REFUTES",
+      "verdict_after": "REFUTES"
+    },
+    {
+      "claim_id": "claim-1",
+      "year": 2010,
+      "branch": "constrained",
+      "surviving_real": [
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1",
+        "SIM-5c42d23ba4"
+      ],
+      "lost_real": [
+        "SIM-747b559ab6"
+      ],
+      "ungrounded_carriers": [],
+      "verdict_before": "REFUTES",
+      "verdict_after": "REFUTES"
+    },
+    {
+      "claim_id": "claim-2",
+      "year": 2010,
+      "branch": "free",
+      "surviving_real": [
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2",
+        "SIM-4ec1d3dc9d"
+      ],
+      "lost_real": [
+        "SIM-eb3633355a"
+      ],
+      "ungrounded_carriers": [],
+      "verdict_before": "NEUTRAL",
+      "verdict_after": "NEUTRAL"
+    },
+    {
+      "claim_id": "claim-2",
+      "year": 2010,
+      "branch": "constrained",
+      "surviving_real": [
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2",
+        "SIM-4ec1d3dc9d"
+      ],
+      "lost_real": [
+        "SIM-eb3633355a"
+      ],
+      "ungrounded_carriers": [],
+      "verdict_before": "NEUTRAL",
+      "verdict_after": "NEUTRAL"
+    },
+    {
+      "claim_id": "claim-3",
+      "year": 2010,
+      "branch": "free",
+      "surviving_real": [
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3",
+        "SIM-fde725329b"
+      ],
+      "lost_real": [
+        "SIM-f9b96fef6b"
+      ],
+      "ungrounded_carriers": [],
+      "verdict_before": "REFUTES",
+      "verdict_after": "REFUTES"
+    },
+    {
+      "claim_id": "claim-3",
+      "year": 2010,
+      "branch": "constrained",
+      "surviving_real": [
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3",
+        "SIM-fde725329b"
+      ],
+      "lost_real": [
+        "SIM-f9b96fef6b"
+      ],
+      "ungrounded_carriers": [],
+      "verdict_before": "REFUTES",
+      "verdict_after": "REFUTES"
+    },
+    {
+      "claim_id": "claim-1",
       "year": 2020,
       "branch": "free",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1",
+        "SIM-d04742e4fa"
       ],
-      "lost_real": [],
+      "lost_real": [
+        "SIM-5c42d23ba4"
+      ],
       "ungrounded_carriers": [],
       "verdict_before": "REFUTES",
       "verdict_after": "REFUTES"
@@ -1296,9 +1323,12 @@
       "year": 2020,
       "branch": "constrained",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1",
+        "SIM-d04742e4fa"
       ],
-      "lost_real": [],
+      "lost_real": [
+        "SIM-5c42d23ba4"
+      ],
       "ungrounded_carriers": [],
       "verdict_before": "REFUTES",
       "verdict_after": "REFUTES"
@@ -1308,33 +1338,42 @@
       "year": 2020,
       "branch": "free",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2",
+        "SIM-264a4c3b38"
       ],
-      "lost_real": [],
+      "lost_real": [
+        "SIM-4ec1d3dc9d"
+      ],
       "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
-      "verdict_after": "REFUTES"
+      "verdict_before": "NEUTRAL",
+      "verdict_after": "NEUTRAL"
     },
     {
       "claim_id": "claim-2",
       "year": 2020,
       "branch": "constrained",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2",
+        "SIM-264a4c3b38"
       ],
-      "lost_real": [],
+      "lost_real": [
+        "SIM-4ec1d3dc9d"
+      ],
       "ungrounded_carriers": [],
-      "verdict_before": "REFUTES",
-      "verdict_after": "REFUTES"
+      "verdict_before": "NEUTRAL",
+      "verdict_after": "NEUTRAL"
     },
     {
       "claim_id": "claim-3",
       "year": 2020,
       "branch": "free",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3",
+        "SIM-41b057839c"
       ],
-      "lost_real": [],
+      "lost_real": [
+        "SIM-fde725329b"
+      ],
       "ungrounded_carriers": [],
       "verdict_before": "REFUTES",
       "verdict_after": "REFUTES"
@@ -1344,9 +1383,12 @@
       "year": 2020,
       "branch": "constrained",
       "surviving_real": [
-        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3"
+        "NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3",
+        "SIM-41b057839c"
       ],
-      "lost_real": [],
+      "lost_real": [
+        "SIM-fde725329b"
+      ],
       "ungrounded_carriers": [],
       "verdict_before": "REFUTES",
       "verdict_after": "REFUTES"
@@ -1404,14 +1446,59 @@
       "branch": "free",
       "year": 2000,
       "event_index": 4,
-      "phase": "lineage",
+      "phase": "investigator",
       "previous_state_hash": "fa88e5c3e065f17a9bb4605a8e3641ec2a1b211e70c967680c7cbc9ff3834090",
-      "current_state_hash": "2e9fbcf287854bfc999a456ff5eca06bf9764c3bb34fb5daf4cce533450ec0b0",
+      "current_state_hash": "973eecab02bc358d65b3e1f0a89a2d22899ac3997c9c26dbd11c4382b67062f8",
+      "event_type": "investigator-emitted",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-1-study-2000-r1-SIM-747b559ab6 from SIM-747b559ab6 with cutoff 2000."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 5,
+      "phase": "admission",
+      "previous_state_hash": "973eecab02bc358d65b3e1f0a89a2d22899ac3997c9c26dbd11c4382b67062f8",
+      "current_state_hash": "30d31939cd208beb37b16ea9a9e9d41789ea1ece72069d4dc970b43a2a5db4be",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 6,
+      "phase": "release",
+      "previous_state_hash": "30d31939cd208beb37b16ea9a9e9d41789ea1ece72069d4dc970b43a2a5db4be",
+      "current_state_hash": "7d1382b48715093805c0975be5647b47fd8330dcf3702baef8498f396be8e81f",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 7,
+      "phase": "lineage",
+      "previous_state_hash": "7d1382b48715093805c0975be5647b47fd8330dcf3702baef8498f396be8e81f",
+      "current_state_hash": "ca7d964d6bf0d883286e8a1f2c95357108ab93b44138203e854ff7200a564cc8",
       "event_type": "lineage-delta",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-747b559ab6']; lost ['none']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1464,14 +1551,74 @@
       "branch": "constrained",
       "year": 2000,
       "event_index": 4,
-      "phase": "lineage",
+      "phase": "investigator",
       "previous_state_hash": "9df853aaabfc05e627c8799518b72242427ec3e351a74ca00f54f8960b84a887",
-      "current_state_hash": "6c3e054f7c0f5ff9c129cfa260c262bf1289f33e303fc2d73e6e83e83469647c",
+      "current_state_hash": "884f50152594167f30b4fc8f761759bf4fd36d5f114348df20dc3a9fd4bbdc61",
+      "event_type": "investigator-emitted",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-1-study-2000-r1-SIM-747b559ab6 from SIM-747b559ab6 with cutoff 2000."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 5,
+      "phase": "admission",
+      "previous_state_hash": "884f50152594167f30b4fc8f761759bf4fd36d5f114348df20dc3a9fd4bbdc61",
+      "current_state_hash": "54a84e6a67e75b0ad58bc8d3e11f2d56c6b54b66cf2b83d6f41830eb417110e9",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 6,
+      "phase": "release",
+      "previous_state_hash": "54a84e6a67e75b0ad58bc8d3e11f2d56c6b54b66cf2b83d6f41830eb417110e9",
+      "current_state_hash": "ff550c9da6ac0f1a5fd723c19129b999724d707c3afe4efe60a1a03af4032614",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 7,
+      "phase": "guideline-admission",
+      "previous_state_hash": "ff550c9da6ac0f1a5fd723c19129b999724d707c3afe4efe60a1a03af4032614",
+      "current_state_hash": "ae2bd05c01878198f47021a2f6e143e44e72d285f47581aab1782ce588597a96",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 8,
+      "phase": "lineage",
+      "previous_state_hash": "ae2bd05c01878198f47021a2f6e143e44e72d285f47581aab1782ce588597a96",
+      "current_state_hash": "e4fa5fafc28de4842e838b65ab41d0f2cf9c11bb542d9b270324392ce16a37a3",
       "event_type": "lineage-delta",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-747b559ab6']; lost ['none']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1524,14 +1671,59 @@
       "branch": "free",
       "year": 2000,
       "event_index": 4,
-      "phase": "lineage",
+      "phase": "investigator",
       "previous_state_hash": "7413d16a04e4c384f95135753879d4cad969eb4bd7e13e037a37ef0fcd0ad3de",
-      "current_state_hash": "58f2c40da808da297ef9c6c18b59926ef493405550fc1418090ccd3cdc54b2ad",
+      "current_state_hash": "5588e1c32133776e1813118a8511ddfb3e676acfbdf2f5d2f54da6ac416bd882",
+      "event_type": "investigator-emitted",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-2-study-2000-r1-SIM-eb3633355a from SIM-eb3633355a with cutoff 2000."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 5,
+      "phase": "admission",
+      "previous_state_hash": "5588e1c32133776e1813118a8511ddfb3e676acfbdf2f5d2f54da6ac416bd882",
+      "current_state_hash": "7d1ab02d0ea6ee430616a5273c674fd469834707fe05160d83fafbd240c82bd4",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 6,
+      "phase": "release",
+      "previous_state_hash": "7d1ab02d0ea6ee430616a5273c674fd469834707fe05160d83fafbd240c82bd4",
+      "current_state_hash": "d56916e8058a3e5b9221bda458174ac44be4804a9a45934fe452adcec876b60a",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 7,
+      "phase": "lineage",
+      "previous_state_hash": "d56916e8058a3e5b9221bda458174ac44be4804a9a45934fe452adcec876b60a",
+      "current_state_hash": "4315a4d5a0988164f8539a8a43016a516848eac0b2fc84b0fa6f0a119a253e64",
       "event_type": "lineage-delta",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-eb3633355a']; lost ['none']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1584,14 +1776,74 @@
       "branch": "constrained",
       "year": 2000,
       "event_index": 4,
-      "phase": "lineage",
+      "phase": "investigator",
       "previous_state_hash": "8f2704c7bb775a31f5342c4931c28ba792c83f5236b77e0dfab7a796b0b35afa",
-      "current_state_hash": "7e267b8c549acf0d0b9545e35659b7ab52199711f8fb1a358b8f1c8b95dae59b",
+      "current_state_hash": "f148e488accfbeb720e4e2f26ea26372e48b2c58f92ce157bfed448c12e34d1e",
+      "event_type": "investigator-emitted",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-2-study-2000-r1-SIM-eb3633355a from SIM-eb3633355a with cutoff 2000."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 5,
+      "phase": "admission",
+      "previous_state_hash": "f148e488accfbeb720e4e2f26ea26372e48b2c58f92ce157bfed448c12e34d1e",
+      "current_state_hash": "a41aee82f72995e1b18eeafd86b4fc45f74e490fdbd15c0ac9248203403f0efa",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 6,
+      "phase": "release",
+      "previous_state_hash": "a41aee82f72995e1b18eeafd86b4fc45f74e490fdbd15c0ac9248203403f0efa",
+      "current_state_hash": "21da99772a405c928c77221606eaaf075f14dbb58e219978a6c647cc74793567",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 7,
+      "phase": "guideline-admission",
+      "previous_state_hash": "21da99772a405c928c77221606eaaf075f14dbb58e219978a6c647cc74793567",
+      "current_state_hash": "b1248661ee2c32d1bd09d10ff74b0ea832da879e5b7c0b600ef3da06010e2780",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 8,
+      "phase": "lineage",
+      "previous_state_hash": "b1248661ee2c32d1bd09d10ff74b0ea832da879e5b7c0b600ef3da06010e2780",
+      "current_state_hash": "e728d2b76220aa5708c5391fb61974b42b97f13feddc616ea0ff10fd22b003da",
       "event_type": "lineage-delta",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-eb3633355a']; lost ['none']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1601,12 +1853,12 @@
       "event_index": 1,
       "phase": "investigator",
       "previous_state_hash": "GENESIS",
-      "current_state_hash": "93ec23d05bf493435ca96ba2f38d077dc0139efa48b2a06dc4addc4269935cce",
+      "current_state_hash": "09115e6f3a762c93c7fa8e5b65d51ac9da171e7341f00b12de0d45fff0d6a27b",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
       "integrity_score_after": 1.0,
-      "message": "ResearchAgent emitted claim-3-study-2000-ungrounded from FAKE-9fb7d0500b with cutoff 2000."
+      "message": "ResearchAgent emitted claim-3-study-2000-r0-SIM-f9b96fef6b from SIM-f9b96fef6b with cutoff 2000."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1615,8 +1867,8 @@
       "year": 2000,
       "event_index": 2,
       "phase": "admission",
-      "previous_state_hash": "93ec23d05bf493435ca96ba2f38d077dc0139efa48b2a06dc4addc4269935cce",
-      "current_state_hash": "f49dec5738f03100f139c7d98a3102d6d057e9c890c675e22d5f17a87affa6be",
+      "previous_state_hash": "09115e6f3a762c93c7fa8e5b65d51ac9da171e7341f00b12de0d45fff0d6a27b",
+      "current_state_hash": "38322e0186dd6d3f01c05cebb56605e2a9e5ac04f8cca651728cad94cfe4c9d9",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1630,8 +1882,8 @@
       "year": 2000,
       "event_index": 3,
       "phase": "release",
-      "previous_state_hash": "f49dec5738f03100f139c7d98a3102d6d057e9c890c675e22d5f17a87affa6be",
-      "current_state_hash": "d275ea67e107fff902364d400824aa376d2e751d2444fae03a62ab682af53e9a",
+      "previous_state_hash": "38322e0186dd6d3f01c05cebb56605e2a9e5ac04f8cca651728cad94cfe4c9d9",
+      "current_state_hash": "fcaadf74493a8c8431fec1b4191045e5989ff945360f1f51bbdc2f2510937893",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1644,14 +1896,59 @@
       "branch": "free",
       "year": 2000,
       "event_index": 4,
+      "phase": "investigator",
+      "previous_state_hash": "fcaadf74493a8c8431fec1b4191045e5989ff945360f1f51bbdc2f2510937893",
+      "current_state_hash": "17d22914a9daeffcf53273d347befb13bb94d47d9c50ac6c47b92ee12b176e76",
+      "event_type": "investigator-emitted",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-3-study-2000-r1-SIM-f9b96fef6b from SIM-f9b96fef6b with cutoff 2000."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 5,
+      "phase": "admission",
+      "previous_state_hash": "17d22914a9daeffcf53273d347befb13bb94d47d9c50ac6c47b92ee12b176e76",
+      "current_state_hash": "affb81db83ed6a25c2241689162f47e98a362791e9863b62e978fa2d145d786b",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 6,
+      "phase": "release",
+      "previous_state_hash": "affb81db83ed6a25c2241689162f47e98a362791e9863b62e978fa2d145d786b",
+      "current_state_hash": "5d80430cfe3b6c511b956752bdac24ac1a47da4f682861e20e1bd1252363dfa5",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2000,
+      "event_index": 7,
       "phase": "lineage",
-      "previous_state_hash": "d275ea67e107fff902364d400824aa376d2e751d2444fae03a62ab682af53e9a",
-      "current_state_hash": "a83cd61b0c1f0f04ed77167fae644dd834aa6d8688c7e6bd0a15ae31498bf93d",
+      "previous_state_hash": "5d80430cfe3b6c511b956752bdac24ac1a47da4f682861e20e1bd1252363dfa5",
+      "current_state_hash": "3f81f1f2815b352becd04929f1064f4133387e67117e7bb5b61fde9a7c22d9a7",
       "event_type": "lineage-delta",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.0,
-      "message": "Real sources retained ['none']; lost ['none']; ungrounded carriers ['claim-3-study-2000-ungrounded']."
+      "integrity_score_after": 0.25,
+      "message": "Real sources retained ['SIM-f9b96fef6b']; lost ['none']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1661,12 +1958,12 @@
       "event_index": 1,
       "phase": "investigator",
       "previous_state_hash": "GENESIS",
-      "current_state_hash": "57bd14b11501d19ac79350674d9264c621237d2bbcba8a2b3143e43f8db43162",
+      "current_state_hash": "35ba0ecada583db738bd6c6f2bddc389fc38b84cc3ad7de488c8d019f4161b5f",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
       "integrity_score_after": 1.0,
-      "message": "ResearchAgent emitted claim-3-study-2000-ungrounded from FAKE-9fb7d0500b with cutoff 2000."
+      "message": "ResearchAgent emitted claim-3-study-2000-r0-SIM-f9b96fef6b from SIM-f9b96fef6b with cutoff 2000."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1675,13 +1972,13 @@
       "year": 2000,
       "event_index": 2,
       "phase": "admission",
-      "previous_state_hash": "57bd14b11501d19ac79350674d9264c621237d2bbcba8a2b3143e43f8db43162",
-      "current_state_hash": "f17e5209784c25476d42970049133b511c876f107be1077f342934057a41bc15",
-      "event_type": "article-i-refused",
-      "severity": "block",
+      "previous_state_hash": "35ba0ecada583db738bd6c6f2bddc389fc38b84cc3ad7de488c8d019f4161b5f",
+      "current_state_hash": "86e22f8f28160be4ace44c196578b2a9811e21fc9c233a04cee9f4812f54b327",
+      "event_type": "article-i-issued",
+      "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.0,
-      "message": "Traceable question-method-evidence-analysis-claim chain present. One or more cited evidence units failed Article I resolvability. Claim scope is within the cited evidence's supported population and timeframe."
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1690,13 +1987,13 @@
       "year": 2000,
       "event_index": 3,
       "phase": "release",
-      "previous_state_hash": "f17e5209784c25476d42970049133b511c876f107be1077f342934057a41bc15",
-      "current_state_hash": "cdb2ed3681e7028f362d240c029a5956bb2c41c2990155c1c05abc12b1498d34",
-      "event_type": "release-revoked",
-      "severity": "block",
-      "integrity_score_before": 0.0,
-      "integrity_score_after": 0.0,
-      "message": "Release gate upheld the Article I refusal; unresolvable output is not released."
+      "previous_state_hash": "86e22f8f28160be4ace44c196578b2a9811e21fc9c233a04cee9f4812f54b327",
+      "current_state_hash": "549dd87da2c0517d51e3ec21a16cbc3ed8a248dcbd44d7af9adc9daa65b8e029",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
@@ -1704,24 +2001,84 @@
       "branch": "constrained",
       "year": 2000,
       "event_index": 4,
+      "phase": "investigator",
+      "previous_state_hash": "549dd87da2c0517d51e3ec21a16cbc3ed8a248dcbd44d7af9adc9daa65b8e029",
+      "current_state_hash": "44a155e8d3ce259ada755d27fd142141d199037fefeb0b154b22a45e7ccb8d18",
+      "event_type": "investigator-emitted",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-3-study-2000-r1-SIM-f9b96fef6b from SIM-f9b96fef6b with cutoff 2000."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 5,
+      "phase": "admission",
+      "previous_state_hash": "44a155e8d3ce259ada755d27fd142141d199037fefeb0b154b22a45e7ccb8d18",
+      "current_state_hash": "40e44579fff586cbcc7af96bc51e19e8c7c4255877468396e0396edcc9ae1e19",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 6,
+      "phase": "release",
+      "previous_state_hash": "40e44579fff586cbcc7af96bc51e19e8c7c4255877468396e0396edcc9ae1e19",
+      "current_state_hash": "17a31c7e3cabe69025a37ed8a14588905c7aa0b9e18d97a9c7791924cc8adf02",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 7,
+      "phase": "guideline-admission",
+      "previous_state_hash": "17a31c7e3cabe69025a37ed8a14588905c7aa0b9e18d97a9c7791924cc8adf02",
+      "current_state_hash": "68b3f370fcbc17a2345e12c3e3b79b132e8458ad4e99d032665d88c0f9587f80",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2000,
+      "event_index": 8,
       "phase": "lineage",
-      "previous_state_hash": "cdb2ed3681e7028f362d240c029a5956bb2c41c2990155c1c05abc12b1498d34",
-      "current_state_hash": "e4a15f24cec01115db36ac63f23d7f04b4b2d41b0bcfe03f3073d20862d3cfac",
+      "previous_state_hash": "68b3f370fcbc17a2345e12c3e3b79b132e8458ad4e99d032665d88c0f9587f80",
+      "current_state_hash": "4f24ec490d2f992daa81df02dea3c20ed87b572110cc15000861621a62b62263",
       "event_type": "lineage-delta",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.0,
-      "message": "Real sources retained ['none']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 0.25,
+      "message": "Real sources retained ['SIM-f9b96fef6b']; lost ['none']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2010,
-      "event_index": 5,
+      "event_index": 8,
       "phase": "investigator",
-      "previous_state_hash": "2e9fbcf287854bfc999a456ff5eca06bf9764c3bb34fb5daf4cce533450ec0b0",
-      "current_state_hash": "83ddc8f333f9300eb87900fb369c741e184e280d13a43117829b745e710ebcf0",
+      "previous_state_hash": "ca7d964d6bf0d883286e8a1f2c95357108ab93b44138203e854ff7200a564cc8",
+      "current_state_hash": "822057f6fb700a8b92442d9f607d055b3b137f8fc40aa80d87b8da4939273e58",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1733,10 +2090,10 @@
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2010,
-      "event_index": 6,
+      "event_index": 9,
       "phase": "admission",
-      "previous_state_hash": "83ddc8f333f9300eb87900fb369c741e184e280d13a43117829b745e710ebcf0",
-      "current_state_hash": "a20adadb0620b0be95cd551c3eeef9c987849a527b7ac666240c1e1711ec270b",
+      "previous_state_hash": "822057f6fb700a8b92442d9f607d055b3b137f8fc40aa80d87b8da4939273e58",
+      "current_state_hash": "a8833d5f7a90f940999d33227dedd841b27b11eb5b416a435c3e1e600946001f",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1748,10 +2105,10 @@
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2010,
-      "event_index": 7,
+      "event_index": 10,
       "phase": "release",
-      "previous_state_hash": "a20adadb0620b0be95cd551c3eeef9c987849a527b7ac666240c1e1711ec270b",
-      "current_state_hash": "0a73019ed0bc1715df0eb2499c1c15dcb8c061c54c692fac0030797d738b71c7",
+      "previous_state_hash": "a8833d5f7a90f940999d33227dedd841b27b11eb5b416a435c3e1e600946001f",
+      "current_state_hash": "18edddb7150bc020321a2dde57c632ef393539449665419c913bf7ed1cbdc119",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1763,25 +2120,70 @@
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2010,
-      "event_index": 8,
-      "phase": "lineage",
-      "previous_state_hash": "0a73019ed0bc1715df0eb2499c1c15dcb8c061c54c692fac0030797d738b71c7",
-      "current_state_hash": "3a02bc5d2f28aa3a35115837297929e4dc5f117fca9ce48d943f3ece7a062b4a",
-      "event_type": "lineage-delta",
+      "event_index": 11,
+      "phase": "investigator",
+      "previous_state_hash": "18edddb7150bc020321a2dde57c632ef393539449665419c913bf7ed1cbdc119",
+      "current_state_hash": "c3ce157d55d27cd7905bf08b75054adb430310acf40ad608cebf93ee25cdd901",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-1-study-2010-r1-SIM-5c42d23ba4 from SIM-5c42d23ba4 with cutoff 2010."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 12,
+      "phase": "admission",
+      "previous_state_hash": "c3ce157d55d27cd7905bf08b75054adb430310acf40ad608cebf93ee25cdd901",
+      "current_state_hash": "e7ac00b641c13f6525513f0a2c0c3ddfe1abaed09267fd5d5536e0961b78de5f",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 13,
+      "phase": "release",
+      "previous_state_hash": "e7ac00b641c13f6525513f0a2c0c3ddfe1abaed09267fd5d5536e0961b78de5f",
+      "current_state_hash": "b8280e9321a113b3fe005a6159d208d2c19c25228ef33d2563765cfff058e946",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 14,
+      "phase": "lineage",
+      "previous_state_hash": "b8280e9321a113b3fe005a6159d208d2c19c25228ef33d2563765cfff058e946",
+      "current_state_hash": "b79b1c95cd47f73ee426160ccbefa60c8a0900d25b13b965bb8e63512ccdbb48",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-5c42d23ba4']; lost ['SIM-747b559ab6']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 5,
+      "event_index": 9,
       "phase": "investigator",
-      "previous_state_hash": "6c3e054f7c0f5ff9c129cfa260c262bf1289f33e303fc2d73e6e83e83469647c",
-      "current_state_hash": "b197a3e57a265312cbc4e2ded9ef2f32cedcf694e1c686b40de59c281b9aa37a",
+      "previous_state_hash": "e4fa5fafc28de4842e838b65ab41d0f2cf9c11bb542d9b270324392ce16a37a3",
+      "current_state_hash": "f8bcc1e8b376733dcb21df92ba06b4a71f76b2a308f87f9d729d326ae0fe37cd",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1793,10 +2195,10 @@
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 6,
+      "event_index": 10,
       "phase": "admission",
-      "previous_state_hash": "b197a3e57a265312cbc4e2ded9ef2f32cedcf694e1c686b40de59c281b9aa37a",
-      "current_state_hash": "776bd17222e39817c23703139599c8e77a8cafd1f45298b54b69c775a44ddfbf",
+      "previous_state_hash": "f8bcc1e8b376733dcb21df92ba06b4a71f76b2a308f87f9d729d326ae0fe37cd",
+      "current_state_hash": "02eb22e52924345b4bda4db1cfb77561ba52f18e48c67c46e42102c06f5ecb96",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1808,10 +2210,10 @@
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 7,
+      "event_index": 11,
       "phase": "release",
-      "previous_state_hash": "776bd17222e39817c23703139599c8e77a8cafd1f45298b54b69c775a44ddfbf",
-      "current_state_hash": "22e0d8f5c7b5c07a818649f93bf95e34e6d1181ca0cf545e4e8e6e5ccabbd601",
+      "previous_state_hash": "02eb22e52924345b4bda4db1cfb77561ba52f18e48c67c46e42102c06f5ecb96",
+      "current_state_hash": "18d64600f93b9ba8905004a54a84b97164f25379984ae8c0a8bde5ac4159ea6c",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1823,25 +2225,85 @@
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 8,
-      "phase": "lineage",
-      "previous_state_hash": "22e0d8f5c7b5c07a818649f93bf95e34e6d1181ca0cf545e4e8e6e5ccabbd601",
-      "current_state_hash": "a3699764cd41e30fbde2e6ec338b041b5dfa5331ade87d9cf20f25487f32280c",
-      "event_type": "lineage-delta",
+      "event_index": 12,
+      "phase": "investigator",
+      "previous_state_hash": "18d64600f93b9ba8905004a54a84b97164f25379984ae8c0a8bde5ac4159ea6c",
+      "current_state_hash": "f39dcff5635482ebefeb6318ac8784ca3619d8f0da10421e212cf657839a053c",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-1-study-2010-r1-SIM-5c42d23ba4 from SIM-5c42d23ba4 with cutoff 2010."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 13,
+      "phase": "admission",
+      "previous_state_hash": "f39dcff5635482ebefeb6318ac8784ca3619d8f0da10421e212cf657839a053c",
+      "current_state_hash": "13b58ddf7b649d32752f0142b1359aad85d5bb58647f87f22b56d0cf1375c26d",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 14,
+      "phase": "release",
+      "previous_state_hash": "13b58ddf7b649d32752f0142b1359aad85d5bb58647f87f22b56d0cf1375c26d",
+      "current_state_hash": "41555a97d281cbc7a78e66a197f53322b9d6b7d5c9a0f79d979718ba0229491f",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 15,
+      "phase": "guideline-admission",
+      "previous_state_hash": "41555a97d281cbc7a78e66a197f53322b9d6b7d5c9a0f79d979718ba0229491f",
+      "current_state_hash": "82f93de411907556fcc4b05ade962f9e28600b0d2c6ec22882f809eaf77d9cf7",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 16,
+      "phase": "lineage",
+      "previous_state_hash": "82f93de411907556fcc4b05ade962f9e28600b0d2c6ec22882f809eaf77d9cf7",
+      "current_state_hash": "f23bf9d5d1ba3f1b19c68e9910c30dea68c8b2c5efeb767a6357ead5d44c117a",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-5c42d23ba4']; lost ['SIM-747b559ab6']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2010,
-      "event_index": 5,
+      "event_index": 8,
       "phase": "investigator",
-      "previous_state_hash": "58f2c40da808da297ef9c6c18b59926ef493405550fc1418090ccd3cdc54b2ad",
-      "current_state_hash": "550427c04473ac75dc5f125ca8d48a52fd882d0bc260fa9d2242d0d9f712fa53",
+      "previous_state_hash": "4315a4d5a0988164f8539a8a43016a516848eac0b2fc84b0fa6f0a119a253e64",
+      "current_state_hash": "092f68816a807b1cca36e223fc752338d570965c3e6c2ea6d28297996553ebc4",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1853,10 +2315,10 @@
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2010,
-      "event_index": 6,
+      "event_index": 9,
       "phase": "admission",
-      "previous_state_hash": "550427c04473ac75dc5f125ca8d48a52fd882d0bc260fa9d2242d0d9f712fa53",
-      "current_state_hash": "9c41d1d944d1b5e9fa678fafdb71d9fb8ee5f4fcbef05f55608370b6048eedb2",
+      "previous_state_hash": "092f68816a807b1cca36e223fc752338d570965c3e6c2ea6d28297996553ebc4",
+      "current_state_hash": "330c9005c391d7b3d7e75462ca0d61bd2b0994a3df4b47aafe937514700574a5",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1868,10 +2330,10 @@
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2010,
-      "event_index": 7,
+      "event_index": 10,
       "phase": "release",
-      "previous_state_hash": "9c41d1d944d1b5e9fa678fafdb71d9fb8ee5f4fcbef05f55608370b6048eedb2",
-      "current_state_hash": "7e9fed993159b7f4dfdea423f16376821cab36c44915e9f410add672fee4496e",
+      "previous_state_hash": "330c9005c391d7b3d7e75462ca0d61bd2b0994a3df4b47aafe937514700574a5",
+      "current_state_hash": "148922cb0414e676bf22b3309775e42eed419a3baa7e7351eebc5d9db0e67a05",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1883,25 +2345,70 @@
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2010,
-      "event_index": 8,
-      "phase": "lineage",
-      "previous_state_hash": "7e9fed993159b7f4dfdea423f16376821cab36c44915e9f410add672fee4496e",
-      "current_state_hash": "4d4461e422acc84596fe8c91feffb7522ebfe5bbb34984f34caa9f098849cb6d",
-      "event_type": "lineage-delta",
+      "event_index": 11,
+      "phase": "investigator",
+      "previous_state_hash": "148922cb0414e676bf22b3309775e42eed419a3baa7e7351eebc5d9db0e67a05",
+      "current_state_hash": "429c298da911afbc1326502a184e4ca867adab75ace6802de9ed7e6cc5eceb45",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-2-study-2010-r1-SIM-4ec1d3dc9d from SIM-4ec1d3dc9d with cutoff 2010."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 12,
+      "phase": "admission",
+      "previous_state_hash": "429c298da911afbc1326502a184e4ca867adab75ace6802de9ed7e6cc5eceb45",
+      "current_state_hash": "1b9d62737fef016e4846ff32f95144c518701db513e73699c433ccc816e22e5b",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 13,
+      "phase": "release",
+      "previous_state_hash": "1b9d62737fef016e4846ff32f95144c518701db513e73699c433ccc816e22e5b",
+      "current_state_hash": "b7d4fec14e20db911d661e5d69966fadbdad74c52ffaf45dc1f088636540e63d",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 14,
+      "phase": "lineage",
+      "previous_state_hash": "b7d4fec14e20db911d661e5d69966fadbdad74c52ffaf45dc1f088636540e63d",
+      "current_state_hash": "7b5965e919ecebdb0c1b8d3f128697e0028d1fbe94b04f0331ef14db7c368602",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-4ec1d3dc9d']; lost ['SIM-eb3633355a']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 5,
+      "event_index": 9,
       "phase": "investigator",
-      "previous_state_hash": "7e267b8c549acf0d0b9545e35659b7ab52199711f8fb1a358b8f1c8b95dae59b",
-      "current_state_hash": "a2bacb800e7b86f8f65d33692677d56185a8dd95a562a8262984053283cdc595",
+      "previous_state_hash": "e728d2b76220aa5708c5391fb61974b42b97f13feddc616ea0ff10fd22b003da",
+      "current_state_hash": "1b666fca4b2270eac3127b5b042cf4f10a7fd7ae4bb697c7d4db5c389488f320",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1913,10 +2420,10 @@
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 6,
+      "event_index": 10,
       "phase": "admission",
-      "previous_state_hash": "a2bacb800e7b86f8f65d33692677d56185a8dd95a562a8262984053283cdc595",
-      "current_state_hash": "d437ef3f916edf599cf545245827e7a0dbd500ae7f9732752b86370fefd540c6",
+      "previous_state_hash": "1b666fca4b2270eac3127b5b042cf4f10a7fd7ae4bb697c7d4db5c389488f320",
+      "current_state_hash": "fdd1e5445a77d7afdcd501874c8b467923aef389ef1321e2fb25d90a74f88667",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1928,10 +2435,10 @@
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 7,
+      "event_index": 11,
       "phase": "release",
-      "previous_state_hash": "d437ef3f916edf599cf545245827e7a0dbd500ae7f9732752b86370fefd540c6",
-      "current_state_hash": "2e758ece8cffd2c4630d4906f6ae91abc4cddb8f5853fc7af8959923addf9847",
+      "previous_state_hash": "fdd1e5445a77d7afdcd501874c8b467923aef389ef1321e2fb25d90a74f88667",
+      "current_state_hash": "18aa2d2b18a22f908812a94e9aea3d3fa577351fa487d1ca8eed979acc773217",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1943,25 +2450,85 @@
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 8,
-      "phase": "lineage",
-      "previous_state_hash": "2e758ece8cffd2c4630d4906f6ae91abc4cddb8f5853fc7af8959923addf9847",
-      "current_state_hash": "d9eda27b6186e4fc09e45af756f84d7fbb4cef5e6ad226995ceda7d17471d514",
-      "event_type": "lineage-delta",
+      "event_index": 12,
+      "phase": "investigator",
+      "previous_state_hash": "18aa2d2b18a22f908812a94e9aea3d3fa577351fa487d1ca8eed979acc773217",
+      "current_state_hash": "a7473d8618ce3836ac0181e2699bd9c636bb90421a6bf370f336fccfbcb5314c",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-2-study-2010-r1-SIM-4ec1d3dc9d from SIM-4ec1d3dc9d with cutoff 2010."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 13,
+      "phase": "admission",
+      "previous_state_hash": "a7473d8618ce3836ac0181e2699bd9c636bb90421a6bf370f336fccfbcb5314c",
+      "current_state_hash": "0a02e9082ead3bda9d5c6617e9b9844cfd6e4b08f3cd684dd14d6946cebddb9d",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 14,
+      "phase": "release",
+      "previous_state_hash": "0a02e9082ead3bda9d5c6617e9b9844cfd6e4b08f3cd684dd14d6946cebddb9d",
+      "current_state_hash": "dd8642d78871ce1c9cc8b9b7dcab227f61c8735ce5727ff353bb5144879fa3e5",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 15,
+      "phase": "guideline-admission",
+      "previous_state_hash": "dd8642d78871ce1c9cc8b9b7dcab227f61c8735ce5727ff353bb5144879fa3e5",
+      "current_state_hash": "96a286e27f8a36e129886979fa1998245dca1e469238c2eff11d4569ea7438e8",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 16,
+      "phase": "lineage",
+      "previous_state_hash": "96a286e27f8a36e129886979fa1998245dca1e469238c2eff11d4569ea7438e8",
+      "current_state_hash": "7f30c75add5abbc3979c033263f04865aec9b2d95fcbae9c2367e2d0fe1bd5e0",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-4ec1d3dc9d']; lost ['SIM-eb3633355a']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2010,
-      "event_index": 5,
+      "event_index": 8,
       "phase": "investigator",
-      "previous_state_hash": "a83cd61b0c1f0f04ed77167fae644dd834aa6d8688c7e6bd0a15ae31498bf93d",
-      "current_state_hash": "900d956cd90ac378dcabd865360d01056cc12845b1318cc32f2820689ef2afef",
+      "previous_state_hash": "3f81f1f2815b352becd04929f1064f4133387e67117e7bb5b61fde9a7c22d9a7",
+      "current_state_hash": "7da6e6f7c268b648121488bd06965029bb2a49376907600d70e8d91a94898830",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1973,10 +2540,10 @@
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2010,
-      "event_index": 6,
+      "event_index": 9,
       "phase": "admission",
-      "previous_state_hash": "900d956cd90ac378dcabd865360d01056cc12845b1318cc32f2820689ef2afef",
-      "current_state_hash": "0392d465388f50963dc63e28f5e21e31eadcb6b13d7b7f9fdbfd082146432964",
+      "previous_state_hash": "7da6e6f7c268b648121488bd06965029bb2a49376907600d70e8d91a94898830",
+      "current_state_hash": "f14e0fc9cfffd4cfe7a6ea5bfbd2c1ab5710beeaf509b0f4ea21666d7cff21ea",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -1988,10 +2555,10 @@
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2010,
-      "event_index": 7,
+      "event_index": 10,
       "phase": "release",
-      "previous_state_hash": "0392d465388f50963dc63e28f5e21e31eadcb6b13d7b7f9fdbfd082146432964",
-      "current_state_hash": "4dc45f30462394b1a98a4932d3c6716e8be3debb98287bdab2378b8cdb852350",
+      "previous_state_hash": "f14e0fc9cfffd4cfe7a6ea5bfbd2c1ab5710beeaf509b0f4ea21666d7cff21ea",
+      "current_state_hash": "74358325277d1e7d9d7fe0a1f3c5a7dea54f074bbd8118e145f27e9e5416e0c6",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2003,25 +2570,70 @@
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2010,
-      "event_index": 8,
-      "phase": "lineage",
-      "previous_state_hash": "4dc45f30462394b1a98a4932d3c6716e8be3debb98287bdab2378b8cdb852350",
-      "current_state_hash": "7153914da79dd6ac84e8a141b425759b534451af53667e7db3fd29c82f2fa2e6",
-      "event_type": "lineage-delta",
+      "event_index": 11,
+      "phase": "investigator",
+      "previous_state_hash": "74358325277d1e7d9d7fe0a1f3c5a7dea54f074bbd8118e145f27e9e5416e0c6",
+      "current_state_hash": "96236a0688da407980b159b00f05856bf77770bd407ecdd892b43216cd7db37f",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-3-study-2010-r1-SIM-fde725329b from SIM-fde725329b with cutoff 2010."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 12,
+      "phase": "admission",
+      "previous_state_hash": "96236a0688da407980b159b00f05856bf77770bd407ecdd892b43216cd7db37f",
+      "current_state_hash": "8850239f3fc7a9b1241b1a1fc5de65cadf762f19f7b4e534b378334ca056b581",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 13,
+      "phase": "release",
+      "previous_state_hash": "8850239f3fc7a9b1241b1a1fc5de65cadf762f19f7b4e534b378334ca056b581",
+      "current_state_hash": "01e655db10715bfd46050203b064abd83f491f8242b0a5c6624d470d6b7e9b21",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2010,
+      "event_index": 14,
+      "phase": "lineage",
+      "previous_state_hash": "01e655db10715bfd46050203b064abd83f491f8242b0a5c6624d470d6b7e9b21",
+      "current_state_hash": "975f287ccad61ab6685e480c6efb04e3ee4c016584938b72580519cdce39c8b3",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-fde725329b']; lost ['SIM-f9b96fef6b']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 5,
+      "event_index": 9,
       "phase": "investigator",
-      "previous_state_hash": "e4a15f24cec01115db36ac63f23d7f04b4b2d41b0bcfe03f3073d20862d3cfac",
-      "current_state_hash": "481947ef03525a19800a65fb03fde29bd31b670e2a87bac7d1431e5af11862d2",
+      "previous_state_hash": "4f24ec490d2f992daa81df02dea3c20ed87b572110cc15000861621a62b62263",
+      "current_state_hash": "bbe3c2a2c84d9eaf82cfa85e74dcd7e251a85c73b8b919165dee32e5d9724012",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2033,10 +2645,10 @@
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 6,
+      "event_index": 10,
       "phase": "admission",
-      "previous_state_hash": "481947ef03525a19800a65fb03fde29bd31b670e2a87bac7d1431e5af11862d2",
-      "current_state_hash": "749527cb8d05aea85eee89c32ba00ca7c70fbaccf6c49152030b8d852d4a269a",
+      "previous_state_hash": "bbe3c2a2c84d9eaf82cfa85e74dcd7e251a85c73b8b919165dee32e5d9724012",
+      "current_state_hash": "c22afe6b1dc5852454a9ecf0b3b4af735e21493a430db98b3daa5888baefb2b7",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2048,10 +2660,10 @@
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 7,
+      "event_index": 11,
       "phase": "release",
-      "previous_state_hash": "749527cb8d05aea85eee89c32ba00ca7c70fbaccf6c49152030b8d852d4a269a",
-      "current_state_hash": "6369bb5f0da86843e7cd1db7e49b603e3ba025d3dded7bbc3191e55e97a83c37",
+      "previous_state_hash": "c22afe6b1dc5852454a9ecf0b3b4af735e21493a430db98b3daa5888baefb2b7",
+      "current_state_hash": "422f1cd9a9252826947f676c7c66ba31c4ce0d386572b6b106188e6d7e4f9867",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2063,25 +2675,85 @@
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2010,
-      "event_index": 8,
-      "phase": "lineage",
-      "previous_state_hash": "6369bb5f0da86843e7cd1db7e49b603e3ba025d3dded7bbc3191e55e97a83c37",
-      "current_state_hash": "2a8ddb55b87197eb69f624e4503b8fdecd8acddb1b3ef602ce5153be64a135ec",
-      "event_type": "lineage-delta",
+      "event_index": 12,
+      "phase": "investigator",
+      "previous_state_hash": "422f1cd9a9252826947f676c7c66ba31c4ce0d386572b6b106188e6d7e4f9867",
+      "current_state_hash": "35ef314849b17642b3636f03423c92cf7491d3316d13880b8670df0a9343883d",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-3-study-2010-r1-SIM-fde725329b from SIM-fde725329b with cutoff 2010."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 13,
+      "phase": "admission",
+      "previous_state_hash": "35ef314849b17642b3636f03423c92cf7491d3316d13880b8670df0a9343883d",
+      "current_state_hash": "d2ba05e36419dc2b601ccf0ef74a435b5077479bdb2319974f8d227709b0f7bf",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 14,
+      "phase": "release",
+      "previous_state_hash": "d2ba05e36419dc2b601ccf0ef74a435b5077479bdb2319974f8d227709b0f7bf",
+      "current_state_hash": "98b8f579d19976556cf28aff169a03f91bf1a864a137bbf470c109428ead17ac",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 15,
+      "phase": "guideline-admission",
+      "previous_state_hash": "98b8f579d19976556cf28aff169a03f91bf1a864a137bbf470c109428ead17ac",
+      "current_state_hash": "bfe648e10fe924af667712299ada472772cbc32a984a232bab426fdaf42c4e51",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2010,
+      "event_index": 16,
+      "phase": "lineage",
+      "previous_state_hash": "bfe648e10fe924af667712299ada472772cbc32a984a232bab426fdaf42c4e51",
+      "current_state_hash": "396ce13c8cd7e143294a61c014bb09c9bca62f315172061eccefdc2c7be12d2d",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-fde725329b']; lost ['SIM-f9b96fef6b']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2020,
-      "event_index": 9,
+      "event_index": 15,
       "phase": "investigator",
-      "previous_state_hash": "3a02bc5d2f28aa3a35115837297929e4dc5f117fca9ce48d943f3ece7a062b4a",
-      "current_state_hash": "451c739b219ea1ef00e7865192438056582ec22c68b3c65780b962b1e5921784",
+      "previous_state_hash": "b79b1c95cd47f73ee426160ccbefa60c8a0900d25b13b965bb8e63512ccdbb48",
+      "current_state_hash": "53609d58d053df3909dc69d47c0113ffa510aeda03dcb5f90090d126c3f3f7db",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2093,10 +2765,10 @@
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2020,
-      "event_index": 10,
+      "event_index": 16,
       "phase": "admission",
-      "previous_state_hash": "451c739b219ea1ef00e7865192438056582ec22c68b3c65780b962b1e5921784",
-      "current_state_hash": "843284d50a1bfa4a864a481aadaa798e0fffdbcfec1fee89efe6eb52a10dec28",
+      "previous_state_hash": "53609d58d053df3909dc69d47c0113ffa510aeda03dcb5f90090d126c3f3f7db",
+      "current_state_hash": "5167b9d4a1dd09bd354a404aae391a24b7b4aa00a381b1fbd5638fa211be3033",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2108,10 +2780,10 @@
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2020,
-      "event_index": 11,
+      "event_index": 17,
       "phase": "release",
-      "previous_state_hash": "843284d50a1bfa4a864a481aadaa798e0fffdbcfec1fee89efe6eb52a10dec28",
-      "current_state_hash": "a3fdf44f5dbce32538ac1ded1b6230daf1d0a4ad6f3397e6b344d5da95a65d28",
+      "previous_state_hash": "5167b9d4a1dd09bd354a404aae391a24b7b4aa00a381b1fbd5638fa211be3033",
+      "current_state_hash": "8dbba873f389770d29dac31bc467d08260de76d76c3ec45a11127f350a7ca9cf",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2123,25 +2795,70 @@
       "claim_id": "claim-1",
       "branch": "free",
       "year": 2020,
-      "event_index": 12,
-      "phase": "lineage",
-      "previous_state_hash": "a3fdf44f5dbce32538ac1ded1b6230daf1d0a4ad6f3397e6b344d5da95a65d28",
-      "current_state_hash": "84635531e0988ea9cdc73e819e67f01ec815d376e1de18ed9de0eeffb100c42d",
-      "event_type": "lineage-delta",
+      "event_index": 18,
+      "phase": "investigator",
+      "previous_state_hash": "8dbba873f389770d29dac31bc467d08260de76d76c3ec45a11127f350a7ca9cf",
+      "current_state_hash": "221fc7d86f3f0df54642457aa7d4ee7f7700a0d8ff21a8aa5c2024b354b44a4b",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-1-study-2020-r1-SIM-d04742e4fa from SIM-d04742e4fa with cutoff 2020."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 19,
+      "phase": "admission",
+      "previous_state_hash": "221fc7d86f3f0df54642457aa7d4ee7f7700a0d8ff21a8aa5c2024b354b44a4b",
+      "current_state_hash": "88d626e49e890e23d1001e5e855e0d5f5ba38d7185707def019076bae753d1b6",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 20,
+      "phase": "release",
+      "previous_state_hash": "88d626e49e890e23d1001e5e855e0d5f5ba38d7185707def019076bae753d1b6",
+      "current_state_hash": "363161bb51d26cb1df5a67b9eb57e5a86915ff8d1fc56c82953fd2e5bb161def",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 21,
+      "phase": "lineage",
+      "previous_state_hash": "363161bb51d26cb1df5a67b9eb57e5a86915ff8d1fc56c82953fd2e5bb161def",
+      "current_state_hash": "131f84f82506381ef017d43e96b0e2e87e9f5a38c12c30b917daae3f50b5c2e4",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-d04742e4fa']; lost ['SIM-5c42d23ba4']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 9,
+      "event_index": 17,
       "phase": "investigator",
-      "previous_state_hash": "a3699764cd41e30fbde2e6ec338b041b5dfa5331ade87d9cf20f25487f32280c",
-      "current_state_hash": "735a838ab5a95233814fc207f0b821e25b616a3086444e84a709e9d97b0cc019",
+      "previous_state_hash": "f23bf9d5d1ba3f1b19c68e9910c30dea68c8b2c5efeb767a6357ead5d44c117a",
+      "current_state_hash": "7815a94e825b1b207e9c4c6da90dee05a6dbfd5853b0d4ad88d0a0d805e071cb",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2153,10 +2870,10 @@
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 10,
+      "event_index": 18,
       "phase": "admission",
-      "previous_state_hash": "735a838ab5a95233814fc207f0b821e25b616a3086444e84a709e9d97b0cc019",
-      "current_state_hash": "bc272ab018fe4c0a248cd5f65247ea3185d70727138f511a7b728f3d83bcca76",
+      "previous_state_hash": "7815a94e825b1b207e9c4c6da90dee05a6dbfd5853b0d4ad88d0a0d805e071cb",
+      "current_state_hash": "575d1236d7d5fff4e501a87ac0b161e34e45e71b28430da70b62516ad4c5d2eb",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2168,10 +2885,10 @@
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 11,
+      "event_index": 19,
       "phase": "release",
-      "previous_state_hash": "bc272ab018fe4c0a248cd5f65247ea3185d70727138f511a7b728f3d83bcca76",
-      "current_state_hash": "6fddfd1526956207589f0eec956e56f10a679d0981c3954d9b68d9eca06267ad",
+      "previous_state_hash": "575d1236d7d5fff4e501a87ac0b161e34e45e71b28430da70b62516ad4c5d2eb",
+      "current_state_hash": "25c631c97f364db6a2f5a119a58d125dd2635bfdba12b217d09d19ba09946101",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2183,25 +2900,85 @@
       "claim_id": "claim-1",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 12,
-      "phase": "lineage",
-      "previous_state_hash": "6fddfd1526956207589f0eec956e56f10a679d0981c3954d9b68d9eca06267ad",
-      "current_state_hash": "62b08eb9519577e8b14f0160fd5074df0815127b97145bce57d17bb8f7fec69b",
-      "event_type": "lineage-delta",
+      "event_index": 20,
+      "phase": "investigator",
+      "previous_state_hash": "25c631c97f364db6a2f5a119a58d125dd2635bfdba12b217d09d19ba09946101",
+      "current_state_hash": "8ba737c3fecf1c27752fce974282b447c6589f78f7d1863e7e5b8cfc61cd35df",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-1-study-2020-r1-SIM-d04742e4fa from SIM-d04742e4fa with cutoff 2020."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 21,
+      "phase": "admission",
+      "previous_state_hash": "8ba737c3fecf1c27752fce974282b447c6589f78f7d1863e7e5b8cfc61cd35df",
+      "current_state_hash": "bde1f38681a563daca7332d0d4d0c19e6e7ed2aa5404011daf887a223aab0d2b",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 22,
+      "phase": "release",
+      "previous_state_hash": "bde1f38681a563daca7332d0d4d0c19e6e7ed2aa5404011daf887a223aab0d2b",
+      "current_state_hash": "ad811e8d70f0bdb5568df8cb2ac5a9c39e48be6cf17c4fa1b76b9922438400aa",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 23,
+      "phase": "guideline-admission",
+      "previous_state_hash": "ad811e8d70f0bdb5568df8cb2ac5a9c39e48be6cf17c4fa1b76b9922438400aa",
+      "current_state_hash": "16212388ca9af9c569b67911cabbe842c2efb000d71f4028bc981c29c89f6208",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 24,
+      "phase": "lineage",
+      "previous_state_hash": "16212388ca9af9c569b67911cabbe842c2efb000d71f4028bc981c29c89f6208",
+      "current_state_hash": "968730aabcbe5972c8e000cff9f0e0b0d20bab03c3b45053760a91bf2f076145",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-1', 'SIM-d04742e4fa']; lost ['SIM-5c42d23ba4']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2020,
-      "event_index": 9,
+      "event_index": 15,
       "phase": "investigator",
-      "previous_state_hash": "4d4461e422acc84596fe8c91feffb7522ebfe5bbb34984f34caa9f098849cb6d",
-      "current_state_hash": "a7fa6c14c2b4c3787f99fe543623a9b3c22fc01a97573c5220ca771230c5d14b",
+      "previous_state_hash": "7b5965e919ecebdb0c1b8d3f128697e0028d1fbe94b04f0331ef14db7c368602",
+      "current_state_hash": "6b4c9bbe66252cdb0c3c824fc2a2e8b48ffbc570c595fbece1e2811a94650c85",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2213,10 +2990,10 @@
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2020,
-      "event_index": 10,
+      "event_index": 16,
       "phase": "admission",
-      "previous_state_hash": "a7fa6c14c2b4c3787f99fe543623a9b3c22fc01a97573c5220ca771230c5d14b",
-      "current_state_hash": "4f933f115bf686f8cc9ff489c462e622fad5bd5a4e0f25b18ba5f47a13e39299",
+      "previous_state_hash": "6b4c9bbe66252cdb0c3c824fc2a2e8b48ffbc570c595fbece1e2811a94650c85",
+      "current_state_hash": "f9c19297eb6c624ca62dce5e0af48cd78cfc7095ba952c73020b98258c41f4ac",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2228,10 +3005,10 @@
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2020,
-      "event_index": 11,
+      "event_index": 17,
       "phase": "release",
-      "previous_state_hash": "4f933f115bf686f8cc9ff489c462e622fad5bd5a4e0f25b18ba5f47a13e39299",
-      "current_state_hash": "597ccfe0d1365468ea20904b1cc19dd8def5bc70a3cef12ac3d7d66f10fa107c",
+      "previous_state_hash": "f9c19297eb6c624ca62dce5e0af48cd78cfc7095ba952c73020b98258c41f4ac",
+      "current_state_hash": "a9411dcf2c5b7f0ca579f29cf21836d8decd07410c52b2dc76b1100c668b07fd",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2243,25 +3020,70 @@
       "claim_id": "claim-2",
       "branch": "free",
       "year": 2020,
-      "event_index": 12,
-      "phase": "lineage",
-      "previous_state_hash": "597ccfe0d1365468ea20904b1cc19dd8def5bc70a3cef12ac3d7d66f10fa107c",
-      "current_state_hash": "83e543f17984c438836efaa1cd3dd3120720923270d17cf4979972e00dec30ab",
-      "event_type": "lineage-delta",
+      "event_index": 18,
+      "phase": "investigator",
+      "previous_state_hash": "a9411dcf2c5b7f0ca579f29cf21836d8decd07410c52b2dc76b1100c668b07fd",
+      "current_state_hash": "bd6d00e5b2461e90aeb17651cb4d03c3cf46f0218223c7474ac78b3720213016",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-2-study-2020-r1-SIM-264a4c3b38 from SIM-264a4c3b38 with cutoff 2020."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 19,
+      "phase": "admission",
+      "previous_state_hash": "bd6d00e5b2461e90aeb17651cb4d03c3cf46f0218223c7474ac78b3720213016",
+      "current_state_hash": "188db29bc905c2c596946d1dec156b135f7a65bdbb902eb2cf3363e94cd7bf8a",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 20,
+      "phase": "release",
+      "previous_state_hash": "188db29bc905c2c596946d1dec156b135f7a65bdbb902eb2cf3363e94cd7bf8a",
+      "current_state_hash": "dd4da86ea6e1ffbcde39db7c510e937a812cc38e1f38d250a302b0947057c1f2",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 21,
+      "phase": "lineage",
+      "previous_state_hash": "dd4da86ea6e1ffbcde39db7c510e937a812cc38e1f38d250a302b0947057c1f2",
+      "current_state_hash": "8fdd1f0210c295d2cef1ae07f3df87c9c865890e3a20c498f3f204b1d796ab4d",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-264a4c3b38']; lost ['SIM-4ec1d3dc9d']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 9,
+      "event_index": 17,
       "phase": "investigator",
-      "previous_state_hash": "d9eda27b6186e4fc09e45af756f84d7fbb4cef5e6ad226995ceda7d17471d514",
-      "current_state_hash": "245f629ee55760b2b76580b0cd16897282bc08eb8ebff93d6c5ba0a083de5f5e",
+      "previous_state_hash": "7f30c75add5abbc3979c033263f04865aec9b2d95fcbae9c2367e2d0fe1bd5e0",
+      "current_state_hash": "c2d5911ce8bcaa896c2ee69de859eb9151c9c261a6e0be54935f5119765e71ac",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2273,10 +3095,10 @@
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 10,
+      "event_index": 18,
       "phase": "admission",
-      "previous_state_hash": "245f629ee55760b2b76580b0cd16897282bc08eb8ebff93d6c5ba0a083de5f5e",
-      "current_state_hash": "9d274a60e2e83355fb50d47aa5044f3d08faf8805bcea753023c9bc3f9e932c1",
+      "previous_state_hash": "c2d5911ce8bcaa896c2ee69de859eb9151c9c261a6e0be54935f5119765e71ac",
+      "current_state_hash": "79d2b9c3cd66ab36a7f126d78cadf62e583f9274673e47ca5cd3f77d777c163b",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2288,10 +3110,10 @@
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 11,
+      "event_index": 19,
       "phase": "release",
-      "previous_state_hash": "9d274a60e2e83355fb50d47aa5044f3d08faf8805bcea753023c9bc3f9e932c1",
-      "current_state_hash": "a3032e8c4c71b26b21e967a0f417c88a8c7a290becfe00c680e8def3c0bad626",
+      "previous_state_hash": "79d2b9c3cd66ab36a7f126d78cadf62e583f9274673e47ca5cd3f77d777c163b",
+      "current_state_hash": "b5bd34792e721f9b1cae3492d1b7650fa026722fd79dfc24aac63ce179c0f38a",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2303,25 +3125,85 @@
       "claim_id": "claim-2",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 12,
-      "phase": "lineage",
-      "previous_state_hash": "a3032e8c4c71b26b21e967a0f417c88a8c7a290becfe00c680e8def3c0bad626",
-      "current_state_hash": "bd8eefe9fac8593c9f6df256ffbaca50890ccd6cc697a03dea22cb1a75c5700e",
-      "event_type": "lineage-delta",
+      "event_index": 20,
+      "phase": "investigator",
+      "previous_state_hash": "b5bd34792e721f9b1cae3492d1b7650fa026722fd79dfc24aac63ce179c0f38a",
+      "current_state_hash": "067a5945ea3dacaaba27496c290a41ce16785077e97c6f93ef74a882afcdcc1e",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-2-study-2020-r1-SIM-264a4c3b38 from SIM-264a4c3b38 with cutoff 2020."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 21,
+      "phase": "admission",
+      "previous_state_hash": "067a5945ea3dacaaba27496c290a41ce16785077e97c6f93ef74a882afcdcc1e",
+      "current_state_hash": "53568bb936e611fa5deb17f5c84f06900d6f3f53fe8a11411d19df23feda2a44",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 22,
+      "phase": "release",
+      "previous_state_hash": "53568bb936e611fa5deb17f5c84f06900d6f3f53fe8a11411d19df23feda2a44",
+      "current_state_hash": "1fba80ae17222c95260198ade3e8f6c10091f721f0c9659871ba86b27235ec2b",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 23,
+      "phase": "guideline-admission",
+      "previous_state_hash": "1fba80ae17222c95260198ade3e8f6c10091f721f0c9659871ba86b27235ec2b",
+      "current_state_hash": "df025f48bb549135c76d30eca16d28b9fbf525afa9b9d053cff45b9b62ac453f",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 24,
+      "phase": "lineage",
+      "previous_state_hash": "df025f48bb549135c76d30eca16d28b9fbf525afa9b9d053cff45b9b62ac453f",
+      "current_state_hash": "189ca82691fe66232f063ecae25bcdbcc5beb72a3fc46516e2bb44d4c9559ccb",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-2', 'SIM-264a4c3b38']; lost ['SIM-4ec1d3dc9d']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2020,
-      "event_index": 9,
+      "event_index": 15,
       "phase": "investigator",
-      "previous_state_hash": "7153914da79dd6ac84e8a141b425759b534451af53667e7db3fd29c82f2fa2e6",
-      "current_state_hash": "d290459cc1344a1b1a4d4bce1a21b19f86d87a959098db52ad1992073e3248a4",
+      "previous_state_hash": "975f287ccad61ab6685e480c6efb04e3ee4c016584938b72580519cdce39c8b3",
+      "current_state_hash": "58d7b9ee07c5fa13011d981e802346077cdf6137652a7a13b646fdd8f4ccb0c6",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2333,10 +3215,10 @@
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2020,
-      "event_index": 10,
+      "event_index": 16,
       "phase": "admission",
-      "previous_state_hash": "d290459cc1344a1b1a4d4bce1a21b19f86d87a959098db52ad1992073e3248a4",
-      "current_state_hash": "11b0fc2deffd7b9ae07dad9b6016154c051c02d36f2015efdd0402d0bd57a6cf",
+      "previous_state_hash": "58d7b9ee07c5fa13011d981e802346077cdf6137652a7a13b646fdd8f4ccb0c6",
+      "current_state_hash": "afa43fd4bb8cc3c93fa3fbbc6c3679d5f656c760abc0c41c228e6a36ccc9f20f",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2348,10 +3230,10 @@
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2020,
-      "event_index": 11,
+      "event_index": 17,
       "phase": "release",
-      "previous_state_hash": "11b0fc2deffd7b9ae07dad9b6016154c051c02d36f2015efdd0402d0bd57a6cf",
-      "current_state_hash": "b0cb561ef82763b113e674cfd9b6b5c660b28a2b4dc5c5e3dee27dc60c9c2e03",
+      "previous_state_hash": "afa43fd4bb8cc3c93fa3fbbc6c3679d5f656c760abc0c41c228e6a36ccc9f20f",
+      "current_state_hash": "e9cb8f4dbc4377fcdfbb6008eab642109c1ce195ed6b98c7b614f2e77026e9de",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2363,25 +3245,70 @@
       "claim_id": "claim-3",
       "branch": "free",
       "year": 2020,
-      "event_index": 12,
-      "phase": "lineage",
-      "previous_state_hash": "b0cb561ef82763b113e674cfd9b6b5c660b28a2b4dc5c5e3dee27dc60c9c2e03",
-      "current_state_hash": "11dbcf1ef67a2596f5bcd0b134876bc366a353e333d61f70187f86efed5fc772",
-      "event_type": "lineage-delta",
+      "event_index": 18,
+      "phase": "investigator",
+      "previous_state_hash": "e9cb8f4dbc4377fcdfbb6008eab642109c1ce195ed6b98c7b614f2e77026e9de",
+      "current_state_hash": "1d08a4fb25a04aecd8709c9f0cbe16cb72279de7d8ac37a2ad02fbcb07508b8a",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-3-study-2020-r1-SIM-41b057839c from SIM-41b057839c with cutoff 2020."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 19,
+      "phase": "admission",
+      "previous_state_hash": "1d08a4fb25a04aecd8709c9f0cbe16cb72279de7d8ac37a2ad02fbcb07508b8a",
+      "current_state_hash": "cb206813c8534aac87c4b8eca0e7b3ec63c2bf368bf735324d1f027b5aaa027f",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Experimental branch: execution warrant not enforced."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 20,
+      "phase": "release",
+      "previous_state_hash": "cb206813c8534aac87c4b8eca0e7b3ec63c2bf368bf735324d1f027b5aaa027f",
+      "current_state_hash": "4f2e9320ceb2801d1055641079cc6bcc34a33e78d5018e0f7e5d207cf95e838c",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate observational only in free branch."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "free",
+      "year": 2020,
+      "event_index": 21,
+      "phase": "lineage",
+      "previous_state_hash": "4f2e9320ceb2801d1055641079cc6bcc34a33e78d5018e0f7e5d207cf95e838c",
+      "current_state_hash": "4d9815a047adf49012d63ff6513df5dc7313e4d8422861b146def9a05c8e7202",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-41b057839c']; lost ['SIM-fde725329b']; ungrounded carriers ['none']."
     },
     {
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 9,
+      "event_index": 17,
       "phase": "investigator",
-      "previous_state_hash": "2a8ddb55b87197eb69f624e4503b8fdecd8acddb1b3ef602ce5153be64a135ec",
-      "current_state_hash": "b2f1864293007d2add5541e9f2453ae6b9aec17a95b3e726f0d479bcc096cb84",
+      "previous_state_hash": "396ce13c8cd7e143294a61c014bb09c9bca62f315172061eccefdc2c7be12d2d",
+      "current_state_hash": "2534f1253d5c3c2c366603db5f6200ac34ff7858da769dfbc75a32bc1a0e2249",
       "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2393,10 +3320,10 @@
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 10,
+      "event_index": 18,
       "phase": "admission",
-      "previous_state_hash": "b2f1864293007d2add5541e9f2453ae6b9aec17a95b3e726f0d479bcc096cb84",
-      "current_state_hash": "2e841181818eb52964003ec48dba13044fa184af7e60f0b77d56c14b72694781",
+      "previous_state_hash": "2534f1253d5c3c2c366603db5f6200ac34ff7858da769dfbc75a32bc1a0e2249",
+      "current_state_hash": "dce1d4ef494601d4246973fbe90634f5909b361152f7b11363a0679c6e73abcf",
       "event_type": "article-i-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2408,10 +3335,10 @@
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 11,
+      "event_index": 19,
       "phase": "release",
-      "previous_state_hash": "2e841181818eb52964003ec48dba13044fa184af7e60f0b77d56c14b72694781",
-      "current_state_hash": "bc5a97b504a27f8baf3579128fcff99f34f02cba41bc3983a111944bb1357658",
+      "previous_state_hash": "dce1d4ef494601d4246973fbe90634f5909b361152f7b11363a0679c6e73abcf",
+      "current_state_hash": "4c4db44331b84efce3329447672110d13ac9a7009ffbb6989caf913880d17a86",
       "event_type": "release-issued",
       "severity": "info",
       "integrity_score_before": 1.0,
@@ -2423,15 +3350,75 @@
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2020,
-      "event_index": 12,
-      "phase": "lineage",
-      "previous_state_hash": "bc5a97b504a27f8baf3579128fcff99f34f02cba41bc3983a111944bb1357658",
-      "current_state_hash": "2acbdc8a5272fa56ec2dd3d3762d80825b15365f6202a7f41538b7a2e90aa3d1",
-      "event_type": "lineage-delta",
+      "event_index": 20,
+      "phase": "investigator",
+      "previous_state_hash": "4c4db44331b84efce3329447672110d13ac9a7009ffbb6989caf913880d17a86",
+      "current_state_hash": "d6e6bce68c8bb72fb21c48c22e44dd0e0b58c59e9af317a6c42aeedc6a8ccf03",
+      "event_type": "investigator-emitted",
       "severity": "info",
       "integrity_score_before": 1.0,
-      "integrity_score_after": 0.25,
-      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3']; lost ['none']; ungrounded carriers ['none']."
+      "integrity_score_after": 1.0,
+      "message": "ResearchAgent emitted claim-3-study-2020-r1-SIM-41b057839c from SIM-41b057839c with cutoff 2020."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 21,
+      "phase": "admission",
+      "previous_state_hash": "d6e6bce68c8bb72fb21c48c22e44dd0e0b58c59e9af317a6c42aeedc6a8ccf03",
+      "current_state_hash": "9afb2093d278c62c331c15ef51dd8545d4fc53069e3137549dbd1fcc34fd9ddb",
+      "event_type": "article-i-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Traceable question-method-evidence-analysis-claim chain present. Every cited evidence unit resolves to a catalog source or valid prior warrant. Claim scope is within the cited evidence's supported population and timeframe."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 22,
+      "phase": "release",
+      "previous_state_hash": "9afb2093d278c62c331c15ef51dd8545d4fc53069e3137549dbd1fcc34fd9ddb",
+      "current_state_hash": "68bd995ecfaa765228e8163f9c39b0bcdd80d5039311621ca45ad426b41dc8cf",
+      "event_type": "release-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Release gate preserved illustrative output, but the run is non-scientific and cannot be scored."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 23,
+      "phase": "guideline-admission",
+      "previous_state_hash": "68bd995ecfaa765228e8163f9c39b0bcdd80d5039311621ca45ad426b41dc8cf",
+      "current_state_hash": "64c352c56c7a67ea7676d0d888f79477169bab476683f4dd8b01b3b7f4806f49",
+      "event_type": "guideline-issued",
+      "severity": "info",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 1.0,
+      "message": "Guideline traces to warranted evidence within supported strength."
+    },
+    {
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2020,
+      "event_index": 24,
+      "phase": "lineage",
+      "previous_state_hash": "64c352c56c7a67ea7676d0d888f79477169bab476683f4dd8b01b3b7f4806f49",
+      "current_state_hash": "5ba44e4725e8177452f09958abf1479973ea778f83e6e2223dbc1ec30f4e9cbd",
+      "event_type": "lineage-delta",
+      "severity": "warn",
+      "integrity_score_before": 1.0,
+      "integrity_score_after": 0.5,
+      "message": "Real sources retained ['NHANES:2005-2006:HRT-CARDIOMETABOLIC:claim-3', 'SIM-41b057839c']; lost ['SIM-fde725329b']; ungrounded carriers ['none']."
     }
   ],
   "warrants": [
@@ -2439,6 +3426,19 @@
       "id": "W-claim-1-constrained-2000",
       "output_id": "claim-1-study-2000-nhanes-hrt-cardiometabolic",
       "output_hash": "07b5f7124f29264e949a7635b06aec88215f0e6b1f2fdeee9727cc0b1ae5d21d",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2000,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
+      "id": "W-claim-1-constrained-2000",
+      "output_id": "claim-1-study-2000-r1-SIM-747b559ab6",
+      "output_hash": "03f584ba69ac096e2ee909563f28938a056a0fb434e65b7f7f8399546e0228fb",
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-1",
       "branch": "constrained",
@@ -2462,22 +3462,61 @@
       "threshold": 0.6
     },
     {
+      "id": "W-claim-2-constrained-2000",
+      "output_id": "claim-2-study-2000-r1-SIM-eb3633355a",
+      "output_hash": "81c4d00bacdcaa91b5b796bcd48fc58f2051032befefbf69613cb88aaae2412b",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2000,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
       "id": "W-claim-3-constrained-2000",
-      "output_id": "claim-3-study-2000-ungrounded",
-      "output_hash": "54ebcdefcc118b00a4b4d42dc3d7eab7c4961d886c5839eab7c966e9eefab1fd",
+      "output_id": "claim-3-study-2000-r0-SIM-f9b96fef6b",
+      "output_hash": "91639b591c4f992cb57f5312763dd22a654cadd6a887a634143d346a94eb8ca6",
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-3",
       "branch": "constrained",
       "year": 2000,
-      "status": "REFUSED",
-      "issued": false,
-      "integrity_score": 0.0,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
+      "id": "W-claim-3-constrained-2000",
+      "output_id": "claim-3-study-2000-r1-SIM-f9b96fef6b",
+      "output_hash": "ff057538dbac09c415b20e0a11c278be93034e496b97c18d037ac2659ab33429",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2000,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
       "threshold": 0.6
     },
     {
       "id": "W-claim-1-constrained-2010",
       "output_id": "claim-1-study-2010-nhanes-hrt-cardiometabolic",
       "output_hash": "64a7feba98b82d57e6cf60ab43782bad119a8448a9ea848ffad41d10a598fa46",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2010,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
+      "id": "W-claim-1-constrained-2010",
+      "output_id": "claim-1-study-2010-r1-SIM-5c42d23ba4",
+      "output_hash": "cb1c39133274207fdd1d592df92ce8d517c73971fb219d97ba360040bc789f32",
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-1",
       "branch": "constrained",
@@ -2501,9 +3540,35 @@
       "threshold": 0.6
     },
     {
+      "id": "W-claim-2-constrained-2010",
+      "output_id": "claim-2-study-2010-r1-SIM-4ec1d3dc9d",
+      "output_hash": "5840dd00be40fefa7452879344278f97f695c3aae97b8837cf9eeef7659e6f26",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2010,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
       "id": "W-claim-3-constrained-2010",
       "output_id": "claim-3-study-2010-nhanes-hrt-cardiometabolic",
       "output_hash": "e8ec5211d191a69efb76c1d1a75beb2ec435f48a7db7bac9a58b1582b9d11592",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2010,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
+      "id": "W-claim-3-constrained-2010",
+      "output_id": "claim-3-study-2010-r1-SIM-fde725329b",
+      "output_hash": "494a354e75f5db3d27aa56d5d58a4e528c1c4b9918a806ccca8934c70daa1b0e",
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-3",
       "branch": "constrained",
@@ -2527,9 +3592,35 @@
       "threshold": 0.6
     },
     {
+      "id": "W-claim-1-constrained-2020",
+      "output_id": "claim-1-study-2020-r1-SIM-d04742e4fa",
+      "output_hash": "f2ae0f09e969a94830a20248983ca7650349e0a094a42c9022ccf74252deb3d9",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-1",
+      "branch": "constrained",
+      "year": 2020,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
       "id": "W-claim-2-constrained-2020",
       "output_id": "claim-2-study-2020-nhanes-hrt-cardiometabolic",
       "output_hash": "e5e03bd6d421b321d2f540bfae517b28e88f653e696c4d2265f35670198548ed",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-2",
+      "branch": "constrained",
+      "year": 2020,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
+    },
+    {
+      "id": "W-claim-2-constrained-2020",
+      "output_id": "claim-2-study-2020-r1-SIM-264a4c3b38",
+      "output_hash": "f12b6ad9c1cb2933d70d4599e11511aea25a0c6ed1c99629c70fb73a45ed3ac5",
       "run_id": "showcase-hrt-chronic-disease-prevention",
       "claim_id": "claim-2",
       "branch": "constrained",
@@ -2551,19 +3642,32 @@
       "issued": true,
       "integrity_score": 1.0,
       "threshold": 0.6
+    },
+    {
+      "id": "W-claim-3-constrained-2020",
+      "output_id": "claim-3-study-2020-r1-SIM-41b057839c",
+      "output_hash": "9f166a82489bf3a8e62f6383fba34af447b9673aac4c284438b6e28178bcd6be",
+      "run_id": "showcase-hrt-chronic-disease-prevention",
+      "claim_id": "claim-3",
+      "branch": "constrained",
+      "year": 2020,
+      "status": "ISSUED",
+      "issued": true,
+      "integrity_score": 1.0,
+      "threshold": 0.6
     }
   ],
   "db_growth": {
     "2000": {
       "studies": {
         "free": {
-          "count": 3,
-          "grounded": 2,
-          "ungrounded": 1
+          "count": 6,
+          "grounded": 6,
+          "ungrounded": 0
         },
         "constrained": {
-          "count": 2,
-          "grounded": 2,
+          "count": 6,
+          "grounded": 6,
           "ungrounded": 0
         }
       },
@@ -2587,13 +3691,13 @@
     "2010": {
       "studies": {
         "free": {
-          "count": 6,
-          "grounded": 5,
-          "ungrounded": 1
+          "count": 12,
+          "grounded": 12,
+          "ungrounded": 0
         },
         "constrained": {
-          "count": 5,
-          "grounded": 5,
+          "count": 12,
+          "grounded": 12,
           "ungrounded": 0
         }
       },
@@ -2617,13 +3721,13 @@
     "2020": {
       "studies": {
         "free": {
-          "count": 9,
-          "grounded": 8,
-          "ungrounded": 1
+          "count": 18,
+          "grounded": 18,
+          "ungrounded": 0
         },
         "constrained": {
-          "count": 8,
-          "grounded": 8,
+          "count": 18,
+          "grounded": 18,
           "ungrounded": 0
         }
       },
@@ -2653,98 +3757,284 @@
         "direction": "REFUTES",
         "level": "conditional-against",
         "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 1,
+        "certainty": 0.655,
+        "study_count": 2,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.0,
+        "n_included": 2,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 2,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2000-r1-SIM-747b559ab6"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "imprecision": 0.15
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.655,
+          "rob_summary": "GRADE downgrades: imprecision (k=2, pooled n=1356)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-2",
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "pooled_effect": 0.0,
+        "certainty": 0.475,
+        "study_count": 2,
+        "ungrounded_fraction": 0.0,
+        "heterogeneity": 0.35,
+        "n_included": 2,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 2,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2000-r1-SIM-eb3633355a"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18,
+            "imprecision": 0.15
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.475,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.35); imprecision (k=2, pooled n=1436)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
+      },
+      {
+        "claim_id": "claim-3",
         "year": 2000,
         "direction": "REFUTES",
         "level": "conditional-against",
         "pooled_effect": -0.35,
         "certainty": 0.68,
-        "study_count": 1,
+        "study_count": 2,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
-      },
-      {
-        "claim_id": "claim-3",
-        "year": 2000,
-        "direction": "REFUTES",
-        "level": "conditional-against",
-        "pooled_effect": -1.0,
-        "certainty": 0.288,
-        "study_count": 1,
-        "ungrounded_fraction": 1.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.0,
+        "n_included": 2,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 2,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-3-study-2000-r0-SIM-f9b96fef6b",
+            "claim-3-study-2000-r1-SIM-f9b96fef6b"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "imprecision": 0.15
+          },
+          "rob_starting_certainty": 0.95,
+          "graded_certainty": 0.68,
+          "rob_summary": "GRADE downgrades: imprecision (k=2, pooled n=480)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-1",
         "year": 2010,
         "direction": "REFUTES",
-        "level": "conditional-against",
+        "level": "strong-against",
         "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 2,
+        "certainty": 0.805,
+        "study_count": 4,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.0,
+        "n_included": 4,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 4,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2000-r1-SIM-747b559ab6",
+            "claim-1-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2010-r1-SIM-5c42d23ba4"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {},
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.805,
+          "rob_summary": "No GRADE downgrades."
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-2",
         "year": 2010,
-        "direction": "REFUTES",
-        "level": "conditional-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 2,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "pooled_effect": 0.0,
+        "certainty": 0.625,
+        "study_count": 4,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.35,
+        "n_included": 4,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 4,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2000-r1-SIM-eb3633355a",
+            "claim-2-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2010-r1-SIM-4ec1d3dc9d"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.625,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.35)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-3",
         "year": 2010,
         "direction": "REFUTES",
-        "level": "conditional-against",
-        "pooled_effect": -0.4148,
-        "certainty": 0.4944,
-        "study_count": 2,
-        "ungrounded_fraction": 0.5,
-        "heterogeneity": 0.325
+        "level": "strong-against",
+        "pooled_effect": -0.35,
+        "certainty": 0.8775,
+        "study_count": 4,
+        "ungrounded_fraction": 0.0,
+        "heterogeneity": 0.0,
+        "n_included": 4,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 4,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-3-study-2000-r0-SIM-f9b96fef6b",
+            "claim-3-study-2000-r1-SIM-f9b96fef6b",
+            "claim-3-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-3-study-2010-r1-SIM-fde725329b"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {},
+          "rob_starting_certainty": 0.8775,
+          "graded_certainty": 0.8775,
+          "rob_summary": "No GRADE downgrades."
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-1",
         "year": 2020,
         "direction": "REFUTES",
-        "level": "strong-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.7644,
-        "study_count": 3,
+        "level": "conditional-against",
+        "pooled_effect": -0.2333,
+        "certainty": 0.625,
+        "study_count": 6,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.2609,
+        "n_included": 6,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 6,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2000-r1-SIM-747b559ab6",
+            "claim-1-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2010-r1-SIM-5c42d23ba4",
+            "claim-1-study-2020-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2020-r1-SIM-d04742e4fa"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.625,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.26)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-2",
         "year": 2020,
-        "direction": "REFUTES",
-        "level": "strong-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.7644,
-        "study_count": 3,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "pooled_effect": -0.1167,
+        "certainty": 0.625,
+        "study_count": 6,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.33,
+        "n_included": 6,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 6,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2000-r1-SIM-eb3633355a",
+            "claim-2-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2010-r1-SIM-4ec1d3dc9d",
+            "claim-2-study-2020-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2020-r1-SIM-264a4c3b38"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.625,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.33)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-3",
         "year": 2020,
         "direction": "REFUTES",
         "level": "conditional-against",
-        "pooled_effect": -0.3841,
-        "certainty": 0.5973,
-        "study_count": 3,
-        "ungrounded_fraction": 0.3333,
-        "heterogeneity": 0.3064
+        "pooled_effect": -0.2333,
+        "certainty": 0.6733,
+        "study_count": 6,
+        "ungrounded_fraction": 0.0,
+        "heterogeneity": 0.2609,
+        "n_included": 6,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 6,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-3-study-2000-r0-SIM-f9b96fef6b",
+            "claim-3-study-2000-r1-SIM-f9b96fef6b",
+            "claim-3-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-3-study-2010-r1-SIM-fde725329b",
+            "claim-3-study-2020-nhanes-hrt-cardiometabolic",
+            "claim-3-study-2020-r1-SIM-41b057839c"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.8533,
+          "graded_certainty": 0.6733,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.26)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       }
     ],
     "constrained": [
@@ -2754,98 +4044,284 @@
         "direction": "REFUTES",
         "level": "conditional-against",
         "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 1,
+        "certainty": 0.655,
+        "study_count": 2,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.0,
+        "n_included": 2,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 2,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2000-r1-SIM-747b559ab6"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "imprecision": 0.15
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.655,
+          "rob_summary": "GRADE downgrades: imprecision (k=2, pooled n=1356)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-2",
-        "year": 2000,
-        "direction": "REFUTES",
-        "level": "conditional-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 1,
-        "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
-      },
-      {
-        "claim_id": "claim-3",
         "year": 2000,
         "direction": "NEUTRAL",
         "level": "no-recommendation",
-        "pooled_effect": null,
-        "certainty": 0.0,
-        "study_count": 0,
+        "pooled_effect": 0.0,
+        "certainty": 0.475,
+        "study_count": 2,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.35,
+        "n_included": 2,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 2,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2000-r1-SIM-eb3633355a"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18,
+            "imprecision": 0.15
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.475,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.35); imprecision (k=2, pooled n=1436)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
+      },
+      {
+        "claim_id": "claim-3",
+        "year": 2000,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "pooled_effect": -0.35,
+        "certainty": 0.68,
+        "study_count": 2,
+        "ungrounded_fraction": 0.0,
+        "heterogeneity": 0.0,
+        "n_included": 2,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 2,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-3-study-2000-r0-SIM-f9b96fef6b",
+            "claim-3-study-2000-r1-SIM-f9b96fef6b"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "imprecision": 0.15
+          },
+          "rob_starting_certainty": 0.95,
+          "graded_certainty": 0.68,
+          "rob_summary": "GRADE downgrades: imprecision (k=2, pooled n=480)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-1",
         "year": 2010,
         "direction": "REFUTES",
-        "level": "conditional-against",
+        "level": "strong-against",
         "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 2,
+        "certainty": 0.805,
+        "study_count": 4,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.0,
+        "n_included": 4,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 4,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2000-r1-SIM-747b559ab6",
+            "claim-1-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2010-r1-SIM-5c42d23ba4"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {},
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.805,
+          "rob_summary": "No GRADE downgrades."
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-2",
         "year": 2010,
-        "direction": "REFUTES",
-        "level": "conditional-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 2,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "pooled_effect": 0.0,
+        "certainty": 0.625,
+        "study_count": 4,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.35,
+        "n_included": 4,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 4,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2000-r1-SIM-eb3633355a",
+            "claim-2-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2010-r1-SIM-4ec1d3dc9d"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.625,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.35)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-3",
         "year": 2010,
         "direction": "REFUTES",
-        "level": "conditional-against",
+        "level": "strong-against",
         "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 1,
+        "certainty": 0.8775,
+        "study_count": 4,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.0,
+        "n_included": 4,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 4,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-3-study-2000-r0-SIM-f9b96fef6b",
+            "claim-3-study-2000-r1-SIM-f9b96fef6b",
+            "claim-3-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-3-study-2010-r1-SIM-fde725329b"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {},
+          "rob_starting_certainty": 0.8775,
+          "graded_certainty": 0.8775,
+          "rob_summary": "No GRADE downgrades."
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-1",
         "year": 2020,
         "direction": "REFUTES",
-        "level": "strong-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.7644,
-        "study_count": 3,
+        "level": "conditional-against",
+        "pooled_effect": -0.2333,
+        "certainty": 0.625,
+        "study_count": 6,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.2609,
+        "n_included": 6,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 6,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-1-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2000-r1-SIM-747b559ab6",
+            "claim-1-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2010-r1-SIM-5c42d23ba4",
+            "claim-1-study-2020-nhanes-hrt-cardiometabolic",
+            "claim-1-study-2020-r1-SIM-d04742e4fa"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.625,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.26)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-2",
         "year": 2020,
-        "direction": "REFUTES",
-        "level": "strong-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.7644,
-        "study_count": 3,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "pooled_effect": -0.1167,
+        "certainty": 0.625,
+        "study_count": 6,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.33,
+        "n_included": 6,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 6,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-2-study-2000-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2000-r1-SIM-eb3633355a",
+            "claim-2-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2010-r1-SIM-4ec1d3dc9d",
+            "claim-2-study-2020-nhanes-hrt-cardiometabolic",
+            "claim-2-study-2020-r1-SIM-264a4c3b38"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.805,
+          "graded_certainty": 0.625,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.33)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       },
       {
         "claim_id": "claim-3",
         "year": 2020,
         "direction": "REFUTES",
         "level": "conditional-against",
-        "pooled_effect": -0.35,
-        "certainty": 0.68,
-        "study_count": 2,
+        "pooled_effect": -0.2333,
+        "certainty": 0.6733,
+        "study_count": 6,
         "ungrounded_fraction": 0.0,
-        "heterogeneity": 0.0
+        "heterogeneity": 0.2609,
+        "n_included": 6,
+        "n_excluded": 0,
+        "screening_report": {
+          "n_included": 6,
+          "n_excluded": 0,
+          "included_ids": [
+            "claim-3-study-2000-r0-SIM-f9b96fef6b",
+            "claim-3-study-2000-r1-SIM-f9b96fef6b",
+            "claim-3-study-2010-nhanes-hrt-cardiometabolic",
+            "claim-3-study-2010-r1-SIM-fde725329b",
+            "claim-3-study-2020-nhanes-hrt-cardiometabolic",
+            "claim-3-study-2020-r1-SIM-41b057839c"
+          ],
+          "exclusions": [],
+          "rob_downgrades": {
+            "inconsistency": 0.18
+          },
+          "rob_starting_certainty": 0.8533,
+          "graded_certainty": 0.6733,
+          "rob_summary": "GRADE downgrades: inconsistency (heterogeneity=0.26)"
+        },
+        "output_gate_refused": false,
+        "output_gate_reason": ""
       }
     ]
   },
@@ -2853,14 +4329,14 @@
     "2000": {
       "pair_count": 3,
       "direction": {
-        "mean": 0.1667,
+        "mean": 0.0,
         "low": 0.0,
-        "high": 0.5
+        "high": 0.0
       },
       "level": {
-        "mean": 0.0833,
+        "mean": 0.0,
         "low": 0.0,
-        "high": 0.25
+        "high": 0.0
       }
     },
     "2010": {
@@ -2890,7 +4366,7 @@
       }
     }
   },
-  "bundle_seal": "d67c22177ff60a12097babb6be250c88177fa0421f878550ad9c0e75342c5986",
+  "bundle_seal": "70e09108963fac3b2b9df4689336015d4c4c53168ad24ce947b45d8ece0d8b39",
   "provenance_log": {
     "model": "deterministic-fallback",
     "model_digest": "n/a",
@@ -2906,133 +4382,140 @@
     "calls": [
       {
         "label": "srma/claim-1/year-2000",
-        "seed": 115185860274381,
-        "prompt_digest": "66b35526158ae54c5ae1d823e6edba3744181437617d74e5f0e93d902afced66",
-        "response_hash": "6c9bb7e674a433d55a4b2e4fb369f62c4807b2420aa67ffb1c009e8e0d0f7072",
-        "timestamp": "2026-05-21T01:50:46.894067+00:00"
+        "seed": 155378161325643,
+        "prompt_digest": "45b9127300852eebbfed79df2575abe2f80730c2568428dbcbd6d1b371c3e931",
+        "response_hash": "d3ab13110a11b5436d9582a0534207a8c069ba3fbd2d585cbf9188aa41440428",
+        "timestamp": "2026-05-21T03:50:29.661852+00:00"
       },
       {
         "label": "srma/claim-1/year-2000",
-        "seed": 115185860274381,
-        "prompt_digest": "66b35526158ae54c5ae1d823e6edba3744181437617d74e5f0e93d902afced66",
-        "response_hash": "6c9bb7e674a433d55a4b2e4fb369f62c4807b2420aa67ffb1c009e8e0d0f7072",
-        "timestamp": "2026-05-21T01:50:46.895300+00:00"
+        "seed": 155378161325643,
+        "prompt_digest": "45b9127300852eebbfed79df2575abe2f80730c2568428dbcbd6d1b371c3e931",
+        "response_hash": "d3ab13110a11b5436d9582a0534207a8c069ba3fbd2d585cbf9188aa41440428",
+        "timestamp": "2026-05-21T03:50:29.663549+00:00"
       },
       {
         "label": "srma/claim-2/year-2000",
-        "seed": 276861914891189,
-        "prompt_digest": "18717d82d6543f6cb11215f52620696a1bb56b21052a3569e1cdeecd384731f0",
-        "response_hash": "b7c78ce43f1811867a73b635f57c48bf8b3406084cdbebb0c5ad420f76d1c8d6",
-        "timestamp": "2026-05-21T01:50:47.632283+00:00"
+        "seed": 112617756903980,
+        "prompt_digest": "ae957c980d35bbe75050790df655cbc8d500c2fea34cb5dcbd6b3afd9e1d9f2d",
+        "response_hash": "c61ae52a1d1773f47a0f2fc8b9784b8b04b2f2d2e6e82cec373dd25dc68889f6",
+        "timestamp": "2026-05-21T03:50:30.383270+00:00"
       },
       {
         "label": "srma/claim-2/year-2000",
-        "seed": 276861914891189,
-        "prompt_digest": "18717d82d6543f6cb11215f52620696a1bb56b21052a3569e1cdeecd384731f0",
-        "response_hash": "b7c78ce43f1811867a73b635f57c48bf8b3406084cdbebb0c5ad420f76d1c8d6",
-        "timestamp": "2026-05-21T01:50:47.633264+00:00"
+        "seed": 112617756903980,
+        "prompt_digest": "ae957c980d35bbe75050790df655cbc8d500c2fea34cb5dcbd6b3afd9e1d9f2d",
+        "response_hash": "c61ae52a1d1773f47a0f2fc8b9784b8b04b2f2d2e6e82cec373dd25dc68889f6",
+        "timestamp": "2026-05-21T03:50:30.384691+00:00"
       },
       {
         "label": "srma/claim-3/year-2000",
-        "seed": 40942525304551,
-        "prompt_digest": "6ef22874a67a16de05bc87005810bface060ed66292963706b920ef6c60c2124",
-        "response_hash": "759b87df3700b7b453a64ee45d0860c121f31ec6ec6e42ca32cf0829a6fc3025",
-        "timestamp": "2026-05-21T01:50:47.634071+00:00"
+        "seed": 120102575726235,
+        "prompt_digest": "a2f3d5e7a3520cd9cefab2c2592f44d6974bbd2c313147d211259afb1c8c32d9",
+        "response_hash": "8cc0c679c8400c0f365c4dcae03aae34e7c9b8b86cea2abc29ebe214787b3d9d",
+        "timestamp": "2026-05-21T03:50:30.386079+00:00"
+      },
+      {
+        "label": "srma/claim-3/year-2000",
+        "seed": 120102575726235,
+        "prompt_digest": "a2f3d5e7a3520cd9cefab2c2592f44d6974bbd2c313147d211259afb1c8c32d9",
+        "response_hash": "8cc0c679c8400c0f365c4dcae03aae34e7c9b8b86cea2abc29ebe214787b3d9d",
+        "timestamp": "2026-05-21T03:50:30.387206+00:00"
       },
       {
         "label": "srma/claim-1/year-2010",
-        "seed": 240136893309742,
-        "prompt_digest": "493100a6c12095ab8bac70e24c1b5083899f406c7264e56f0010b74c653444e5",
-        "response_hash": "b26de49000dab24f198c3e5a0be6268ebbf304173662ef6aa7d2d4ad3960bbde",
-        "timestamp": "2026-05-21T01:50:48.363228+00:00"
+        "seed": 273695535116502,
+        "prompt_digest": "f472a41b046d50024492e42712c1b970f973736d6e6c214f8afcfa2e3d6e226d",
+        "response_hash": "dd07a2d333c76adc9f1ed0a66aa66a93ba93250246f6341edbfde61e7d5d63b5",
+        "timestamp": "2026-05-21T03:50:31.102416+00:00"
       },
       {
         "label": "srma/claim-1/year-2010",
-        "seed": 240136893309742,
-        "prompt_digest": "493100a6c12095ab8bac70e24c1b5083899f406c7264e56f0010b74c653444e5",
-        "response_hash": "b26de49000dab24f198c3e5a0be6268ebbf304173662ef6aa7d2d4ad3960bbde",
-        "timestamp": "2026-05-21T01:50:48.364477+00:00"
+        "seed": 273695535116502,
+        "prompt_digest": "f472a41b046d50024492e42712c1b970f973736d6e6c214f8afcfa2e3d6e226d",
+        "response_hash": "dd07a2d333c76adc9f1ed0a66aa66a93ba93250246f6341edbfde61e7d5d63b5",
+        "timestamp": "2026-05-21T03:50:31.103775+00:00"
       },
       {
         "label": "srma/claim-2/year-2010",
-        "seed": 222199748596303,
-        "prompt_digest": "80be265b310e13a11fe9dc3ecd83765a9fc8104066f91ef325466b0f7dc1d55b",
-        "response_hash": "d4933d1b664d3053dc10b362c061e8fc69e142ba0830cc6dc08fe70421ef678d",
-        "timestamp": "2026-05-21T01:50:49.098707+00:00"
+        "seed": 8668496710386,
+        "prompt_digest": "0d69801075534fb305e4238e0668d273151bab02e1e34d5020e476a5623a9986",
+        "response_hash": "f4247774dd2a76ae71d1d7bcf03705bf0fbde8b28492b5ccafe5a34055cb5e52",
+        "timestamp": "2026-05-21T03:50:31.821804+00:00"
       },
       {
         "label": "srma/claim-2/year-2010",
-        "seed": 222199748596303,
-        "prompt_digest": "80be265b310e13a11fe9dc3ecd83765a9fc8104066f91ef325466b0f7dc1d55b",
-        "response_hash": "d4933d1b664d3053dc10b362c061e8fc69e142ba0830cc6dc08fe70421ef678d",
-        "timestamp": "2026-05-21T01:50:49.099787+00:00"
+        "seed": 8668496710386,
+        "prompt_digest": "0d69801075534fb305e4238e0668d273151bab02e1e34d5020e476a5623a9986",
+        "response_hash": "f4247774dd2a76ae71d1d7bcf03705bf0fbde8b28492b5ccafe5a34055cb5e52",
+        "timestamp": "2026-05-21T03:50:31.823267+00:00"
       },
       {
         "label": "srma/claim-3/year-2010",
-        "seed": 263593512039100,
-        "prompt_digest": "3fa58318ca6b60ed11cb9609ce40642eb8d2e440a46037aadace5e8b7a554b7b",
-        "response_hash": "fa42cd4ab80e42664d1a9587625c2c3ae9ee5231e958d35b1d91408cb83d3f83",
-        "timestamp": "2026-05-21T01:50:49.838496+00:00"
+        "seed": 145363687314043,
+        "prompt_digest": "453b6a4e170e77c626ec120e0318dcfbe63812fb9e2e4f8606360e9eaa481685",
+        "response_hash": "0874580dc5883ab62ed10e5846b9f22d8e998176c9e2cb019b9e9a4ea49a3d5e",
+        "timestamp": "2026-05-21T03:50:32.538584+00:00"
       },
       {
         "label": "srma/claim-3/year-2010",
-        "seed": 15923895414948,
-        "prompt_digest": "2f9bde9bc3f879e2ea4c3c681787710a929d19136b420f2246e020ccf89635a7",
-        "response_hash": "7b4e47c96bd1edd4bab0d815b72c4a2a60f5f72beec50a1a13d053b69f629eb6",
-        "timestamp": "2026-05-21T01:50:49.839618+00:00"
+        "seed": 145363687314043,
+        "prompt_digest": "453b6a4e170e77c626ec120e0318dcfbe63812fb9e2e4f8606360e9eaa481685",
+        "response_hash": "0874580dc5883ab62ed10e5846b9f22d8e998176c9e2cb019b9e9a4ea49a3d5e",
+        "timestamp": "2026-05-21T03:50:32.540035+00:00"
       },
       {
         "label": "srma/claim-1/year-2020",
-        "seed": 135771816849732,
-        "prompt_digest": "fa31417c77e02da7906efde42584d5374092937f175eb56bd3889feb7c663d66",
-        "response_hash": "2cb1644274befbaa0150d251c819e891afd7bb0bb1f5a5fde96063bb662acb10",
-        "timestamp": "2026-05-21T01:50:50.570214+00:00"
+        "seed": 168465775786629,
+        "prompt_digest": "5aece1fdd3b332ca4455b2ae82604e02ea0835da772a0d96aefef17fa1c1308a",
+        "response_hash": "319927fa67e4113b7201d595569aca0dc8e4a5bb001b0917b09a806997e9d0a6",
+        "timestamp": "2026-05-21T03:50:33.258324+00:00"
       },
       {
         "label": "srma/claim-1/year-2020",
-        "seed": 135771816849732,
-        "prompt_digest": "fa31417c77e02da7906efde42584d5374092937f175eb56bd3889feb7c663d66",
-        "response_hash": "2cb1644274befbaa0150d251c819e891afd7bb0bb1f5a5fde96063bb662acb10",
-        "timestamp": "2026-05-21T01:50:50.571178+00:00"
+        "seed": 168465775786629,
+        "prompt_digest": "5aece1fdd3b332ca4455b2ae82604e02ea0835da772a0d96aefef17fa1c1308a",
+        "response_hash": "319927fa67e4113b7201d595569aca0dc8e4a5bb001b0917b09a806997e9d0a6",
+        "timestamp": "2026-05-21T03:50:33.259868+00:00"
       },
       {
         "label": "srma/claim-2/year-2020",
-        "seed": 228662788033566,
-        "prompt_digest": "12335c81fe24c6b3c881736ce631e732854be94e1f3563aa1c8a5fa54f51db4f",
-        "response_hash": "40e46f1da1fb8a9d7d9b7e2a47107cf9058ab7d5195d2cc9b994ef14d52602f5",
-        "timestamp": "2026-05-21T01:50:51.305852+00:00"
+        "seed": 30406405285491,
+        "prompt_digest": "d194f378a6da55f64dc7fee7f52b72baf9dc8f9b61bd73ac2191ae4f82afbcc2",
+        "response_hash": "faa8384b79a5c763692829856d093eed6812a6032496d343156653435f59fea5",
+        "timestamp": "2026-05-21T03:50:33.971254+00:00"
       },
       {
         "label": "srma/claim-2/year-2020",
-        "seed": 228662788033566,
-        "prompt_digest": "12335c81fe24c6b3c881736ce631e732854be94e1f3563aa1c8a5fa54f51db4f",
-        "response_hash": "40e46f1da1fb8a9d7d9b7e2a47107cf9058ab7d5195d2cc9b994ef14d52602f5",
-        "timestamp": "2026-05-21T01:50:51.306955+00:00"
+        "seed": 30406405285491,
+        "prompt_digest": "d194f378a6da55f64dc7fee7f52b72baf9dc8f9b61bd73ac2191ae4f82afbcc2",
+        "response_hash": "faa8384b79a5c763692829856d093eed6812a6032496d343156653435f59fea5",
+        "timestamp": "2026-05-21T03:50:33.972540+00:00"
       },
       {
         "label": "srma/claim-3/year-2020",
-        "seed": 205510744157491,
-        "prompt_digest": "fef115ddbc214dd20ec54bc54bd8a7d5425f60b831a7d0c4d6bff001e7f85a5d",
-        "response_hash": "7d63fc7b15010248c5080ace08ebfa082274a2e8045d3bd36040c73fa1c43310",
-        "timestamp": "2026-05-21T01:50:52.038258+00:00"
+        "seed": 272972975860857,
+        "prompt_digest": "d8926d962d625cd8427c520043e1dec54dbf33d38d6165f6ebd7507fc5d8a8be",
+        "response_hash": "d3af5e2d0840eae5dc7ad9c60a779b423e6e51416056ceccb7bb02dbf9bbb00b",
+        "timestamp": "2026-05-21T03:50:34.688786+00:00"
       },
       {
         "label": "srma/claim-3/year-2020",
-        "seed": 66446942549020,
-        "prompt_digest": "95a26606382f34c169f93d92527c56facfd0974c467d31a31ee0b98c5d3f81c4",
-        "response_hash": "07e94602266ac1e44e72cd3e44286ca96e2bf991811aec77f055c8b4c9b10260",
-        "timestamp": "2026-05-21T01:50:52.039370+00:00"
+        "seed": 272972975860857,
+        "prompt_digest": "d8926d962d625cd8427c520043e1dec54dbf33d38d6165f6ebd7507fc5d8a8be",
+        "response_hash": "d3af5e2d0840eae5dc7ad9c60a779b423e6e51416056ceccb7bb02dbf9bbb00b",
+        "timestamp": "2026-05-21T03:50:34.690475+00:00"
       }
     ]
   },
   "calibration_matrix": {
     "branch": "constrained",
-    "true_positive": 8,
-    "true_negative": 1,
+    "true_positive": 18,
+    "true_negative": 0,
     "false_negative": 0,
     "false_positive": 0,
-    "grounded_total": 8,
-    "ungrounded_total": 1,
+    "grounded_total": 18,
+    "ungrounded_total": 0,
     "fnr": 0.0,
     "fpr": 0.0
   },

@@ -10,6 +10,7 @@ from statistics import fmean
 from typing import Any, Literal
 
 from app.agents import DEFAULT_FAILURE_RATE, ResearchAgent, SrmaAgent
+from app.synthesis import admit_guideline_output
 from app.config import YEARS
 from app.db import insert_ecology_records, insert_guideline_claims, insert_tier3_study
 from app.harness import branch_gap, replay_counts
@@ -47,6 +48,12 @@ ANCHORS = [
 
 CLAIM_LIMIT = 3
 REAL_SOURCES_PER_CLAIM = 4
+# Tier-1 study replicates emitted per (claim, era). SPEC §3/§12: the phenomenon
+# shows at ~tens of studies, and a real SR/MA needs a screenable corpus, not one
+# study per claim. With CLAIM_LIMIT=3 claims and len(YEARS)=3 eras, k=2 yields
+# 3 x 3 x 2 = 18 studies per arm across the run (inside the SPEC §13 target band
+# of 15-20). Declared as one named constant, never a magic literal in the loop.
+STUDIES_PER_CLAIM_PER_ERA = 2
 # DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
 # fraction placeholder; SPEC §11-A anchors it to A0 in a later slice. It drives
 # the EMERGENT ungrounded-study rate, NOT a harness injection rate.
@@ -255,32 +262,65 @@ def _invoke_model(
     return response
 
 
-def _research_study_for_year(
+def _research_studies_for_year(
     *,
     research_agent: ResearchAgent,
     microdata_agent: MicrodataAgent,
     claim: ClaimSeed,
     year: int,
     telemetry: CallTelemetry,
-) -> tuple[Study, list[PubMedRecord]]:
-    if _use_microdata_group(claim=claim, year=year):
-        return microdata_agent.run(
-            claim_id=claim.claim_id,
-            claim_text=claim.text,
-            simulated_year=year,
+) -> list[tuple[Study, list[PubMedRecord]]]:
+    """Produce STUDIES_PER_CLAIM_PER_ERA Tier-1 studies for one (claim, era).
+
+    Group A (microdata/NHANES) is a single deterministic dataset slice per era, so
+    it contributes ONE study; the remaining replicates come from Group B (the
+    PubMed literature agent), each a distinct seeded attempt. This yields a
+    screenable corpus for the Tier-4 SR/MA rather than one study per claim.
+    """
+    studies: list[tuple[Study, list[PubMedRecord]]] = []
+    for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
+        if replicate == 0 and _use_microdata_group(claim=claim, year=year):
+            studies.append(
+                microdata_agent.run(
+                    claim_id=claim.claim_id,
+                    claim_text=claim.text,
+                    simulated_year=year,
+                )
+            )
+            continue
+        studies.append(
+            _research_study_for_year(
+                research_agent=research_agent,
+                claim=claim,
+                year=year,
+                telemetry=telemetry,
+                replicate=replicate,
+            )
         )
+    return studies
+
+
+def _research_study_for_year(
+    *,
+    research_agent: ResearchAgent,
+    claim: ClaimSeed,
+    year: int,
+    telemetry: CallTelemetry,
+    replicate: int = 0,
+) -> tuple[Study, list[PubMedRecord]]:
     try:
         return research_agent.run(
             claim_id=claim.claim_id,
             claim_text=claim.text,
             simulated_year=year,
             max_pubmed_year=pubmed_cutoff_year(year),
+            replicate=replicate,
         )
     except Exception as exc:
         if telemetry.degradation_reason is None:
             telemetry.degradation_reason = f"pubmed/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
         study = Study(
-            id=f"{claim.claim_id}-study-{year}-pubmed-error",
+            id=f"{claim.claim_id}-study-{year}-r{replicate}-pubmed-error",
             claim_id=claim.claim_id,
             year=year,
             direction="NEUTRAL",
@@ -457,7 +497,15 @@ def _clean_integrity_score(events: list[AuditEvent], scientific: bool) -> float:
         return 0.0
     penalties = 0.0
     for event in events:
-        if event.severity == "block" and event.event_type != "article-i-refused":
+        # article-i-refused and guideline-refused are EXPECTED gate refusals
+        # (Article I / IV doing their job at the study-input and SRMA-output
+        # boundaries), not process-integrity drift — they must not depress the
+        # release-gate score of subsequent admissible studies (Article II/III
+        # double-counting, CONSTITUTION §4).
+        if event.severity == "block" and event.event_type not in (
+            "article-i-refused",
+            "guideline-refused",
+        ):
             penalties += 0.8
     return max(0.0, round(1.0 - penalties, 3))
 
@@ -947,129 +995,144 @@ def run_ecology(
         branch_guidelines: dict[str, list[GuidelineClaim]] = {"free": [], "constrained": []}
 
         for claim in claims:
-            research_study, catalog_records = _research_study_for_year(
+            # Tier-1: emit STUDIES_PER_CLAIM_PER_ERA studies for this (claim, era).
+            study_batch = _research_studies_for_year(
                 research_agent=research_agent,
                 microdata_agent=microdata_agent,
                 claim=claim,
                 year=year,
                 telemetry=telemetry,
             )
-            catalog_pmids = {record.pmid for record in catalog_records}
-            reachable_lookup = _reachable_lookup_from_catalog(catalog_records)
-            for source in _source_records_from_study(research_study):
-                if source.source_id not in source_ids_seen[claim.claim_id]:
-                    source_catalog[claim.claim_id].append(source)
-                    source_ids_seen[claim.claim_id].add(source.source_id)
+            catalog_pmids: set[str] = set()
+            reachable_lookup: dict[str, CorpusItem] = {}
+            for research_study, catalog_records in study_batch:
+                catalog_pmids.update(record.pmid for record in catalog_records)
+                reachable_lookup.update(_reachable_lookup_from_catalog(catalog_records))
+                for source in _source_records_from_study(research_study):
+                    if source.source_id not in source_ids_seen[claim.claim_id]:
+                        source_catalog[claim.claim_id].append(source)
+                        source_ids_seen[claim.claim_id].add(source.source_id)
 
             for branch in ("free", "constrained"):
                 state = states[(claim.claim_id, branch)]
-                branch_study = research_study.model_copy(deep=True)
-                investigator = _study_to_evidence_unit(
-                    study=branch_study,
-                    branch=branch,
-                    catalog_pmids=catalog_pmids,
-                )
-                evidence_units.append(investigator)
-                record_transition(
-                    audit_trail=audit_trail,
-                    audit_counters=audit_counters,
-                    last_hashes=last_hashes,
-                    run_id=run_id or "preview-run",
-                    claim_id=claim.claim_id,
-                    branch=branch,
-                    year=year,
-                    phase="investigator",
-                    event_type="investigator-emitted",
-                    severity="info",
-                    integrity_score_before=1.0,
-                    integrity_score_after=1.0 if branch_study.pmids else 0.0,
-                    message=(
-                        f"ResearchAgent emitted {branch_study.id} from "
-                        f"{', '.join(branch_study.pmids) or 'no PubMed record'} "
-                        f"with cutoff {pubmed_cutoff_year(year)}."
-                    ),
-                )
-                verdict, warrant = admit_evidence_unit(
-                    run_id=run_id or "preview-run",
-                    claim=claim,
-                    claim_graph=graph_lookup[claim.claim_id],
-                    branch=branch,
-                    year=year,
-                    unit=investigator,
-                    reachable_lookup=reachable_lookup,
-                    warrants_by_output=warrants_by_output,
-                    threshold=RELEASE_THRESHOLD,
-                )
-                if warrant is not None:
-                    warrants_by_output[warrant.output_id] = warrant
-                    warrants.append(warrant)
-                if branch == "constrained":
-                    # Score the gate's Article-I verdict against TRUE provenance.
-                    # branch_study.provenance is the harness's ground truth, read
-                    # here ONLY for calibration — the gate above received no such
-                    # field.
-                    calibration_observations.append(
-                        (branch_study.provenance, verdict.passed)
-                    )
-                record_transition(
-                    audit_trail=audit_trail,
-                    audit_counters=audit_counters,
-                    last_hashes=last_hashes,
-                    run_id=run_id or "preview-run",
-                    claim_id=claim.claim_id,
-                    branch=branch,
-                    year=year,
-                    phase="admission",
-                    event_type="article-i-issued" if verdict.passed else "article-i-refused",
-                    severity="info" if verdict.passed else "block",
-                    integrity_score_before=1.0,
-                    integrity_score_after=1.0 if verdict.passed or branch == "free" else 0.0,
-                    message=" ".join(verdict.reasons),
-                )
-
-                warrant, released, release_message = _apply_release_gate(
-                    branch=branch,
-                    warrant=warrant,
-                    claim_events=[
-                        event
-                        for event in audit_trail
-                        if event.claim_id == claim.claim_id and event.branch == branch
-                    ],
-                    scientific=llm.scientific,
-                    threshold=RELEASE_THRESHOLD,
-                )
-                if warrant is not None:
-                    warrants_by_output[warrant.output_id] = warrant
-                record_transition(
-                    audit_trail=audit_trail,
-                    audit_counters=audit_counters,
-                    last_hashes=last_hashes,
-                    run_id=run_id or "preview-run",
-                    claim_id=claim.claim_id,
-                    branch=branch,
-                    year=year,
-                    phase="release",
-                    event_type="release-issued" if released else "release-revoked",
-                    severity="info" if released else "block",
-                    integrity_score_before=1.0 if verdict.passed or branch == "free" else 0.0,
-                    integrity_score_after=(
-                        warrant.integrity_score if warrant is not None else 1.0
-                    ),
-                    message=release_message,
-                )
                 surviving_units: list[EvidenceUnit] = []
-                if branch == "free":
-                    if tier3_store.insert(branch=branch, study=branch_study):
-                        surviving_units.append(investigator)
-                elif released and warrant is not None:
-                    if tier3_store.insert(
-                        branch=branch,
-                        study=branch_study,
-                        warrant=warrant,
-                        require_warrant=True,
-                    ):
-                        surviving_units.append(investigator)
+                # study ids that earned a valid execution warrant in this branch —
+                # the inheritable set the guideline-output gate (Task A) checks.
+                warranted_ids: set[str] = set()
+                blocked_this_era = 0
 
+                # Tier-1 -> Tier-2 (CIVER) -> Tier-3 admission, per replicate study.
+                for research_study, _catalog in study_batch:
+                    branch_study = research_study.model_copy(deep=True)
+                    investigator = _study_to_evidence_unit(
+                        study=branch_study,
+                        branch=branch,
+                        catalog_pmids=catalog_pmids,
+                    )
+                    evidence_units.append(investigator)
+                    record_transition(
+                        audit_trail=audit_trail,
+                        audit_counters=audit_counters,
+                        last_hashes=last_hashes,
+                        run_id=run_id or "preview-run",
+                        claim_id=claim.claim_id,
+                        branch=branch,
+                        year=year,
+                        phase="investigator",
+                        event_type="investigator-emitted",
+                        severity="info",
+                        integrity_score_before=1.0,
+                        integrity_score_after=1.0 if branch_study.pmids else 0.0,
+                        message=(
+                            f"ResearchAgent emitted {branch_study.id} from "
+                            f"{', '.join(branch_study.pmids) or 'no PubMed record'} "
+                            f"with cutoff {pubmed_cutoff_year(year)}."
+                        ),
+                    )
+                    verdict, warrant = admit_evidence_unit(
+                        run_id=run_id or "preview-run",
+                        claim=claim,
+                        claim_graph=graph_lookup[claim.claim_id],
+                        branch=branch,
+                        year=year,
+                        unit=investigator,
+                        reachable_lookup=reachable_lookup,
+                        warrants_by_output=warrants_by_output,
+                        threshold=RELEASE_THRESHOLD,
+                    )
+                    if warrant is not None:
+                        warrants_by_output[warrant.output_id] = warrant
+                        warrants.append(warrant)
+                    if branch == "constrained":
+                        # Score the gate's Article-I verdict against TRUE
+                        # provenance. branch_study.provenance is the harness's
+                        # ground truth, read here ONLY for calibration — the gate
+                        # above received no such field.
+                        calibration_observations.append(
+                            (branch_study.provenance, verdict.passed)
+                        )
+                    record_transition(
+                        audit_trail=audit_trail,
+                        audit_counters=audit_counters,
+                        last_hashes=last_hashes,
+                        run_id=run_id or "preview-run",
+                        claim_id=claim.claim_id,
+                        branch=branch,
+                        year=year,
+                        phase="admission",
+                        event_type="article-i-issued" if verdict.passed else "article-i-refused",
+                        severity="info" if verdict.passed else "block",
+                        integrity_score_before=1.0,
+                        integrity_score_after=1.0 if verdict.passed or branch == "free" else 0.0,
+                        message=" ".join(verdict.reasons),
+                    )
+
+                    warrant, released, release_message = _apply_release_gate(
+                        branch=branch,
+                        warrant=warrant,
+                        claim_events=[
+                            event
+                            for event in audit_trail
+                            if event.claim_id == claim.claim_id and event.branch == branch
+                        ],
+                        scientific=llm.scientific,
+                        threshold=RELEASE_THRESHOLD,
+                    )
+                    if warrant is not None:
+                        warrants_by_output[warrant.output_id] = warrant
+                    record_transition(
+                        audit_trail=audit_trail,
+                        audit_counters=audit_counters,
+                        last_hashes=last_hashes,
+                        run_id=run_id or "preview-run",
+                        claim_id=claim.claim_id,
+                        branch=branch,
+                        year=year,
+                        phase="release",
+                        event_type="release-issued" if released else "release-revoked",
+                        severity="info" if released else "block",
+                        integrity_score_before=1.0 if verdict.passed or branch == "free" else 0.0,
+                        integrity_score_after=(
+                            warrant.integrity_score if warrant is not None else 1.0
+                        ),
+                        message=release_message,
+                    )
+                    if branch == "free":
+                        if tier3_store.insert(branch=branch, study=branch_study):
+                            surviving_units.append(investigator)
+                    elif released and warrant is not None:
+                        if tier3_store.insert(
+                            branch=branch,
+                            study=branch_study,
+                            warrant=warrant,
+                            require_warrant=True,
+                        ):
+                            surviving_units.append(investigator)
+                            warranted_ids.add(branch_study.id)
+                    else:
+                        blocked_this_era += 1
+
+                # Tier-4: ONE SR/MA over the accumulated Tier-3 DB for this branch.
                 guideline = srma_agent.run(
                     run_id=run_id or "preview-run",
                     branch=branch,
@@ -1077,6 +1140,49 @@ def run_ecology(
                     claim_text=claim.text,
                     year=year,
                 )
+                # Task A: CIVER gates the SRMA OUTPUT on the constrained branch.
+                # Free branch emits as-is (no gate). The output gate re-appraises
+                # the warranted-only corpus and refuses an over-reaching /
+                # unwarranted guideline, degrading it to no-recommendation.
+                if branch == "constrained":
+                    corpus_studies = tier3_store.list_studies(
+                        run_id=run_id or "preview-run",
+                        branch=branch,
+                        claim_id=claim.claim_id,
+                        up_to_year=year,
+                    )
+                    # The inheritable warranted set = every study in the
+                    # constrained corpus (this era AND prior eras) that carries a
+                    # valid execution warrant (Article IV). The constrained DB is
+                    # warranted-by-construction, so this is its membership; we
+                    # re-verify against warrants_by_output rather than trust the DB.
+                    corpus_warranted_ids = {
+                        study.id
+                        for study in corpus_studies
+                        if _valid_study_warrant_for_study(
+                            study, warrants_by_output.get(study.id)
+                        )
+                    } | warranted_ids
+                    guideline, output_admitted, output_reason = admit_guideline_output(
+                        guideline=guideline,
+                        studies=corpus_studies,
+                        warranted_ids=corpus_warranted_ids,
+                    )
+                    record_transition(
+                        audit_trail=audit_trail,
+                        audit_counters=audit_counters,
+                        last_hashes=last_hashes,
+                        run_id=run_id or "preview-run",
+                        claim_id=claim.claim_id,
+                        branch=branch,
+                        year=year,
+                        phase="guideline-admission",
+                        event_type="guideline-issued" if output_admitted else "guideline-refused",
+                        severity="info" if output_admitted else "block",
+                        integrity_score_before=1.0,
+                        integrity_score_after=1.0 if output_admitted else 0.0,
+                        message=output_reason,
+                    )
                 if run_id is not None:
                     insert_guideline_claims(run_id=run_id, branch=branch, claims=[guideline])
                 guideline_timeline[branch].append(guideline)
@@ -1134,7 +1240,7 @@ def run_ecology(
                     synth_rationale=synth_rationale,
                     lineage=lineage,
                     cycle_events=cycle_events,
-                    blocked_count=0 if released or branch == "free" else 1,
+                    blocked_count=0 if branch == "free" else blocked_this_era,
                     emitted_count=len(surviving_units),
                 )
                 branch_claims[branch].append(snapshot)

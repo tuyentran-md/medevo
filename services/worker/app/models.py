@@ -214,6 +214,18 @@ class GuidelineClaim(BaseModel):
     study_count: int = 0
     ungrounded_fraction: float = 0.0
     heterogeneity: float = 0.0
+    # Systematic-review provenance (SPEC §3): how many studies entered the pool
+    # vs were screened out, plus the inspectable screening + GRADE risk-of-bias
+    # report. ``screening_report`` keys: n_included, n_excluded, included_ids,
+    # exclusions[], rob_downgrades, graded_certainty, rob_summary.
+    n_included: int = 0
+    n_excluded: int = 0
+    screening_report: dict[str, Any] = Field(default_factory=dict)
+    # Set True only on the constrained branch when the guideline-output CIVER gate
+    # refused the synthesized claim (Article I/IV applied to the SRMA OUTPUT, not
+    # only study inputs). A refused guideline degrades to no-recommendation.
+    output_gate_refused: bool = False
+    output_gate_reason: str = ""
 
 
 class CitationEdge(BaseModel):

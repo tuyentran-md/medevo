@@ -36,10 +36,16 @@ def test_synthesis_outputs_direction_and_grade_level() -> None:
 
 
 def test_level_moves_when_direction_is_held_fixed() -> None:
+    # A single appraisable study (has a cited source, quality 0.6 clears the
+    # inclusion + study-limitations floors). As a single study the GRADE
+    # sparse-evidence cap holds it to a conditional level — exercising
+    # level-tracks-certainty with direction held fixed. (Screening is provenance
+    # BLIND: it excludes a study with no cited source to appraise against, not a
+    # study by its GROUNDED/UNGROUNDED label — so the weak arm must carry a cite.)
     weak = synthesize_guideline_claim(
         claim_id="claim-1",
         year=2025,
-        studies=[_supporting_study(1, quality=0.2, provenance="UNGROUNDED")],
+        studies=[_supporting_study(1, quality=0.6, provenance="GROUNDED")],
     )
     strong = synthesize_guideline_claim(
         claim_id="claim-1",

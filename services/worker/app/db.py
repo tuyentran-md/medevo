@@ -201,6 +201,12 @@ def init_db() -> None:
             "REAL NOT NULL DEFAULT 0",
         )
         _ensure_column(conn, "guideline_timeline", "heterogeneity", "REAL NOT NULL DEFAULT 0")
+        # Systematic-review provenance (SPEC §3) + guideline-output gate (Task A).
+        _ensure_column(conn, "guideline_timeline", "n_included", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "guideline_timeline", "n_excluded", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "guideline_timeline", "screening_report_json", "TEXT NOT NULL DEFAULT '{}'")
+        _ensure_column(conn, "guideline_timeline", "output_gate_refused", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "guideline_timeline", "output_gate_reason", "TEXT NOT NULL DEFAULT ''")
         _ensure_column(
             conn,
             "evidence_units",
@@ -373,8 +379,10 @@ def insert_guideline_claims(
             """
             INSERT OR REPLACE INTO guideline_timeline (
                 run_id, branch, claim_id, year, direction, level, pooled_effect,
-                certainty, study_count, ungrounded_fraction, heterogeneity
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                certainty, study_count, ungrounded_fraction, heterogeneity,
+                n_included, n_excluded, screening_report_json,
+                output_gate_refused, output_gate_reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -389,6 +397,11 @@ def insert_guideline_claims(
                     claim.study_count,
                     claim.ungrounded_fraction,
                     claim.heterogeneity,
+                    claim.n_included,
+                    claim.n_excluded,
+                    json.dumps(claim.screening_report, sort_keys=True),
+                    1 if claim.output_gate_refused else 0,
+                    claim.output_gate_reason,
                 )
                 for claim in claims
             ],

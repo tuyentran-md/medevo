@@ -8,19 +8,19 @@
     ],
     "scientific": false,
     "model": "deterministic-fallback",
-    "has_blocked_outputs": true,
+    "has_blocked_outputs": false,
     "population_stats": {
       "2000": {
         "pair_count": 3,
         "direction": {
-          "mean": 0.1667,
+          "mean": 0.0,
           "low": 0.0,
-          "high": 0.5
+          "high": 0.0
         },
         "level": {
-          "mean": 0.0833,
+          "mean": 0.0,
           "low": 0.0,
-          "high": 0.25
+          "high": 0.0
         }
       },
       "2010": {
@@ -50,9 +50,9 @@
         }
       }
     },
-    "llm_call_count": 17,
+    "llm_call_count": 18,
     "degradation_reason": "deterministic PubMed fixture",
-    "bundle_seal": "d67c22177ff60a12097babb6be250c88177fa0421f878550ad9c0e75342c5986",
+    "bundle_seal": "70e09108963fac3b2b9df4689336015d4c4c53168ad24ce947b45d8ece0d8b39",
     "provenance_log": {
       "model": "deterministic-fallback",
       "model_digest": "n/a",
@@ -68,134 +68,141 @@
       "calls": [
         {
           "label": "srma/claim-1/year-2000",
-          "seed": 115185860274381,
-          "prompt_digest": "66b35526158ae54c5ae1d823e6edba3744181437617d74e5f0e93d902afced66",
-          "response_hash": "6c9bb7e674a433d55a4b2e4fb369f62c4807b2420aa67ffb1c009e8e0d0f7072",
-          "timestamp": "2026-05-21T01:50:46.894067+00:00"
+          "seed": 155378161325643,
+          "prompt_digest": "45b9127300852eebbfed79df2575abe2f80730c2568428dbcbd6d1b371c3e931",
+          "response_hash": "d3ab13110a11b5436d9582a0534207a8c069ba3fbd2d585cbf9188aa41440428",
+          "timestamp": "2026-05-21T03:50:29.661852+00:00"
         },
         {
           "label": "srma/claim-1/year-2000",
-          "seed": 115185860274381,
-          "prompt_digest": "66b35526158ae54c5ae1d823e6edba3744181437617d74e5f0e93d902afced66",
-          "response_hash": "6c9bb7e674a433d55a4b2e4fb369f62c4807b2420aa67ffb1c009e8e0d0f7072",
-          "timestamp": "2026-05-21T01:50:46.895300+00:00"
+          "seed": 155378161325643,
+          "prompt_digest": "45b9127300852eebbfed79df2575abe2f80730c2568428dbcbd6d1b371c3e931",
+          "response_hash": "d3ab13110a11b5436d9582a0534207a8c069ba3fbd2d585cbf9188aa41440428",
+          "timestamp": "2026-05-21T03:50:29.663549+00:00"
         },
         {
           "label": "srma/claim-2/year-2000",
-          "seed": 276861914891189,
-          "prompt_digest": "18717d82d6543f6cb11215f52620696a1bb56b21052a3569e1cdeecd384731f0",
-          "response_hash": "b7c78ce43f1811867a73b635f57c48bf8b3406084cdbebb0c5ad420f76d1c8d6",
-          "timestamp": "2026-05-21T01:50:47.632283+00:00"
+          "seed": 112617756903980,
+          "prompt_digest": "ae957c980d35bbe75050790df655cbc8d500c2fea34cb5dcbd6b3afd9e1d9f2d",
+          "response_hash": "c61ae52a1d1773f47a0f2fc8b9784b8b04b2f2d2e6e82cec373dd25dc68889f6",
+          "timestamp": "2026-05-21T03:50:30.383270+00:00"
         },
         {
           "label": "srma/claim-2/year-2000",
-          "seed": 276861914891189,
-          "prompt_digest": "18717d82d6543f6cb11215f52620696a1bb56b21052a3569e1cdeecd384731f0",
-          "response_hash": "b7c78ce43f1811867a73b635f57c48bf8b3406084cdbebb0c5ad420f76d1c8d6",
-          "timestamp": "2026-05-21T01:50:47.633264+00:00"
+          "seed": 112617756903980,
+          "prompt_digest": "ae957c980d35bbe75050790df655cbc8d500c2fea34cb5dcbd6b3afd9e1d9f2d",
+          "response_hash": "c61ae52a1d1773f47a0f2fc8b9784b8b04b2f2d2e6e82cec373dd25dc68889f6",
+          "timestamp": "2026-05-21T03:50:30.384691+00:00"
         },
         {
           "label": "srma/claim-3/year-2000",
-          "seed": 40942525304551,
-          "prompt_digest": "6ef22874a67a16de05bc87005810bface060ed66292963706b920ef6c60c2124",
-          "response_hash": "759b87df3700b7b453a64ee45d0860c121f31ec6ec6e42ca32cf0829a6fc3025",
-          "timestamp": "2026-05-21T01:50:47.634071+00:00"
+          "seed": 120102575726235,
+          "prompt_digest": "a2f3d5e7a3520cd9cefab2c2592f44d6974bbd2c313147d211259afb1c8c32d9",
+          "response_hash": "8cc0c679c8400c0f365c4dcae03aae34e7c9b8b86cea2abc29ebe214787b3d9d",
+          "timestamp": "2026-05-21T03:50:30.386079+00:00"
+        },
+        {
+          "label": "srma/claim-3/year-2000",
+          "seed": 120102575726235,
+          "prompt_digest": "a2f3d5e7a3520cd9cefab2c2592f44d6974bbd2c313147d211259afb1c8c32d9",
+          "response_hash": "8cc0c679c8400c0f365c4dcae03aae34e7c9b8b86cea2abc29ebe214787b3d9d",
+          "timestamp": "2026-05-21T03:50:30.387206+00:00"
         },
         {
           "label": "srma/claim-1/year-2010",
-          "seed": 240136893309742,
-          "prompt_digest": "493100a6c12095ab8bac70e24c1b5083899f406c7264e56f0010b74c653444e5",
-          "response_hash": "b26de49000dab24f198c3e5a0be6268ebbf304173662ef6aa7d2d4ad3960bbde",
-          "timestamp": "2026-05-21T01:50:48.363228+00:00"
+          "seed": 273695535116502,
+          "prompt_digest": "f472a41b046d50024492e42712c1b970f973736d6e6c214f8afcfa2e3d6e226d",
+          "response_hash": "dd07a2d333c76adc9f1ed0a66aa66a93ba93250246f6341edbfde61e7d5d63b5",
+          "timestamp": "2026-05-21T03:50:31.102416+00:00"
         },
         {
           "label": "srma/claim-1/year-2010",
-          "seed": 240136893309742,
-          "prompt_digest": "493100a6c12095ab8bac70e24c1b5083899f406c7264e56f0010b74c653444e5",
-          "response_hash": "b26de49000dab24f198c3e5a0be6268ebbf304173662ef6aa7d2d4ad3960bbde",
-          "timestamp": "2026-05-21T01:50:48.364477+00:00"
+          "seed": 273695535116502,
+          "prompt_digest": "f472a41b046d50024492e42712c1b970f973736d6e6c214f8afcfa2e3d6e226d",
+          "response_hash": "dd07a2d333c76adc9f1ed0a66aa66a93ba93250246f6341edbfde61e7d5d63b5",
+          "timestamp": "2026-05-21T03:50:31.103775+00:00"
         },
         {
           "label": "srma/claim-2/year-2010",
-          "seed": 222199748596303,
-          "prompt_digest": "80be265b310e13a11fe9dc3ecd83765a9fc8104066f91ef325466b0f7dc1d55b",
-          "response_hash": "d4933d1b664d3053dc10b362c061e8fc69e142ba0830cc6dc08fe70421ef678d",
-          "timestamp": "2026-05-21T01:50:49.098707+00:00"
+          "seed": 8668496710386,
+          "prompt_digest": "0d69801075534fb305e4238e0668d273151bab02e1e34d5020e476a5623a9986",
+          "response_hash": "f4247774dd2a76ae71d1d7bcf03705bf0fbde8b28492b5ccafe5a34055cb5e52",
+          "timestamp": "2026-05-21T03:50:31.821804+00:00"
         },
         {
           "label": "srma/claim-2/year-2010",
-          "seed": 222199748596303,
-          "prompt_digest": "80be265b310e13a11fe9dc3ecd83765a9fc8104066f91ef325466b0f7dc1d55b",
-          "response_hash": "d4933d1b664d3053dc10b362c061e8fc69e142ba0830cc6dc08fe70421ef678d",
-          "timestamp": "2026-05-21T01:50:49.099787+00:00"
+          "seed": 8668496710386,
+          "prompt_digest": "0d69801075534fb305e4238e0668d273151bab02e1e34d5020e476a5623a9986",
+          "response_hash": "f4247774dd2a76ae71d1d7bcf03705bf0fbde8b28492b5ccafe5a34055cb5e52",
+          "timestamp": "2026-05-21T03:50:31.823267+00:00"
         },
         {
           "label": "srma/claim-3/year-2010",
-          "seed": 263593512039100,
-          "prompt_digest": "3fa58318ca6b60ed11cb9609ce40642eb8d2e440a46037aadace5e8b7a554b7b",
-          "response_hash": "fa42cd4ab80e42664d1a9587625c2c3ae9ee5231e958d35b1d91408cb83d3f83",
-          "timestamp": "2026-05-21T01:50:49.838496+00:00"
+          "seed": 145363687314043,
+          "prompt_digest": "453b6a4e170e77c626ec120e0318dcfbe63812fb9e2e4f8606360e9eaa481685",
+          "response_hash": "0874580dc5883ab62ed10e5846b9f22d8e998176c9e2cb019b9e9a4ea49a3d5e",
+          "timestamp": "2026-05-21T03:50:32.538584+00:00"
         },
         {
           "label": "srma/claim-3/year-2010",
-          "seed": 15923895414948,
-          "prompt_digest": "2f9bde9bc3f879e2ea4c3c681787710a929d19136b420f2246e020ccf89635a7",
-          "response_hash": "7b4e47c96bd1edd4bab0d815b72c4a2a60f5f72beec50a1a13d053b69f629eb6",
-          "timestamp": "2026-05-21T01:50:49.839618+00:00"
+          "seed": 145363687314043,
+          "prompt_digest": "453b6a4e170e77c626ec120e0318dcfbe63812fb9e2e4f8606360e9eaa481685",
+          "response_hash": "0874580dc5883ab62ed10e5846b9f22d8e998176c9e2cb019b9e9a4ea49a3d5e",
+          "timestamp": "2026-05-21T03:50:32.540035+00:00"
         },
         {
           "label": "srma/claim-1/year-2020",
-          "seed": 135771816849732,
-          "prompt_digest": "fa31417c77e02da7906efde42584d5374092937f175eb56bd3889feb7c663d66",
-          "response_hash": "2cb1644274befbaa0150d251c819e891afd7bb0bb1f5a5fde96063bb662acb10",
-          "timestamp": "2026-05-21T01:50:50.570214+00:00"
+          "seed": 168465775786629,
+          "prompt_digest": "5aece1fdd3b332ca4455b2ae82604e02ea0835da772a0d96aefef17fa1c1308a",
+          "response_hash": "319927fa67e4113b7201d595569aca0dc8e4a5bb001b0917b09a806997e9d0a6",
+          "timestamp": "2026-05-21T03:50:33.258324+00:00"
         },
         {
           "label": "srma/claim-1/year-2020",
-          "seed": 135771816849732,
-          "prompt_digest": "fa31417c77e02da7906efde42584d5374092937f175eb56bd3889feb7c663d66",
-          "response_hash": "2cb1644274befbaa0150d251c819e891afd7bb0bb1f5a5fde96063bb662acb10",
-          "timestamp": "2026-05-21T01:50:50.571178+00:00"
+          "seed": 168465775786629,
+          "prompt_digest": "5aece1fdd3b332ca4455b2ae82604e02ea0835da772a0d96aefef17fa1c1308a",
+          "response_hash": "319927fa67e4113b7201d595569aca0dc8e4a5bb001b0917b09a806997e9d0a6",
+          "timestamp": "2026-05-21T03:50:33.259868+00:00"
         },
         {
           "label": "srma/claim-2/year-2020",
-          "seed": 228662788033566,
-          "prompt_digest": "12335c81fe24c6b3c881736ce631e732854be94e1f3563aa1c8a5fa54f51db4f",
-          "response_hash": "40e46f1da1fb8a9d7d9b7e2a47107cf9058ab7d5195d2cc9b994ef14d52602f5",
-          "timestamp": "2026-05-21T01:50:51.305852+00:00"
+          "seed": 30406405285491,
+          "prompt_digest": "d194f378a6da55f64dc7fee7f52b72baf9dc8f9b61bd73ac2191ae4f82afbcc2",
+          "response_hash": "faa8384b79a5c763692829856d093eed6812a6032496d343156653435f59fea5",
+          "timestamp": "2026-05-21T03:50:33.971254+00:00"
         },
         {
           "label": "srma/claim-2/year-2020",
-          "seed": 228662788033566,
-          "prompt_digest": "12335c81fe24c6b3c881736ce631e732854be94e1f3563aa1c8a5fa54f51db4f",
-          "response_hash": "40e46f1da1fb8a9d7d9b7e2a47107cf9058ab7d5195d2cc9b994ef14d52602f5",
-          "timestamp": "2026-05-21T01:50:51.306955+00:00"
+          "seed": 30406405285491,
+          "prompt_digest": "d194f378a6da55f64dc7fee7f52b72baf9dc8f9b61bd73ac2191ae4f82afbcc2",
+          "response_hash": "faa8384b79a5c763692829856d093eed6812a6032496d343156653435f59fea5",
+          "timestamp": "2026-05-21T03:50:33.972540+00:00"
         },
         {
           "label": "srma/claim-3/year-2020",
-          "seed": 205510744157491,
-          "prompt_digest": "fef115ddbc214dd20ec54bc54bd8a7d5425f60b831a7d0c4d6bff001e7f85a5d",
-          "response_hash": "7d63fc7b15010248c5080ace08ebfa082274a2e8045d3bd36040c73fa1c43310",
-          "timestamp": "2026-05-21T01:50:52.038258+00:00"
+          "seed": 272972975860857,
+          "prompt_digest": "d8926d962d625cd8427c520043e1dec54dbf33d38d6165f6ebd7507fc5d8a8be",
+          "response_hash": "d3af5e2d0840eae5dc7ad9c60a779b423e6e51416056ceccb7bb02dbf9bbb00b",
+          "timestamp": "2026-05-21T03:50:34.688786+00:00"
         },
         {
           "label": "srma/claim-3/year-2020",
-          "seed": 66446942549020,
-          "prompt_digest": "95a26606382f34c169f93d92527c56facfd0974c467d31a31ee0b98c5d3f81c4",
-          "response_hash": "07e94602266ac1e44e72cd3e44286ca96e2bf991811aec77f055c8b4c9b10260",
-          "timestamp": "2026-05-21T01:50:52.039370+00:00"
+          "seed": 272972975860857,
+          "prompt_digest": "d8926d962d625cd8427c520043e1dec54dbf33d38d6165f6ebd7507fc5d8a8be",
+          "response_hash": "d3af5e2d0840eae5dc7ad9c60a779b423e6e51416056ceccb7bb02dbf9bbb00b",
+          "timestamp": "2026-05-21T03:50:34.690475+00:00"
         }
       ]
     },
     "failure_rate": 0.3,
     "calibration_matrix": {
       "branch": "constrained",
-      "true_positive": 8,
-      "true_negative": 1,
+      "true_positive": 18,
+      "true_negative": 0,
       "false_negative": 0,
       "false_positive": 0,
-      "grounded_total": 8,
-      "ungrounded_total": 1,
+      "grounded_total": 18,
+      "ungrounded_total": 0,
       "fnr": 0.0,
       "fpr": 0.0
     }
