@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 460" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <rect width="900" height="460" fill="#faf6f0"/>
+  <!-- title -->
+  <text x="60" y="50" font-size="24" font-weight="700" fill="#1c1b19">Does the gate hold a guideline on course?</text>
+  <text x="60" y="76" font-size="14" fill="#6b6760">HRT for chronic-disease prevention — the real recommendation reversed after the WHI trials (2002).</text>
+
+  <!-- plot frame -->
+  <line x1="150" y1="120" x2="150" y2="360" stroke="#d8d2c8" stroke-width="1.5"/>
+  <line x1="150" y1="360" x2="820" y2="360" stroke="#d8d2c8" stroke-width="1.5"/>
+
+  <!-- y gridlines + labels -->
+  <g font-size="12" fill="#9a948a">
+    <line x1="150" y1="140" x2="820" y2="140" stroke="#ece7de" stroke-width="1"/>
+    <text x="142" y="144" text-anchor="end">strong FOR</text>
+    <line x1="150" y1="200" x2="820" y2="200" stroke="#ece7de" stroke-width="1"/>
+    <text x="142" y="204" text-anchor="end">conditional</text>
+    <line x1="150" y1="250" x2="820" y2="250" stroke="#ece7de" stroke-width="1"/>
+    <text x="142" y="254" text-anchor="end">no rec.</text>
+    <line x1="150" y1="300" x2="820" y2="300" stroke="#ece7de" stroke-width="1"/>
+    <text x="142" y="304" text-anchor="end">conditional</text>
+    <text x="142" y="344" text-anchor="end">strong AGAINST</text>
+  </g>
+
+  <!-- x labels -->
+  <g font-size="13" fill="#6b6760" text-anchor="middle">
+    <text x="230" y="384">2000</text><text x="230" y="400" font-size="11" fill="#9a948a">pre-WHI</text>
+    <text x="485" y="384">2010</text><text x="485" y="400" font-size="11" fill="#9a948a">post-WHI</text>
+    <text x="740" y="384">2020</text><text x="740" y="400" font-size="11" fill="#9a948a">settled</text>
+  </g>
+
+  <!-- USPSTF truth (the real reversal): FOR -> strong AGAINST -->
+  <polyline points="230,160 485,335 740,335" fill="none" stroke="#1c1b19" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"/>
+  <g fill="#1c1b19"><circle cx="230" cy="160" r="4"/><circle cx="485" cy="335" r="4"/><circle cx="740" cy="335" r="4"/></g>
+
+  <!-- constrained (CIVER) tracks the truth -->
+  <polyline points="230,168 485,318 740,332" fill="none" stroke="#2f6b4f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#2f6b4f"><circle cx="230" cy="168" r="5"/><circle cx="485" cy="318" r="5"/><circle cx="740" cy="332" r="5"/></g>
+
+  <!-- free (no gate) drifts off course -->
+  <polyline points="230,158 485,232 740,205" fill="none" stroke="#c25a3a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#c25a3a"><circle cx="230" cy="158" r="5"/><circle cx="485" cy="232" r="5"/><circle cx="740" cy="205" r="5"/></g>
+
+  <!-- drift gap annotation -->
+  <line x1="740" y1="205" x2="740" y2="332" stroke="#c25a3a" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+  <text x="752" y="272" font-size="12" fill="#c25a3a" font-weight="600">drift</text>
+
+  <!-- legend -->
+  <g font-size="13" fill="#3a3833">
+    <line x1="540" y1="120" x2="566" y2="120" stroke="#1c1b19" stroke-width="3" stroke-dasharray="2 6"/>
+    <text x="574" y="124">Real guideline (USPSTF)</text>
+    <line x1="540" y1="142" x2="566" y2="142" stroke="#2f6b4f" stroke-width="3.5"/>
+    <text x="574" y="146" fill="#2f6b4f" font-weight="600">Constrained — gate holds course</text>
+    <line x1="540" y1="164" x2="566" y2="164" stroke="#c25a3a" stroke-width="3.5"/>
+    <text x="574" y="168" fill="#c25a3a" font-weight="600">Free — no gate, drifts</text>
+  </g>
+
+  <text x="60" y="438" font-size="11.5" fill="#9a948a">Illustrative — the trajectory MedEvo is built to test for, not a scored result. The measured gap (free − constrained, with CI on direction and strength) is the value of the gate.</text>
+</svg>
