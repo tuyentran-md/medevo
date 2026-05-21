@@ -1,177 +1,122 @@
 # MedEvo
 
-MedEvo is a research instrument that simulates how a community of AI research
-agents, working over real evidence, can let a clinical guideline **drift** — and
-whether a provenance-integrity gate (CIVER) reduces that drift.
+**A simulated scientific ecology that shows whether AI is quietly rewriting clinical guidelines — and whether a provenance gate can stop it.**
 
-The core question is narrow:
+---
 
-> When fallible AI agents do research and their work accumulates into the
-> evidence corpus a guideline panel synthesizes from, does the guideline drift
-> in direction or recommendation level — and does a pre-execution provenance
-> gate measurably reduce that drift?
+## The problem
 
-MedEvo is **not** clinical decision support and does not predict any real
-guideline. It simulates the *provenance dynamics* of an evidence ecology.
+AI now writes, summarizes, and synthesizes biomedical evidence at scale. That
+evidence flows into the corpus that guideline panels read. If poorly-grounded or
+fabricated findings launder through systematic reviews into authoritative
+recommendations, a guideline can **drift** — its direction or its strength of
+recommendation moving away from what the real evidence supports — and nobody sees
+the moment it happens.
 
-## What makes this non-circular
+So the question MedEvo exists to answer:
 
-A naive version of this experiment hand-injects fake "contamination" studies and
-then has a gate block them. That is circular: the designer authors both the
-attack and the defense, so the gated arm wins by construction, and the "drift"
-is just the designer's hand.
+> When a community of AI research agents does the science, does the resulting
+> clinical guideline drift — and does a pre-execution **provenance gate (CIVER)**
+> measurably hold it on course?
 
-MedEvo avoids this. **Contamination is not authored by the harness — it emerges
-from the agents' own failures.** Agents attempt real research; a weak or
-over-reaching agent sometimes emits an *ungrounded* study (a claim whose evidence
-chain does not resolve, or whose scope over-reaches its evidence). The realistic
-*rate* of this failure is anchored to a measured quantity (the A0 study of LLM
-"structural validity without direction-fidelity"), not a tuned dial. The gate
-never sees a "this one is fake" label — it judges only chain integrity, evidence
-resolvability, and claim scope.
+## The demonstration
 
-Consequently the gate catches **fabrication / unresolvable provenance / scope
-over-reach** ("dối"), but **not** an honestly-grounded analysis that reaches a
-wrong conclusion ("dốt") — that has valid provenance, passes the gate, and drifts
-both branches equally, cancelling in the contrast. MedEvo's claim is therefore
-scoped to **auditable corruption-resistance**, never "AI produces more correct
-guidelines."
+MedEvo replays a **real historical guideline reversal** and asks whether the
+simulated ecology reproduces it — and whether the gate protects it.
 
-## The four tiers
+The case: **hormone therapy (HRT) for chronic-disease prevention.** Before 2002,
+HRT was widely recommended to *prevent* cardiovascular disease. The Women's Health
+Initiative trials (2002, 2005) reversed that, and the USPSTF has recommended
+*against* it (grade D) ever since. A faithful instrument should re-live that
+flip from the literature of each era.
 
 ```mermaid
-flowchart TD
-    A["Guideline text → claims (direction + GRADE-5 level)"] --> C
-    C["Tier 1: research agents (50/50)"] --> CA["Group A: analyze REAL raw data (NHANES) in a sandbox"]
-    C --> CB["Group B: appraise REAL literature (PubMed, date-cut)"]
-    CA --> D["Study record + provenance chain"]
-    CB --> D
-    D --> E{"Tier 2: CIVER gate (Article I)"}
-    E -->|"free: no gate"| F["Free Tier-3 DB (incl. ungrounded)"]
-    E -->|"constrained: warrant required"| G["Constrained Tier-3 DB (grounded only)"]
-    F --> H["Tier 4: SRMA agents (LLM SR/MA, read DB only)"]
-    G --> H
-    H --> I["Guideline: direction + GRADE-5 level, per era"]
-    I --> J["Sealed replay artifact + branch-gap stats"]
+flowchart LR
+    G["📋 Guideline claims<br/>direction + strength"] --> A1["Group A agents<br/>analyze REAL data<br/>(NHANES)"]
+    G --> A2["Group B agents<br/>appraise REAL literature<br/>(PubMed, date-cut)"]
+    A1 --> S["Study records<br/>+ provenance chain"]
+    A2 --> S
+    S --> GATE{"CIVER gate<br/>provenance · scope · chain"}
+    GATE -->|"no gate"| FREE["FREE corpus<br/>(grounded + ungrounded)"]
+    GATE -->|"warrant required"| CON["CONSTRAINED corpus<br/>(grounded only)"]
+    FREE --> SR["SR/MA synthesis"]
+    CON --> SR
+    SR --> OUT["📈 Guideline per era<br/><b>free drifts · constrained holds?</b>"]
 ```
 
-Tier-1 agents are deliberately fallible and cheap — their failures *are* the
-phenomenon. Tier-4 SRMA agents read **only** the accumulated Tier-3 DB (no
-re-querying PubMed/data — structurally enforced), so drift in the corpus
-propagates into the guideline the way a real panel synthesizes from the
-published record.
+The headline output is the contrast: as fallible agents accumulate work across
+the eras, does the **free** arm drift off the real USPSTF trajectory while the
+**constrained** (gated) arm tracks it? That gap — with confidence intervals, on
+both the *direction* and the *strength* axis — is the measure of the gate's value.
 
-## Gold standard and ground truth
+A sealed run is replayed as a static animation (no live compute), so the
+demonstration is reproducible and inspectable by anyone.
 
-Two references, distinct roles:
+## Why the result is honest, not staged
 
-- **C0 — the no-contamination counterfactual = the gold standard.** The same
-  ecology, same seed, run with the failure rate driven to ~0. CIVER value is
-  scored as *displacement from C0*: `d(free, C0) − d(constrained, C0)`, with a
-  paired bootstrap CI on **both** the direction and the level axis, and it must
-  survive a volume-matched control and a random-gate control. Because every arm
-  shares the same fallible agents, both model-prior leakage and agent
-  incompetence cancel in the contrast. C0 makes the test falsifiable: constrained
-  may drift from C0 *more* than free.
-- **USPSTF graded archive — the real-world anchor.** The retro scope is
-  **hormone therapy (HRT) for chronic-disease prevention**, the documented
-  reversal: pre-2002 HRT was recommended for prevention → the WHI 2002/2005 RCTs
-  → USPSTF grade D ("recommends against"), sustained through 2022. The ground
-  truth lives in a configurable fixture
-  (`services/worker/data/ground_truth/hrt_uspstf.json`); Phase A checks whether
-  the clean C0 reproduces this trajectory better than a no-change null. Real
-  USPSTF letter grades are loaded from that fixture, never hardcoded in code.
+The hard part of any "defense beats attack" demo is circularity: if the designer
+injects the contamination *and* builds the gate to catch it, the gate wins by
+construction and proves nothing.
+
+MedEvo avoids this:
+
+- **Contamination is never authored.** It *emerges* from the agents' own failures
+  — a weak or over-reaching agent produces an ungrounded claim, at a rate anchored
+  to a measured quantity (LLM "structural validity without direction-fidelity"),
+  not a tuned dial.
+- **The gate is blind.** It judges only chain integrity, evidence resolvability,
+  and claim scope — never a "this one is fake" label. It catches fabrication and
+  over-reach; it does **not** catch an honestly-grounded analysis that is simply
+  wrong (that drifts both arms equally and cancels in the contrast).
+- **The yardstick is internal.** Value is scored as displacement from a
+  *no-contamination counterfactual* of the same ecology, and must survive
+  volume-matched and random-gate controls. The test can fail.
+
+MedEvo's claim is therefore **auditable corruption-resistance** — not "AI that
+writes more correct guidelines." It is a research instrument, never clinical
+decision support.
+
+## How it works
+
+| Tier | Role |
+|---|---|
+| **1 — Research agents** | 50/50 split: Group A runs real statistics on raw datasets (NHANES) in a sandbox; Group B appraises real PubMed literature, date-cut to each era. Each emits a structured study with a provenance chain. |
+| **2 — CIVER gate** | A pre-execution admissibility check (Article I): a study enters the inheritable corpus only if its evidence resolves and its claim scope does not over-reach. |
+| **3 — Accumulating DB** | Branch-partitioned: the constrained corpus holds warranted studies only; the free corpus holds everything. This is what the next era inherits. |
+| **4 — SR/MA synthesis** | LLM-driven agents read **only** the accumulated corpus (no re-querying) and emit each era's guideline: direction + a GRADE-style strength level. |
+
+Drift is measured on a 2-D lattice (direction × strength). The gate's value is the
+leakage- and competence-cancelled gap between the free and constrained arms,
+benchmarked against the real USPSTF trajectory.
 
 ## Status
 
-The v3 engine core is built and tested (`services/worker`, full pytest green):
+The v3 engine is built and tested end-to-end; the HRT demonstration is wired
+(real NHANES + PubMed, USPSTF ground truth verified from the primary source).
+A scored verdict on a cloud flagship model is the next step. Local open-weight
+models are too weak for agent research and are treated as illustrative only —
+scored runs require a frontier model.
 
-- Tier-1 Group-B (literature/PubMed) spine, emergent-failure model, CIVER gate,
-  branch-partitioned Tier-3 DB, LLM SRMA.
-- A0-anchored failure rate; realistic failure modes (unresolvable citation +
-  scope over-reach); calibration confusion matrix (the gate is non-trivial —
-  FNR > 0).
-- C0 counterfactual + two-phase scoring + both controls; `scripts/evaluate.py`
-  entrypoint printing replay counts and a PASS/FAIL verdict.
-- Tier-1 Group-A (raw-data analysis) over real NHANES in a sandboxed subprocess.
-- Sealed-bundle static web replay (`apps/web`, GitHub-Pages friendly).
-
-**Not yet a positive scientific result.** The offline deterministic fixture run
-returns Phase B = FAIL (CIVER value 0.0) — the intended *falsifiable* outcome on
-a uniform fixture, not a bug. A real verdict requires a cloud flagship model + a
-live PubMed/NHANES run. The HRT ground-truth grades are verified from the USPSTF
-primary source, but their mapping onto atomic claims is a faithful interpretation
-to be reviewed before any external claim.
-
-## Scientific boundaries
-
-- MedEvo does not claim clinical truth; it is not a truth oracle.
-- The gate enforces structural/provenance integrity, not factual correctness.
-- The pooled effect is a simulated synthesis signal, not a publication-grade
-  meta-analysis.
-- **NO-LOCAL rule:** local open-weight models are too weak to do real
-  research-agent work, so a local (Ollama) run is *illustrative only* and is
-  never stamped scientific. Scored runs require a cloud flagship.
-- A run using the deterministic fallback client is stamped non-scientific.
-
-## Engine modules
-
-```text
-apps/web
-  Next.js UI; static sealed-bundle replay (set NEXT_PUBLIC_MEDEVO_STATIC_REPLAY=1).
-packages/contracts
-  Shared TypeScript contracts.
-services/worker/app
-  agents.py     Tier-1 ResearchAgent (emergent failure) + Tier-4 SrmaAgent
-  microdata.py  Group-A NHANES loader + sandboxed analysis
-  pubmed.py     PubMed client, date-cut search, cache, effect extraction
-  ecology.py    branch loop, CIVER admission (chain + resolvability + scope), audit chain
-  synthesis.py  SR/MA pooling + independent GRADE-5 level
-  c0.py         C0 counterfactual, Phase A/B scoring, controls, evaluate()
-  harness.py    bootstrap CI + branch-gap primitives
-  db.py         SQLite runs, audit trail, warrants, Tier-3 study DB
-  llm.py        model clients (cloud flagship scored; local illustrative), fallback firewall
-```
-
-## Running
-
-Worker setup:
+## Run
 
 ```bash
-cd services/worker
-python3.11 -m venv .venv
-source .venv/bin/activate
+cd services/worker && python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+
+export OPENROUTER_API_KEY=...
+python -m scripts.evaluate --topic hrt \
+  --backend openai-compatible --base-url https://openrouter.ai/api/v1 \
+  --model deepseek/deepseek-v4 --horizons 2000,2010,2020
 ```
 
-A scored evaluation run (cloud flagship, BYOK):
-
-```bash
-export OPENROUTER_API_KEY=...        # or OPENAI_/GEMINI_/ANTHROPIC_API_KEY
-python -m scripts.evaluate \
-  --topic hrt \
-  --backend openai-compatible \
-  --base-url https://openrouter.ai/api/v1 \
-  --model deepseek/deepseek-v4 \
-  --horizons 2000,2010,2020
-```
-
-Omitting a key/backend falls back to the deterministic illustrative client
-(non-scientific). `--horizons` must be **absolute calendar years** (values < 1900
-are clamped to the 2025 PubMed ceiling and collapse the retro).
-
-Tests:
-
-```bash
-cd services/worker && ./.venv/bin/pytest
-npm run lint:web && npm run build:web
-```
+Static replay site: `NEXT_PUBLIC_MEDEVO_STATIC_REPLAY=1 npm run build:web`.
+Tests: `cd services/worker && ./.venv/bin/pytest` and `npm run build:web`.
 
 ## Author
 
-Tuyen Tran, MD — pediatric surgeon building tools at the intersection of
+**Tuyen Tran, MD** — pediatric surgeon working at the intersection of
 evidence-based medicine, AI, and low-resource clinical settings. ORCID
 [0009-0003-0535-6225](https://orcid.org/0009-0003-0535-6225).
 
-This is a research instrument, not clinical decision support. Nothing it outputs
-should inform the care of an actual patient.
+A research instrument, not clinical decision support. Nothing it outputs should
+inform the care of an actual patient.
