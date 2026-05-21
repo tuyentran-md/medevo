@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.agents import ResearchAgent, parse_research_emission
+from app.agents import ResearchAgent, parse_research_emission, pubmed_query_candidates
 from app.ecology import (
     ClaimSeed,
     CorpusItem,
@@ -101,6 +101,76 @@ def test_effect_extraction_reads_point_and_ci() -> None:
     assert effect.ci_low == 0.61
     assert effect.ci_high == 0.84
     assert effect.measure == "RR"
+
+
+def test_cvd_pubmed_query_candidates_are_short_domain_queries() -> None:
+    queries = pubmed_query_candidates(
+        "Cigarette smoking is causally associated with dose-dependent increases in coronary heart disease risk."
+    )
+    assert queries[0] == "cigarette smoking coronary heart disease"
+    assert queries[-1].startswith("Cigarette smoking")
+
+
+def test_research_agent_falls_back_across_pubmed_queries_before_llm() -> None:
+    class FallbackPubMed:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+
+        def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+            self.queries.append(query)
+            if query == "tobacco coronary heart disease cohort":
+                record = PubMedRecord(
+                    pmid="222",
+                    title="Smoking cohort",
+                    abstract="Cohort study n=500 found increased coronary risk; RR 1.40, 95% CI 1.20 to 1.70.",
+                    year=2012,
+                    scope=EvidenceScope(population_low=40, population_high=80, year_start=2012, year_end=2012),
+                )
+                return PubMedSearchResult(query=query, max_year=max_year, pmids=["222"], records=[record])
+            return PubMedSearchResult(query=query, max_year=max_year, pmids=[], records=[])
+
+    calls: list[str] = []
+    agent = ResearchAgent(
+        pubmed=FallbackPubMed(),
+        llm=ScriptedLLM(
+            "DIRECTION: SUPPORTS\nSCOPE: pop=40-80 years=2012-2012\nPMIDS: 222\nRATIONALE: cohort.",
+            calls=calls,
+        ),
+        retmax=12,
+    )
+    study, catalog = agent.run(
+        claim_id="claim-1",
+        claim_text="Cigarette smoking is causally associated with dose-dependent increases in coronary heart disease risk.",
+        simulated_year=2012,
+    )
+    assert [record.pmid for record in catalog] == ["222"]
+    assert study.provenance == "GROUNDED"
+    assert len(calls) == 1
+    assert agent.pubmed.queries[:2] == [  # type: ignore[attr-defined]
+        "cigarette smoking coronary heart disease",
+        "tobacco coronary heart disease cohort",
+    ]
+
+
+def test_empty_pubmed_catalog_does_not_spend_llm_call() -> None:
+    class EmptyPubMed:
+        def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+            return PubMedSearchResult(query=query, max_year=max_year, pmids=[], records=[])
+
+    calls: list[str] = []
+    agent = ResearchAgent(
+        pubmed=EmptyPubMed(),
+        llm=ScriptedLLM("DIRECTION: SUPPORTS\nSCOPE: pop=0-120 years=2012-2012\nPMIDS: none\nRATIONALE: x.", calls=calls),
+    )
+    study, catalog = agent.run(
+        claim_id="claim-empty",
+        claim_text="Unretrievable claim",
+        simulated_year=2012,
+    )
+    assert catalog == []
+    assert calls == []
+    assert study.provenance == "UNGROUNDED"
+    assert study.source_scope.year_end == 2012
 
 
 # --------------------------------------------------------------------------- #

@@ -484,6 +484,18 @@ def _unsupported_study(
         pmids=[],
         numeric=False,
         rationale=f"Group-A NHANES agent could not ground '{claim_text}': {reason}",
+        claimed_scope=EvidenceScope(
+            population_low=0,
+            population_high=120,
+            year_start=simulated_year,
+            year_end=simulated_year,
+        ),
+        source_scope=EvidenceScope(
+            population_low=0,
+            population_high=120,
+            year_start=simulated_year,
+            year_end=simulated_year,
+        ),
         failure_mode="unresolvable",
     )
     study.output_hash = _study_hash(study)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from app.c0 import (
     DEFAULT_GROUND_TRUTH,
@@ -213,6 +214,23 @@ def test_evaluate_entrypoint_runs_offline_and_is_structured() -> None:
     assert report["verdict"] in {"PASS", "FAIL"}
     # Default HRT ground truth is now verified from the USPSTF primary source.
     assert report["ground_truth_verified"] is True
+
+
+def test_evaluate_writes_full_artifacts(tmp_path) -> None:
+    request = _request(horizons=[1, 2, 3], input_text=SEPSIS)
+    report = evaluate(
+        request=request,
+        input_text=SEPSIS,
+        failure_rate=0.4,
+        iterations=50,
+        seed=7,
+        artifact_dir=tmp_path / "artifacts",
+    )
+
+    paths = report["artifact_paths"]
+    assert {"c0_bundle", "c0_rerun_bundle", "contaminated_bundle", "report"} <= set(paths)
+    for path in paths.values():
+        assert Path(path).exists()
 
 
 def test_evaluate_entrypoint_is_deterministic() -> None:

@@ -632,6 +632,7 @@ def evaluate(
     pubmed_client: PubMedClient | DeterministicPubMedClient | None = None,
     iterations: int = 1000,
     seed: int = 0,
+    artifact_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Run C0 + a contaminated run; compute Phase A, Phase B, §6 replay counts.
 
@@ -730,7 +731,7 @@ def evaluate(
     )
 
     verdict_pass = phase_a.passed and phase_b.passed
-    return {
+    report = {
         "phase_a": phase_a.to_dict(),
         "phase_b": phase_b.to_dict(),
         "external_truth": external_truth,
@@ -757,6 +758,39 @@ def evaluate(
         },
         "verdict": "PASS" if verdict_pass else "FAIL",
     }
+    if artifact_dir is not None:
+        artifact_paths = _write_evaluate_artifacts(
+            artifact_dir=Path(artifact_dir),
+            report=report,
+            c0_bundle=c0_bundle,
+            c0_rerun_bundle=c0_rerun_bundle,
+            contaminated_bundle=contaminated_bundle,
+        )
+        report["artifact_paths"] = artifact_paths
+    return report
+
+
+def _write_evaluate_artifacts(
+    *,
+    artifact_dir: Path,
+    report: dict[str, Any],
+    c0_bundle: ArtifactBundle,
+    c0_rerun_bundle: ArtifactBundle,
+    contaminated_bundle: ArtifactBundle,
+) -> dict[str, str]:
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    artifacts: dict[str, Any] = {
+        "c0_bundle": c0_bundle.model_dump(mode="json"),
+        "c0_rerun_bundle": c0_rerun_bundle.model_dump(mode="json"),
+        "contaminated_bundle": contaminated_bundle.model_dump(mode="json"),
+        "report": report,
+    }
+    paths: dict[str, str] = {}
+    for name, payload in artifacts.items():
+        path = artifact_dir / f"{name}.json"
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        paths[name] = str(path)
+    return paths
 
 
 def _external_truth_distances(

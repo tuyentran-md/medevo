@@ -203,6 +203,11 @@ def _default_manifest_path(started_at: datetime) -> Path:
     return DATA_DIR / "run_manifests" / f"evaluate-{stamp}.json"
 
 
+def _default_artifact_dir(started_at: datetime) -> Path:
+    stamp = started_at.strftime("%Y%m%dT%H%M%SZ")
+    return DATA_DIR / "artifacts" / f"evaluate-{stamp}"
+
+
 def _request_public_payload(request: RunRequestModel) -> dict[str, object]:
     payload = request.model_dump(mode="json", exclude={"api_key"})
     payload["api_key_present"] = bool(request.api_key)
@@ -257,6 +262,7 @@ def main() -> None:
         )
 
     started_at = datetime.now(UTC)
+    artifact_dir = _default_artifact_dir(started_at)
     report = evaluate(
         request=request,
         input_text=input_text,
@@ -264,6 +270,7 @@ def main() -> None:
         iterations=args.iterations,
         seed=args.seed,
         ground_truth_path=resolve_ground_truth_path(args),
+        artifact_dir=artifact_dir,
     )
     ended_at = datetime.now(UTC)
     manifest = {
@@ -281,6 +288,7 @@ def main() -> None:
             "model_descriptor": report.get("model_descriptor"),
             "degradation_reason": report.get("degradation_reason"),
             "run_ops": report.get("run_ops"),
+            "artifact_paths": report.get("artifact_paths"),
         },
     }
     manifest_path = args.manifest_out or _default_manifest_path(started_at)
