@@ -3,10 +3,10 @@
     "id": "showcase-hrt-chronic-disease-prevention",
     "run_id": "showcase-hrt-chronic-disease-prevention",
     "title": "Menopausal hormone therapy with estrogen should be offered to postmenopausal wom",
-    "description": "DEGRADED RUN: deterministic PubMed fixture",
+    "description": "Reachable-corpus divergence is branch-conditioned only at corpus construction, not selection scoring.",
     "input_mode": "guideline",
     "tags": [
-      "illustrative",
+      "scientific",
       "sealed-bundle",
       "static-replay"
     ],
