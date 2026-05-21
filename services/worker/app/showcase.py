@@ -73,6 +73,33 @@ SHOWCASES: list[ShowcaseRecord] = [
         ),
         tags=["showcase", "paper", "stewardship"],
     ),
+    ShowcaseRecord(
+        id="cvd-multidirectional",
+        title="Illustrative Multi-Directional Cardiovascular Evidence",
+        description=(
+            "Demo showcasing four claims with deliberately different truth directions: "
+            "smoking (stable SUPPORTS-anchor), alcohol cardioprotection (era-reversal), "
+            "HRT prevention (REFUTES post-WHI), and obesity paradox (NEUTRAL). "
+            "A well-calibrated engine should diverge across claims — not converge on a "
+            "single direction — proving it tracks evidence rather than LLM prior."
+        ),
+        input_mode="guideline",
+        input_text=(
+            "Cigarette smoking is causally associated with dose-dependent increases in "
+            "coronary heart disease risk, and smoking cessation substantially reduces "
+            "cardiovascular mortality within years of quitting. "
+            "Light to moderate alcohol consumption of one to two standard drinks per day "
+            "reduces risk of coronary heart disease by elevating high-density lipoprotein "
+            "cholesterol and lowering platelet aggregation. "
+            "Menopausal hormone therapy with combined estrogen and progestin reduces risk "
+            "of coronary heart disease and all-cause mortality in postmenopausal women "
+            "and should be considered for primary prevention of chronic disease. "
+            "In patients with established coronary artery disease, overweight and mild "
+            "obesity (body mass index 25 to 35) is associated with reduced cardiovascular "
+            "mortality compared to normal weight, the so-called obesity paradox."
+        ),
+        tags=["showcase", "guideline", "multi-directional", "reversal"],
+    ),
 ]
 
 

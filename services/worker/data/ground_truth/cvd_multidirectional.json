@@ -1,0 +1,34 @@
+{
+  "_status": "VERIFIED 2026-05-21 — four claims with different truth directions; labels derived from USPSTF, WHO, AHA, and established scientific literature. See _provenance per claim.",
+  "_provenance": {
+    "claim-smoking": "Smoking-CVD causal link: established 1964 US Surgeon General report, Doll & Hill cohort 1954/1964; AHA and USPSTF consistently classify as strong causal risk factor throughout all eras. Direction = SUPPORTS (evidence strongly supports the causal claim). Level = strong-for across all eras.",
+    "claim-alcohol": "Alcohol cardioprotection J-curve: widely reported 1990s–2015 (Ronksley 2011 BMJ, Di Castelnuovo 2006); guideline-endorsed as conditional benefit. REVERSED by Mendelian randomization studies 2016–2022 (Wood et al. 2018 Lancet 'no safe level of alcohol'; Biddinger 2022 JAMA Network Open; WHO 2023 joint statement). AHA 2021: 'We can't say moderate alcohol is cardioprotective'. Post-2018 era = REFUTES/conditional-against. NOTE: direction here is for the cardioprotection claim (positive hypothesis); SUPPORTS means evidence supports cardioprotection; REFUTES means evidence contradicts it.",
+    "claim-hrt": "HRT for cardiovascular prevention: pre-2002 observational studies favoured HRT (HERS pilot, WHI design era); USPSTF 2002 post-WHI E+P arm issued Grade D (recommends against) for chronic disease prevention; reaffirmed 2005 (E-alone), 2012, 2017, 2022. Direction = REFUTES (evidence refutes the cardioprotective prevention claim). Same fixture logic as hrt_uspstf.json.",
+    "claim-obesity-paradox": "Obesity paradox in established CVD: Lavie et al. 2003–2012 observational series reporting lower mortality in overweight/obese CAD patients; Flegal 2013 JAMA meta-analysis; challenged by methodological critiques (selection bias, weight-loss confounding, use of BMI). No major society guideline endorses prescribing overweight for CVD; NEUTRAL/no-recommendation throughout all eras studied. Still contested 2024 (Fothergill 2022, Zhang 2023)."
+  },
+  "_mapping_note": "Claims extracted from the input text in order: claim-1=smoking, claim-2=alcohol, claim-3=HRT, claim-4=obesity-paradox. Direction is for the POSITIVE hypothesis as stated in the input (e.g., 'HRT reduces CVD risk' — evidence REFUTES this post-2002). The era transition years reflect: 2000 = pre-WHI, pre-MR; 2012 = post-WHI, alcohol-neutral or weak-support era; 2024 = post-MR alcohol reversal, HRT consistently D.",
+  "topic": "cvd_multidirectional_four_claim_benchmark",
+  "scope_note": "Four cardiovascular claims deliberately spanning all three direction outcomes and one era-reversal. For internal engine calibration: a well-functioning ecology should converge toward SUPPORTS for smoking (stable), drift from SUPPORTS to REFUTES for alcohol (reversal), stay at REFUTES for HRT (consistent), and stay at NEUTRAL for obesity-paradox (contested). Multi-directional divergence, not mono-directional drift, is the signal of interest.",
+  "trajectory": {
+    "claim-1": [
+      {"year": 2000, "direction": "SUPPORTS", "level": "strong-for", "_basis": "Smoking-CVD causality: firmly established by 1964; AHA and medical consensus = strong-for throughout all eras"},
+      {"year": 2012, "direction": "SUPPORTS", "level": "strong-for", "_basis": "Unchanged; global evidence base only stronger"},
+      {"year": 2024, "direction": "SUPPORTS", "level": "strong-for", "_basis": "Unchanged; multiple large cohorts and RCTs on cessation benefit"}
+    ],
+    "claim-2": [
+      {"year": 2000, "direction": "SUPPORTS", "level": "conditional-for", "_basis": "J-curve alcohol cardioprotection: widely reported observational evidence, provisional guideline acceptance (AHA 2001 cautious positive)"},
+      {"year": 2012, "direction": "SUPPORTS", "level": "conditional-for", "_basis": "Still mostly supportive evidence; Mendelian randomization era not yet arrived; Ronksley 2011 BMJ large meta-analysis supports J-curve"},
+      {"year": 2024, "direction": "REFUTES", "level": "conditional-against", "_basis": "MR studies 2016-2022 nullified observational J-curve (confounding by sick-quitter); WHO 2023 'no safe level'; AHA 2021 dropped cardioprotection language; direction reversed"}
+    ],
+    "claim-3": [
+      {"year": 2000, "direction": "SUPPORTS", "level": "conditional-for", "_basis": "Pre-WHI: observational data (HERS design era) suggested HRT cardioprotective; widely recommended for chronic-disease prevention"},
+      {"year": 2012, "direction": "REFUTES", "level": "strong-against", "_basis": "WHI 2002 (E+P) and 2004 (E-alone) RCTs showed excess stroke/thromboembolism; USPSTF Grade D 2002 reaffirmed 2012"},
+      {"year": 2024, "direction": "REFUTES", "level": "strong-against", "_basis": "USPSTF Grade D reaffirmed 2017/2022; no cardiovascular prevention benefit confirmed"}
+    ],
+    "claim-4": [
+      {"year": 2000, "direction": "NEUTRAL", "level": "no-recommendation", "_basis": "Obesity paradox not yet systematically described in CVD; no guideline position; insufficient evidence"},
+      {"year": 2012, "direction": "NEUTRAL", "level": "no-recommendation", "_basis": "Obesity paradox described by Lavie et al. 2003-2012 and Flegal 2013 but contested; no society guideline endorses; NEUTRAL"},
+      {"year": 2024, "direction": "NEUTRAL", "level": "no-recommendation", "_basis": "Still methodologically contested (reverse causation, BMI limitations, population heterogeneity); no guideline endorses; remains NEUTRAL"}
+    ]
+  }
+}

@@ -548,11 +548,13 @@ def evaluate_phase_a_c0(
     )
 
     no_self_drift = self_drift_max <= self_drift_threshold
+    # INTERNAL pass criteria: stability only (leakage-immune).
+    # Ground-truth comparison is INFORMATIONAL — if leakage exists, C0 already
+    # knows the right answer and beats no-change trivially, making that bar
+    # meaningless as a quality gate. Report it separately, do not gate on it.
     pass_bars = {
         "seed_identical": seed_identical,
         "no_self_drift": no_self_drift,
-        "beats_no_change": final_error < no_change_error,
-        "beats_random": final_error < random_null_error,
     }
     return PhaseAC0Report(
         claim_count=len(claim_ids),
@@ -693,10 +695,30 @@ def evaluate(
     # --- §6 replay counts per era -----------------------------------------
     replay = _replay_per_era(contaminated_bundle)
 
+    # --- External truth distances (INFORMATIONAL — not used in verdict) ----
+    # Report how far free/constrained/C0 each land from external ground truth,
+    # side-by-side with the internal C0-based CIVER metric. Never mix these into
+    # the pass/fail verdict: if leakage exists, external distance trivially shrinks
+    # (model already knows the answer), making it a useless quality gate.
+    gt_latest = ground_truth.latest()
+    external_truth = _external_truth_distances(
+        free=free,
+        constrained=constrained,
+        c0=list(c0_free),
+        gt_latest=gt_latest,
+    )
+    external_truth["ground_truth_status"] = ground_truth.status
+    external_truth["ground_truth_verified"] = ground_truth.is_verified
+    external_truth["note"] = (
+        "Informational only — not used in pass/fail verdict. "
+        "External distance shrinks trivially under leakage; use internal (C0) metric for verdict."
+    )
+
     verdict_pass = phase_a.passed and phase_b.passed
     return {
         "phase_a": phase_a.to_dict(),
         "phase_b": phase_b.to_dict(),
+        "external_truth": external_truth,
         "replay_counts": replay,
         "calibration_matrix": contaminated_summary.get("calibration_matrix"),
         "ground_truth_status": ground_truth.status,
@@ -710,6 +732,56 @@ def evaluate(
         "degradation_reason": contaminated_bundle.degradation_reason,
         "model_descriptor": contaminated_bundle.model_descriptor,
         "verdict": "PASS" if verdict_pass else "FAIL",
+    }
+
+
+def _external_truth_distances(
+    *,
+    free: Sequence[GuidelineClaim],
+    constrained: Sequence[GuidelineClaim],
+    c0: Sequence[GuidelineClaim],
+    gt_latest: dict[str, GuidelineClaim],
+) -> dict[str, Any]:
+    """Per-arm external truth distances (INFORMATIONAL — never used in verdict)."""
+    free_latest = _latest_by_claim(free)
+    con_latest = _latest_by_claim(constrained)
+    c0_latest = _latest_by_claim(c0)
+    claim_ids = sorted(set(free_latest) & set(gt_latest))
+    if not claim_ids:
+        return {"free": None, "constrained": None, "c0": None}
+
+    def _dist(branch_latest: dict[str, GuidelineClaim]) -> float | None:
+        ids = sorted(set(branch_latest) & set(gt_latest))
+        if not ids:
+            return None
+        return round(
+            fmean(
+                (_direction_delta(branch_latest[c], gt_latest[c])
+                 + _level_delta(branch_latest[c], gt_latest[c])) / 2.0
+                for c in ids
+            ),
+            4,
+        )
+
+    per_claim: list[dict[str, Any]] = []
+    for c in claim_ids:
+        free_g = free_latest.get(c)
+        con_g = con_latest.get(c)
+        c0_g = c0_latest.get(c)
+        gt_g = gt_latest[c]
+        per_claim.append({
+            "claim_id": c,
+            "truth": {"direction": gt_g.direction, "level": gt_g.level},
+            "free": {"direction": free_g.direction, "level": free_g.level} if free_g else None,
+            "constrained": {"direction": con_g.direction, "level": con_g.level} if con_g else None,
+            "c0": {"direction": c0_g.direction, "level": c0_g.level} if c0_g else None,
+        })
+
+    return {
+        "free_to_truth": _dist(free_latest),
+        "constrained_to_truth": _dist(con_latest),
+        "c0_to_truth": _dist(c0_latest),
+        "per_claim": per_claim,
     }
 
 

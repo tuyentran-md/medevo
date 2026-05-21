@@ -33,10 +33,43 @@ SEPSIS = (
     "Escalate to ICU support if shock persists despite fluids and vasoactive therapy."
 )
 
+# Multi-directional benchmark: 4 claims × 3 truth directions + 1 era-reversal.
+# Claim-1 smoking = stable SUPPORTS-anchor; claim-2 alcohol = era-reversal
+# (SUPPORTS→REFUTES); claim-3 HRT = REFUTES post-2002; claim-4 obesity-paradox = NEUTRAL.
+# Ground truth: data/ground_truth/cvd_multidirectional.json
+# Horizons: 2000 (pre-WHI, pre-MR), 2012 (post-WHI, alcohol neutral), 2024 (post-MR).
+CVD_MULTI = (
+    "Cigarette smoking is causally associated with dose-dependent increases in coronary heart disease "
+    "risk, and smoking cessation substantially reduces cardiovascular mortality within years of quitting. "
+    "Light to moderate alcohol consumption of one to two standard drinks per day reduces risk of "
+    "coronary heart disease by elevating high-density lipoprotein cholesterol and lowering platelet "
+    "aggregation. "
+    "Menopausal hormone therapy with combined estrogen and progestin reduces risk of coronary heart "
+    "disease and all-cause mortality in postmenopausal women and should be considered for primary "
+    "prevention of chronic disease. "
+    "In patients with established coronary artery disease, overweight and mild obesity (body mass "
+    "index 25 to 35) is associated with reduced cardiovascular mortality compared to normal weight, "
+    "the so-called obesity paradox."
+)
+
+_GROUND_TRUTH_DIR = Path(__file__).resolve().parents[1] / "data" / "ground_truth"
+_GROUND_TRUTH_MAP = {
+    "hrt": _GROUND_TRUTH_DIR / "hrt_uspstf.json",
+    "sepsis": None,
+    "cvd": _GROUND_TRUTH_DIR / "cvd_multidirectional.json",
+}
+_HORIZONS_MAP = {
+    "hrt": "2000,2010,2020",
+    "sepsis": "2000,2010,2020",
+    "cvd": "2000,2012,2024",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run MedEvo scientific or illustrative evaluation.")
-    parser.add_argument("--topic", choices=("hrt", "sepsis"), default="hrt")
+    parser.add_argument("--topic", choices=("hrt", "sepsis", "cvd"), default="cvd",
+                        help="'cvd' = multi-directional 4-claim benchmark (recommended). "
+                             "'hrt' = 3-claim post-WHI (all-REFUTES, leakage-prone).")
     parser.add_argument("--input-file", type=Path, help="Optional text file to override the built-in topic text.")
     parser.add_argument(
         "--backend",
@@ -52,10 +85,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(
         "--horizons",
-        default="2000,2010,2020",
+        default=None,
         help="ABSOLUTE calendar years for the retro date-cut (Entrez maxdate). "
-        "Values <1900 are clamped to the 2025 ceiling, which collapses the "
-        "retro -- always pass absolute eras for a real run.",
+        "Defaults to topic-specific years (cvd=2000,2012,2024; hrt/sepsis=2000,2010,2020). "
+        "Values <1900 are clamped to the 2025 ceiling.",
     )
     parser.add_argument("--ground-truth", type=Path, help="Optional ground-truth fixture path.")
     parser.add_argument("--title", default="medevo-eval")
@@ -65,7 +98,15 @@ def parse_args() -> argparse.Namespace:
 def resolve_input_text(args: argparse.Namespace) -> str:
     if args.input_file is not None:
         return args.input_file.read_text(encoding="utf-8")
+    if args.topic == "cvd":
+        return CVD_MULTI
     return HRT if args.topic == "hrt" else SEPSIS
+
+
+def resolve_ground_truth_path(args: argparse.Namespace) -> Path | None:
+    if args.ground_truth is not None:
+        return args.ground_truth
+    return _GROUND_TRUTH_MAP.get(args.topic)
 
 
 def resolve_api_key(args: argparse.Namespace) -> str | None:
@@ -91,6 +132,7 @@ def parse_horizons(raw: str) -> list[int]:
 def main() -> None:
     args = parse_args()
     input_text = resolve_input_text(args)
+    raw_horizons = args.horizons or _HORIZONS_MAP.get(args.topic, "2000,2010,2020")
     request = RunRequestModel(
         title=args.title,
         input_mode="guideline",
@@ -100,7 +142,7 @@ def main() -> None:
         model=args.model,
         api_key=resolve_api_key(args),
         base_url=args.base_url,
-        horizons=parse_horizons(args.horizons),
+        horizons=parse_horizons(raw_horizons),
     )
     report = evaluate(
         request=request,
@@ -108,12 +150,20 @@ def main() -> None:
         failure_rate=args.failure_rate,
         iterations=args.iterations,
         seed=args.seed,
-        ground_truth_path=args.ground_truth,
+        ground_truth_path=resolve_ground_truth_path(args),
     )
     print(json.dumps(report, indent=2, sort_keys=True))
     print(f"\nVERDICT: {report['verdict']}")
     print(f"scientific: {report['scientific']}")
     print(f"ground-truth status: {report['ground_truth_status']}")
+    ext = report.get("external_truth", {})
+    if ext:
+        print(
+            f"external truth distances (informational):"
+            f" free={ext.get('free_to_truth')}"
+            f" constrained={ext.get('constrained_to_truth')}"
+            f" c0={ext.get('c0_to_truth')}"
+        )
     if report.get("degradation_reason"):
         print(f"degradation_reason: {report['degradation_reason']}")
 

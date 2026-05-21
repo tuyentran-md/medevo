@@ -67,6 +67,8 @@ RELEASE_THRESHOLD = 0.60
 SCOPE_TOLERANCE_YEARS = 2
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
+# NHANES 2005-2006 data ends in 2006; do not use for simulated years before that.
+_MICRODATA_EARLIEST_SIMULATED_YEAR = 2006
 _DIRECTION_VALUE = {"SUPPORTS": 1.0, "NEUTRAL": 0.0, "REFUTES": -1.0}
 
 
@@ -298,6 +300,12 @@ def _research_study_for_year(
 
 
 def _use_microdata_group(*, claim: ClaimSeed, year: int) -> bool:
+    # Temporal guard: NHANES 2005-2006 data must not be used for absolute-year
+    # retro runs before the data existed (year 2000 < 2006 → skip). Forward
+    # simulations use relative years (< 1900) and are exempt from this guard
+    # since the simulation epoch is the future.
+    if 1900 <= year < _MICRODATA_EARLIEST_SIMULATED_YEAR:
+        return False
     if not microdata_supports_claim(claim.text):
         return False
     bucket = int(
@@ -305,6 +313,20 @@ def _use_microdata_group(*, claim: ClaimSeed, year: int) -> bool:
         16,
     )
     return bucket % 2 == 0
+
+
+def _study_is_temporally_consistent(study: "Study", simulated_year: int) -> bool:
+    """Shared anti-speculation gate (BOTH arms).
+
+    Returns False when a study's data source post-dates the simulated year,
+    meaning the agent used evidence that did not yet exist. Only enforced for
+    absolute-year (≥ 1900) retro runs; forward-simulation relative years
+    (< 1900) always pass since we can't flag future data in a future scenario.
+    Distinct from the CIVER provenance gate (constrained only).
+    """
+    if simulated_year < 1900:
+        return True  # forward-simulation: no temporal constraint applicable
+    return study.source_scope.year_end <= simulated_year
 
 
 @dataclass(frozen=True)
@@ -1212,6 +1234,28 @@ def run_ecology(
                                 source_catalog[claim.claim_id].append(source)
                                 source_ids_seen[claim.claim_id].add(source.source_id)
 
+                # Defaults for snapshot use after the loop; overwritten by last processed outcome.
+                verdict = CiverVerdict(
+                    node_id=f"{claim.claim_id}-no-study-{year}",
+                    passed=branch == "free",
+                    reasons=["No study admitted this era."],
+                    certificate_id=None,
+                )
+                investigator = EvidenceUnit(
+                    id=f"{claim.claim_id}-no-study-{year}",
+                    claim_id=claim.claim_id,
+                    year=year,
+                    branch=branch,
+                    producer="investigator",
+                    cited_ids=[],
+                    provenance="UNGROUNDED",
+                    direction="NEUTRAL",
+                    rationale="No study admitted this era.",
+                    resolved_real_ids=[],
+                    resolved_locators=[],
+                    claimed_scope=EvidenceScope(),
+                )
+
                 # Tier-1 -> Tier-2 (CIVER) -> Tier-3 admission, per replicate study.
                 for outcome in outcomes:
                     if outcome.study is None:
@@ -1238,6 +1282,32 @@ def run_ecology(
                         continue
 
                     branch_study = outcome.study.model_copy(deep=True)
+                    # Temporal anti-speculation gate (BOTH arms): block any study
+                    # whose data source post-dates the simulated year. This catches
+                    # NHANES 2005-2006 data used in a year-2000 simulation and any
+                    # other future-data path. Applied before CIVER so the provenance
+                    # gate never even sees temporally inconsistent studies.
+                    if not _study_is_temporally_consistent(branch_study, year):
+                        record_transition(
+                            audit_trail=audit_trail,
+                            audit_counters=audit_counters,
+                            last_hashes=last_hashes,
+                            run_id=run_id or "preview-run",
+                            claim_id=claim.claim_id,
+                            branch=branch,
+                            year=year,
+                            phase="investigator",
+                            event_type="temporal-speculation",
+                            severity="block",
+                            integrity_score_before=1.0,
+                            integrity_score_after=0.0,
+                            message=(
+                                f"Data source year_end={branch_study.source_scope.year_end} "
+                                f"exceeds simulated_year={year}; blocked from both arms."
+                            ),
+                        )
+                        blocked_this_era += 1
+                        continue
                     # Article II — execution deviation from the registered plan
                     # (WARN, constrained only): made visible, does not block.
                     if outcome.execution_deviated:
