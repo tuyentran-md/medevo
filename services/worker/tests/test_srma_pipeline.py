@@ -17,6 +17,7 @@ from app.models import EvidenceScope, GuidelineClaim, Study
 from app.simulator import simulate_run
 from app.synthesis import (
     admit_guideline_output,
+    pooled_effect,
     run_systematic_review,
     synthesize_guideline_claim,
 )
@@ -102,6 +103,28 @@ def test_screening_is_blind_to_provenance_label() -> None:
         [s.model_copy(update={"provenance": "UNGROUNDED"}) for s in studies]
     )
     assert grounded.included_ids == ungrounded.included_ids
+
+
+def test_pooling_is_blind_to_provenance_label() -> None:
+    """SR/MA weighting must not use the harness-only provenance label.
+
+    A real guideline panel can see observable study attributes (sample size,
+    quality, numeric effect, scope/cites), but not the simulator's ground-truth
+    GROUNDED/UNGROUNDED label. Flipping only that label must leave the pooled
+    estimate unchanged.
+    """
+    studies = [
+        _study("support", direction="SUPPORTS", quality=0.9, n=600),
+        _study("refute", direction="REFUTES", quality=0.7, n=450),
+    ]
+    baseline = pooled_effect(studies)
+    flipped = pooled_effect(
+        [
+            studies[0].model_copy(update={"provenance": "UNGROUNDED"}),
+            studies[1].model_copy(update={"provenance": "GROUNDED"}),
+        ]
+    )
+    assert flipped == baseline
 
 
 # --- Task C: level reflects GRADE certainty ---------------------------------

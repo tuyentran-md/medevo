@@ -397,8 +397,7 @@ def numeric_effect_component(study: Study) -> float | None:
 def study_weight(study: Study, *, review: SrmaReview | None = None) -> float:
     n_weight = math.sqrt(study.n or 50) / math.sqrt(500)
     numeric_bonus = 0.15 if study.numeric else 0.0
-    provenance_penalty = 0.35 if study.provenance == "UNGROUNDED" else 0.0
-    base = max(0.05, min(1.5, study.quality + n_weight + numeric_bonus - provenance_penalty))
+    base = max(0.05, min(1.5, study.quality + n_weight + numeric_bonus))
     appraisal = review.study_appraisals.get(study.id) if review is not None else None
     multiplier = appraisal.weight_multiplier if appraisal is not None else 1.0
     return max(0.05, min(1.9, base * multiplier))
@@ -423,9 +422,6 @@ def recommendation_level(*, direction: ClaimDirection, certainty: float) -> Reco
 def certainty_score(studies: list[Study], *, review: SrmaReview | None = None) -> float:
     if not studies:
         return 0.0
-    real_quality = sum(study.quality for study in studies if study.provenance == "GROUNDED")
-    total_quality = sum(study.quality for study in studies)
-    real_fraction = 0.0 if total_quality == 0 else real_quality / total_quality
     quantity = min(1.0, len(studies) / 6)
     numeric_fraction = sum(1 for study in studies if study.numeric) / len(studies)
     consistency = max(0.0, 1.0 - heterogeneity(studies))
@@ -434,7 +430,6 @@ def certainty_score(studies: list[Study], *, review: SrmaReview | None = None) -
         + 0.24 * quantity
         + 0.18 * consistency
         + 0.14 * numeric_fraction
-        + 0.10 * real_fraction
     )
     if heterogeneity(studies) > 0.25:
         score = min(score, 0.68)
