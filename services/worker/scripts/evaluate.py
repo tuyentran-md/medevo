@@ -24,6 +24,7 @@ from app.config import DATA_DIR
 from app.c0 import evaluate
 from app.ecology import extract_claims
 from app.models import RunRequestModel
+from app.simulator import resolve_backend
 
 
 HRT = (
@@ -134,6 +135,8 @@ def resolve_ground_truth_path(args: argparse.Namespace) -> Path | None:
 def resolve_api_key(args: argparse.Namespace) -> str | None:
     if args.api_key_env:
         return os.environ.get(args.api_key_env)
+    if args.backend == "gemini" and os.environ.get("GEMINI_API_KEY"):
+        return os.environ["GEMINI_API_KEY"]
     for env_name in (
         "MEDEVO_EVAL_API_KEY",
         "OPENROUTER_API_KEY",
@@ -228,11 +231,13 @@ def main() -> None:
         horizons=horizons,
     )
     if args.dry_run:
+        backend = resolve_backend(request)
         print(
             json.dumps(
                 {
                     "mode": "dry-run",
                     "request": _request_public_payload(request),
+                    "resolved_backend": backend.model_dump(mode="json"),
                     "call_plan": call_plan,
                     "git_sha": _git_sha(),
                     "llm_cache_enabled": os.environ.get("MEDEVO_LLM_CACHE", "1") != "0",
@@ -267,6 +272,7 @@ def main() -> None:
         "wall_clock_seconds": round((ended_at - started_at).total_seconds(), 3),
         "git_sha": _git_sha(),
         "request": _request_public_payload(request),
+        "resolved_backend": resolve_backend(request).model_dump(mode="json"),
         "call_plan": call_plan,
         "report_summary": {
             "verdict": report.get("verdict"),

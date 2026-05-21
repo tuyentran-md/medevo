@@ -13,6 +13,8 @@ from pypdf import PdfReader
 from app.config import (
     DEFAULT_OLLAMA_BASE_URL,
     DEFAULT_OLLAMA_MODEL,
+    DEFAULT_GEMINI_BASE_URL,
+    DEFAULT_GEMINI_MODEL,
     DEFAULT_PUBMED_API_KEY,
     DEFAULT_PUBMED_EMAIL,
     DEFAULT_PUBMED_MIN_INTERVAL_SECONDS,
@@ -80,10 +82,14 @@ def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
             using_fallback=shutil.which("claude") is None,
         )
 
-    model = request.model or DEFAULT_OLLAMA_MODEL
+    model = request.model or (
+        DEFAULT_GEMINI_MODEL if request.backend == "gemini" else DEFAULT_OLLAMA_MODEL
+    )
     base_url = request.base_url or (
         DEFAULT_OLLAMA_BASE_URL if request.backend == "ollama" else None
     )
+    if request.backend == "gemini" and not request.base_url:
+        base_url = DEFAULT_GEMINI_BASE_URL
     using_fallback = True
 
     if request.backend == "ollama":
@@ -97,7 +103,10 @@ def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
         except Exception:
             using_fallback = True
     else:
-        using_fallback = not bool(request.api_key and base_url)
+        api_key = request.api_key or (
+            os.environ.get("GEMINI_API_KEY") if request.backend == "gemini" else None
+        )
+        using_fallback = not bool(api_key and base_url)
 
     return BackendConfigModel(
         backend=request.backend,
@@ -164,7 +173,8 @@ def resolve_client(
         base_url=backend.base_url,
         model=backend.model,
         backend=backend.backend,
-        api_key=request.api_key,
+        api_key=request.api_key
+        or (os.environ.get("GEMINI_API_KEY") if backend.backend == "gemini" else None),
     )
 
 

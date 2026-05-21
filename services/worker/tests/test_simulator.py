@@ -248,3 +248,19 @@ def test_openai_compatible_requires_base_url_for_scientific_run() -> None:
     backend = resolve_backend(request)
     assert backend.using_fallback is False
     assert backend.base_url == "https://example.test/v1"
+
+
+def test_gemini_backend_defaults_to_google_ai_studio(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "secret")
+    request = RunRequestModel(
+        input_mode="guideline",
+        input_source="paste",
+        input_text="Routine bronchodilators should not be continued without observed benefit.",
+        backend="gemini",
+    )
+
+    backend = resolve_backend(request)
+
+    assert backend.using_fallback is False
+    assert backend.model == "gemini-3-flash"
+    assert backend.base_url == "https://generativelanguage.googleapis.com/v1beta/openai"

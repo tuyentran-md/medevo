@@ -131,6 +131,13 @@ python -m scripts.evaluate --topic hrt --backend claude-cli \
   --model claude-sonnet-4-5 --horizons 2000,2010,2020
 ```
 
+Cheap lane via Google AI Studio Gemini API (uses `GEMINI_API_KEY`, default model
+`gemini-3-flash`, default base URL `https://generativelanguage.googleapis.com/v1beta/openai`):
+
+```bash
+python -m scripts.evaluate --topic cvd --backend gemini --max-calls 500
+```
+
 Run-ops guardrails before spending model calls:
 
 ```bash
