@@ -152,6 +152,14 @@ export interface GuidelineClaim {
   study_count: number;
   ungrounded_fraction: number;
   heterogeneity: number;
+  /** SRMA screening: studies that passed eligibility screening. */
+  n_included?: number;
+  /** SRMA screening: studies excluded during screening. */
+  n_excluded?: number;
+  /** Output gate refused this guideline (provenance/integrity floor not met). */
+  output_gate_refused?: boolean;
+  /** Human-readable reason when the output gate refused. */
+  output_gate_reason?: string;
 }
 
 export interface BootstrapInterval {

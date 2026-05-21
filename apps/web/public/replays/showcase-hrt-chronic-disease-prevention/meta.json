@@ -8,7 +8,7 @@
     ],
     "scientific": false,
     "model": "deterministic-fallback",
-    "has_blocked_outputs": false,
+    "has_blocked_outputs": true,
     "population_stats": {
       "2000": {
         "pair_count": 3,
@@ -44,15 +44,15 @@
           "high": 0.0
         },
         "level": {
-          "mean": 0.0,
+          "mean": 0.0833,
           "low": 0.0,
-          "high": 0.0
+          "high": 0.25
         }
       }
     },
-    "llm_call_count": 18,
+    "llm_call_count": 36,
     "degradation_reason": "deterministic PubMed fixture",
-    "bundle_seal": "70e09108963fac3b2b9df4689336015d4c4c53168ad24ce947b45d8ece0d8b39",
+    "bundle_seal": "5a45f4912eb2c2af9869088158cb9c5348b037e9892857a8a39d1eb4b19fbf9a",
     "provenance_log": {
       "model": "deterministic-fallback",
       "model_digest": "n/a",
@@ -67,143 +67,269 @@
       "failure_rate": 0.3,
       "calls": [
         {
-          "label": "srma/claim-1/year-2000",
-          "seed": 155378161325643,
-          "prompt_digest": "45b9127300852eebbfed79df2575abe2f80730c2568428dbcbd6d1b371c3e931",
-          "response_hash": "d3ab13110a11b5436d9582a0534207a8c069ba3fbd2d585cbf9188aa41440428",
-          "timestamp": "2026-05-21T03:50:29.661852+00:00"
+          "label": "microdata/claim-1/year-2000",
+          "seed": 152277648106291,
+          "prompt_digest": "89525bdaee59244c991d0663fb81b9c6340cb66c3376fd5f9e941aa24025aac1",
+          "response_hash": "74d7a3ba85192a6c7d11a1ccabb8625b2eb0c438af3875f4d3ac4c5ea3838b3d",
+          "timestamp": "2026-05-21T04:45:40.481369+00:00"
+        },
+        {
+          "label": "research/claim-1/year-2000/r1",
+          "seed": 261969272732402,
+          "prompt_digest": "bf756e6246a43dcdd0b7f70c4fea16ecf9b9a5676b93484dd2c84b42fbe73f04",
+          "response_hash": "ffdec8d15c9f1e253b0e9d88aff89d0604e55510ee7d8fcae10bcf8477009308",
+          "timestamp": "2026-05-21T04:45:40.481748+00:00"
         },
         {
           "label": "srma/claim-1/year-2000",
           "seed": 155378161325643,
-          "prompt_digest": "45b9127300852eebbfed79df2575abe2f80730c2568428dbcbd6d1b371c3e931",
-          "response_hash": "d3ab13110a11b5436d9582a0534207a8c069ba3fbd2d585cbf9188aa41440428",
-          "timestamp": "2026-05-21T03:50:29.663549+00:00"
+          "prompt_digest": "159245715fbe1c42bf6ba0330bfbed1b26e0e694442bc372b1256717cdcc2711",
+          "response_hash": "e8f8753806e096ad162784afa84b6ffd7fbaf52ae0bc4ab8eea3a58d23686f84",
+          "timestamp": "2026-05-21T04:45:40.483350+00:00"
+        },
+        {
+          "label": "srma/claim-1/year-2000",
+          "seed": 155378161325643,
+          "prompt_digest": "159245715fbe1c42bf6ba0330bfbed1b26e0e694442bc372b1256717cdcc2711",
+          "response_hash": "e8f8753806e096ad162784afa84b6ffd7fbaf52ae0bc4ab8eea3a58d23686f84",
+          "timestamp": "2026-05-21T04:45:40.484884+00:00"
+        },
+        {
+          "label": "microdata/claim-2/year-2000",
+          "seed": 213148617335983,
+          "prompt_digest": "9dd9945d35be4082b3c53f839d2078d55e7d7728ba92818c6d3e38558e98895c",
+          "response_hash": "9ee70a164bb1afe10981edd6738f539416e5b1b9a48a303d5f1daa685423cc56",
+          "timestamp": "2026-05-21T04:45:41.205297+00:00"
+        },
+        {
+          "label": "research/claim-2/year-2000/r1",
+          "seed": 218680339929232,
+          "prompt_digest": "737367fb4dcd11d76c5ccc37046940c49469ab8ac865b393ecb66b5c03539b48",
+          "response_hash": "0ddc8f8196c4073488abe61fd49730fc48268a04d5e7e9ef7fedbb0340e7076d",
+          "timestamp": "2026-05-21T04:45:41.205479+00:00"
         },
         {
           "label": "srma/claim-2/year-2000",
           "seed": 112617756903980,
-          "prompt_digest": "ae957c980d35bbe75050790df655cbc8d500c2fea34cb5dcbd6b3afd9e1d9f2d",
-          "response_hash": "c61ae52a1d1773f47a0f2fc8b9784b8b04b2f2d2e6e82cec373dd25dc68889f6",
-          "timestamp": "2026-05-21T03:50:30.383270+00:00"
+          "prompt_digest": "0279e5dab23ad822b928389336ccb17ff111a30c6a799c097869544a28658963",
+          "response_hash": "01e4cf51469297904ae707397d6b4f26061a9cb378736bb6d3020e6516b245f9",
+          "timestamp": "2026-05-21T04:45:41.206873+00:00"
         },
         {
           "label": "srma/claim-2/year-2000",
           "seed": 112617756903980,
-          "prompt_digest": "ae957c980d35bbe75050790df655cbc8d500c2fea34cb5dcbd6b3afd9e1d9f2d",
-          "response_hash": "c61ae52a1d1773f47a0f2fc8b9784b8b04b2f2d2e6e82cec373dd25dc68889f6",
-          "timestamp": "2026-05-21T03:50:30.384691+00:00"
+          "prompt_digest": "0279e5dab23ad822b928389336ccb17ff111a30c6a799c097869544a28658963",
+          "response_hash": "01e4cf51469297904ae707397d6b4f26061a9cb378736bb6d3020e6516b245f9",
+          "timestamp": "2026-05-21T04:45:41.208384+00:00"
+        },
+        {
+          "label": "research/claim-3/year-2000/r0",
+          "seed": 21346434270249,
+          "prompt_digest": "a514e6309187b21158b964c6a00e23e62dd560c4bb21d3ba298764745fdc19c2",
+          "response_hash": "46d9dd29e78823fb49dd89fa5434a9e75da7bd146779ab2bd3454b75393ab7be",
+          "timestamp": "2026-05-21T04:45:41.208932+00:00"
+        },
+        {
+          "label": "research/claim-3/year-2000/r1",
+          "seed": 31557125580984,
+          "prompt_digest": "a514e6309187b21158b964c6a00e23e62dd560c4bb21d3ba298764745fdc19c2",
+          "response_hash": "89b67f7f65c1577ccd2a61964326a5718c90c55d1c633919099e5a0fd765cbf0",
+          "timestamp": "2026-05-21T04:45:41.209016+00:00"
         },
         {
           "label": "srma/claim-3/year-2000",
           "seed": 120102575726235,
-          "prompt_digest": "a2f3d5e7a3520cd9cefab2c2592f44d6974bbd2c313147d211259afb1c8c32d9",
-          "response_hash": "8cc0c679c8400c0f365c4dcae03aae34e7c9b8b86cea2abc29ebe214787b3d9d",
-          "timestamp": "2026-05-21T03:50:30.386079+00:00"
+          "prompt_digest": "bdaca26bb6f36c3334ac54ac9c13d95b3e067e09cc93e4745edfebcdba76904d",
+          "response_hash": "5c203b44a1353cb71f1f50422e7f1c92b0e1808277ec987792a5bd366d985595",
+          "timestamp": "2026-05-21T04:45:41.210035+00:00"
         },
         {
           "label": "srma/claim-3/year-2000",
           "seed": 120102575726235,
-          "prompt_digest": "a2f3d5e7a3520cd9cefab2c2592f44d6974bbd2c313147d211259afb1c8c32d9",
-          "response_hash": "8cc0c679c8400c0f365c4dcae03aae34e7c9b8b86cea2abc29ebe214787b3d9d",
-          "timestamp": "2026-05-21T03:50:30.387206+00:00"
+          "prompt_digest": "bdaca26bb6f36c3334ac54ac9c13d95b3e067e09cc93e4745edfebcdba76904d",
+          "response_hash": "5c203b44a1353cb71f1f50422e7f1c92b0e1808277ec987792a5bd366d985595",
+          "timestamp": "2026-05-21T04:45:41.211374+00:00"
+        },
+        {
+          "label": "microdata/claim-1/year-2010",
+          "seed": 150932025289449,
+          "prompt_digest": "ab760583b5d71f0e6b8859710e0df32cf5c1ad707c0690a216f3940d98182ac2",
+          "response_hash": "74d7a3ba85192a6c7d11a1ccabb8625b2eb0c438af3875f4d3ac4c5ea3838b3d",
+          "timestamp": "2026-05-21T04:45:41.937606+00:00"
+        },
+        {
+          "label": "research/claim-1/year-2010/r1",
+          "seed": 263446997958819,
+          "prompt_digest": "9c0343ed2dae1a9ef1a005c8fc3bf73941a22209c53bdc23444fc8437f4b3239",
+          "response_hash": "a7ad8507b0087995bc529b68bdff9a4fef50106af7e92f320d985a3b62bb9b59",
+          "timestamp": "2026-05-21T04:45:41.937786+00:00"
         },
         {
           "label": "srma/claim-1/year-2010",
           "seed": 273695535116502,
-          "prompt_digest": "f472a41b046d50024492e42712c1b970f973736d6e6c214f8afcfa2e3d6e226d",
-          "response_hash": "dd07a2d333c76adc9f1ed0a66aa66a93ba93250246f6341edbfde61e7d5d63b5",
-          "timestamp": "2026-05-21T03:50:31.102416+00:00"
+          "prompt_digest": "45ca2b2f16a3bc693d9db7b4c51e8b9d300cd229e788ff0229d18b305eedbc6f",
+          "response_hash": "fe08db688c22ca2825d38c7236fa6b16af5bc47887f0dd9f4f1031d776edea59",
+          "timestamp": "2026-05-21T04:45:41.939038+00:00"
         },
         {
           "label": "srma/claim-1/year-2010",
           "seed": 273695535116502,
-          "prompt_digest": "f472a41b046d50024492e42712c1b970f973736d6e6c214f8afcfa2e3d6e226d",
-          "response_hash": "dd07a2d333c76adc9f1ed0a66aa66a93ba93250246f6341edbfde61e7d5d63b5",
-          "timestamp": "2026-05-21T03:50:31.103775+00:00"
+          "prompt_digest": "45ca2b2f16a3bc693d9db7b4c51e8b9d300cd229e788ff0229d18b305eedbc6f",
+          "response_hash": "fe08db688c22ca2825d38c7236fa6b16af5bc47887f0dd9f4f1031d776edea59",
+          "timestamp": "2026-05-21T04:45:41.940410+00:00"
+        },
+        {
+          "label": "microdata/claim-2/year-2010",
+          "seed": 218873391237425,
+          "prompt_digest": "1d3bc02b06f0957d560e00ca8e5666266a23e6d0bb6881f219fc197481e7da33",
+          "response_hash": "64cdb40f91ec8144350cc9d548bb53934f66940cf91ae9d10924147d11600438",
+          "timestamp": "2026-05-21T04:45:42.654214+00:00"
+        },
+        {
+          "label": "research/claim-2/year-2010/r1",
+          "seed": 278651828155776,
+          "prompt_digest": "a4d66ec185a5fc868ce249696c1d783b374769c8d9c7cd173d1770fa53250320",
+          "response_hash": "5d78d5c0255ef2f50048454e0ce03569fe6766a6e323cc1348b432b9d1024b68",
+          "timestamp": "2026-05-21T04:45:42.654380+00:00"
         },
         {
           "label": "srma/claim-2/year-2010",
           "seed": 8668496710386,
-          "prompt_digest": "0d69801075534fb305e4238e0668d273151bab02e1e34d5020e476a5623a9986",
-          "response_hash": "f4247774dd2a76ae71d1d7bcf03705bf0fbde8b28492b5ccafe5a34055cb5e52",
-          "timestamp": "2026-05-21T03:50:31.821804+00:00"
+          "prompt_digest": "0ab10d54da9c21b286ded7c89f3ff9906a173b011d8111e7bc6ff36eb7b1f3ea",
+          "response_hash": "7ad11c7f0f8cb06fb8938cb9c5046e2e54123fe776f9eae1327aeb6ee661c60f",
+          "timestamp": "2026-05-21T04:45:42.655705+00:00"
         },
         {
           "label": "srma/claim-2/year-2010",
-          "seed": 8668496710386,
-          "prompt_digest": "0d69801075534fb305e4238e0668d273151bab02e1e34d5020e476a5623a9986",
-          "response_hash": "f4247774dd2a76ae71d1d7bcf03705bf0fbde8b28492b5ccafe5a34055cb5e52",
-          "timestamp": "2026-05-21T03:50:31.823267+00:00"
+          "seed": 222199748596303,
+          "prompt_digest": "054b1848c72d24bca58e64cbab751dab801b4991846cb9e088233155da86e860",
+          "response_hash": "45f757dbcde133a3350e049822087ee41e2980d81b5869b2316686027ed37ac2",
+          "timestamp": "2026-05-21T04:45:42.656366+00:00"
+        },
+        {
+          "label": "microdata/claim-3/year-2010",
+          "seed": 253368051690473,
+          "prompt_digest": "9405c822fa2a281fb93063ac4c32dafdd14aa2c806cfad136ec9af93b972fe72",
+          "response_hash": "c10bff9a3a82cc1b21d12a051d47cc33a8dc87e22230066d4334d94663510be3",
+          "timestamp": "2026-05-21T04:45:43.392408+00:00"
+        },
+        {
+          "label": "research/claim-3/year-2010/r1",
+          "seed": 157571986918484,
+          "prompt_digest": "5a62fc8d28a0975680f6a17eb6c95adcf1740eaa8c4a9a20f81cd2945261efe4",
+          "response_hash": "aeac61607872273e0ec18f8d4d24013c0085f0255f86df2ee02559bab0ed0476",
+          "timestamp": "2026-05-21T04:45:43.392570+00:00"
         },
         {
           "label": "srma/claim-3/year-2010",
           "seed": 145363687314043,
-          "prompt_digest": "453b6a4e170e77c626ec120e0318dcfbe63812fb9e2e4f8606360e9eaa481685",
-          "response_hash": "0874580dc5883ab62ed10e5846b9f22d8e998176c9e2cb019b9e9a4ea49a3d5e",
-          "timestamp": "2026-05-21T03:50:32.538584+00:00"
+          "prompt_digest": "f0915007b53dceb91ef56ceeb6b22509245d09b8d1f1210555bc949fa95c6b1d",
+          "response_hash": "2518f7a3f265ca20db1f2dfc9c421e3f263720839015f07a7a7cee65970ab592",
+          "timestamp": "2026-05-21T04:45:43.393988+00:00"
         },
         {
           "label": "srma/claim-3/year-2010",
           "seed": 145363687314043,
-          "prompt_digest": "453b6a4e170e77c626ec120e0318dcfbe63812fb9e2e4f8606360e9eaa481685",
-          "response_hash": "0874580dc5883ab62ed10e5846b9f22d8e998176c9e2cb019b9e9a4ea49a3d5e",
-          "timestamp": "2026-05-21T03:50:32.540035+00:00"
+          "prompt_digest": "f0915007b53dceb91ef56ceeb6b22509245d09b8d1f1210555bc949fa95c6b1d",
+          "response_hash": "2518f7a3f265ca20db1f2dfc9c421e3f263720839015f07a7a7cee65970ab592",
+          "timestamp": "2026-05-21T04:45:43.395629+00:00"
+        },
+        {
+          "label": "microdata/claim-1/year-2020",
+          "seed": 270525733181755,
+          "prompt_digest": "2510bb32f03e29824bf0c18e13bdbd377fb9c85d85fad5dcf5ed4a9996d738c2",
+          "response_hash": "f97444a1e3790c94fbe54bfc9897ca973e4dd3027cf4b15df5e99651944d336d",
+          "timestamp": "2026-05-21T04:45:44.118841+00:00"
+        },
+        {
+          "label": "research/claim-1/year-2020/r1",
+          "seed": 146169407346827,
+          "prompt_digest": "5d6229dd623eca963c0a8bb28b9cee9cede7344c879b0e631aaa9bb90111fc1e",
+          "response_hash": "0d2b9f9634a2a831e69237303f78552bd519cd533c13e5b03e0e97e7a85f4523",
+          "timestamp": "2026-05-21T04:45:44.119011+00:00"
         },
         {
           "label": "srma/claim-1/year-2020",
           "seed": 168465775786629,
-          "prompt_digest": "5aece1fdd3b332ca4455b2ae82604e02ea0835da772a0d96aefef17fa1c1308a",
-          "response_hash": "319927fa67e4113b7201d595569aca0dc8e4a5bb001b0917b09a806997e9d0a6",
-          "timestamp": "2026-05-21T03:50:33.258324+00:00"
+          "prompt_digest": "1b0a7f6e53a89b65e28da07058c17b669a7283516b971743fef9cc2ddbd4875d",
+          "response_hash": "39c36d48a252b45e974f9e754e91d54fc41ec83d595d2691859d7af8e41601b5",
+          "timestamp": "2026-05-21T04:45:44.120528+00:00"
         },
         {
           "label": "srma/claim-1/year-2020",
-          "seed": 168465775786629,
-          "prompt_digest": "5aece1fdd3b332ca4455b2ae82604e02ea0835da772a0d96aefef17fa1c1308a",
-          "response_hash": "319927fa67e4113b7201d595569aca0dc8e4a5bb001b0917b09a806997e9d0a6",
-          "timestamp": "2026-05-21T03:50:33.259868+00:00"
+          "seed": 146614370550907,
+          "prompt_digest": "c1134d1595325152c98dd01308e8c2b91e8a7b24285c353827176826edbe8963",
+          "response_hash": "4897183936ab0aa2b1f5564f24eb26c21e484a10c218f9a640a2f79cbe1d5828",
+          "timestamp": "2026-05-21T04:45:44.122306+00:00"
+        },
+        {
+          "label": "microdata/claim-2/year-2020",
+          "seed": 170855882122884,
+          "prompt_digest": "94b8f9fcca4f1d1027bce646f6a459a720f298c2358baee629d51f1827d9b2cc",
+          "response_hash": "9ee70a164bb1afe10981edd6738f539416e5b1b9a48a303d5f1daa685423cc56",
+          "timestamp": "2026-05-21T04:45:44.847786+00:00"
+        },
+        {
+          "label": "research/claim-2/year-2020/r1",
+          "seed": 16036725702738,
+          "prompt_digest": "eb3d32b4b5f2b87e8a1349a46d6acfaeeca2c770eb16c85d48678dee74c5fb6c",
+          "response_hash": "1981dcaf2ff4419ca285a69a6f1b29b3f006296d4b1ca6816c9bdd2b6f33dfe8",
+          "timestamp": "2026-05-21T04:45:44.847974+00:00"
         },
         {
           "label": "srma/claim-2/year-2020",
           "seed": 30406405285491,
-          "prompt_digest": "d194f378a6da55f64dc7fee7f52b72baf9dc8f9b61bd73ac2191ae4f82afbcc2",
-          "response_hash": "faa8384b79a5c763692829856d093eed6812a6032496d343156653435f59fea5",
-          "timestamp": "2026-05-21T03:50:33.971254+00:00"
+          "prompt_digest": "d86ea530ec7c76a273fcbcc546a4f5b9b26062d60bcba77eb6165b4fd6e191cd",
+          "response_hash": "66812a039c3aff1d0427e8bf4255822fa069c72a49688e5759a8d7b060fc9349",
+          "timestamp": "2026-05-21T04:45:44.849336+00:00"
         },
         {
           "label": "srma/claim-2/year-2020",
-          "seed": 30406405285491,
-          "prompt_digest": "d194f378a6da55f64dc7fee7f52b72baf9dc8f9b61bd73ac2191ae4f82afbcc2",
-          "response_hash": "faa8384b79a5c763692829856d093eed6812a6032496d343156653435f59fea5",
-          "timestamp": "2026-05-21T03:50:33.972540+00:00"
+          "seed": 131817211903032,
+          "prompt_digest": "8ee61047c7f734d7c6771528bb6ae885f91628fd8fd70156be7e93d761832e1d",
+          "response_hash": "fcfef0b7699c3439e3cb380d9accfe0bdf3ea95160c107333eac365065a766e3",
+          "timestamp": "2026-05-21T04:45:44.850906+00:00"
+        },
+        {
+          "label": "microdata/claim-3/year-2020",
+          "seed": 273848451196507,
+          "prompt_digest": "d654c3d79980a2abb3f7cbd851ae411beb29f9525feff95c4c367d8a0e391628",
+          "response_hash": "c10bff9a3a82cc1b21d12a051d47cc33a8dc87e22230066d4334d94663510be3",
+          "timestamp": "2026-05-21T04:45:45.579421+00:00"
+        },
+        {
+          "label": "research/claim-3/year-2020/r1",
+          "seed": 89233768584957,
+          "prompt_digest": "7f124df6d192a1e6d444b3ee2067801e5770e7280581f2b4be105c2c28896932",
+          "response_hash": "20c3c438a4ecc854595075000634a4a31f50997d327dfe336c19241339d7f6f3",
+          "timestamp": "2026-05-21T04:45:45.579586+00:00"
         },
         {
           "label": "srma/claim-3/year-2020",
           "seed": 272972975860857,
-          "prompt_digest": "d8926d962d625cd8427c520043e1dec54dbf33d38d6165f6ebd7507fc5d8a8be",
-          "response_hash": "d3af5e2d0840eae5dc7ad9c60a779b423e6e51416056ceccb7bb02dbf9bbb00b",
-          "timestamp": "2026-05-21T03:50:34.688786+00:00"
+          "prompt_digest": "e849017b049637907f85c794cf76d0707fae44309a491854ba3c81e2eb146a4a",
+          "response_hash": "036c4d3c38196bc0594323aae9b578624dd999fadbb07894cd8003b09f8d58a6",
+          "timestamp": "2026-05-21T04:45:45.580952+00:00"
         },
         {
           "label": "srma/claim-3/year-2020",
-          "seed": 272972975860857,
-          "prompt_digest": "d8926d962d625cd8427c520043e1dec54dbf33d38d6165f6ebd7507fc5d8a8be",
-          "response_hash": "d3af5e2d0840eae5dc7ad9c60a779b423e6e51416056ceccb7bb02dbf9bbb00b",
-          "timestamp": "2026-05-21T03:50:34.690475+00:00"
+          "seed": 3577170631147,
+          "prompt_digest": "e3d0faf310fddd8d4b9a702aae85901a79194a772e8eb7f15771799269cf2b0e",
+          "response_hash": "062030f72d85efe1e111065852da9254a85be759067d7aec0aa53c11d42ea4a0",
+          "timestamp": "2026-05-21T04:45:45.582055+00:00"
         }
       ]
     },
     "failure_rate": 0.3,
     "calibration_matrix": {
       "branch": "constrained",
-      "true_positive": 18,
-      "true_negative": 0,
-      "false_negative": 0,
+      "true_positive": 6,
+      "true_negative": 4,
+      "false_negative": 8,
       "false_positive": 0,
-      "grounded_total": 18,
-      "ungrounded_total": 0,
-      "fnr": 0.0,
+      "grounded_total": 6,
+      "ungrounded_total": 12,
+      "fnr": 0.6667,
       "fpr": 0.0
     }
   },

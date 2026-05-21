@@ -5,13 +5,18 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowDownRight,
   ArrowUpRight,
+  Beaker,
   CheckCircle2,
+  Database,
   FileSearch,
+  FlaskConical,
   GitCompareArrows,
   LoaderCircle,
   Minus,
+  ScrollText,
   ShieldAlert,
   ShieldCheck,
   ShieldX,
@@ -65,6 +70,30 @@ type ReversalModel = {
   scientific: boolean;
 };
 
+type ArmFunnel = {
+  emitted: number; // Tier 1 — investigator-emitted research
+  civerAdmitted: number; // Tier 2 — article-i-issued
+  civerRefused: number; // Tier 2 — article-i-refused
+  releaseRevoked: number; // Tier 2 — release-revoked (post-issue chokepoint)
+  dbCount: number; // Tier 3 — DB cumulative
+  dbGrounded: number;
+  dbUngrounded: number;
+  srmaIncluded: number; // Tier 4 — SRMA screened-in
+  srmaExcluded: number; // Tier 4 — SRMA screened-out
+  outputGateRefused: number; // output gate refusals
+  guidelines: Array<{ claimId: string; direction: GuidelineCell["direction"]; level: string }>;
+};
+type FunnelEra = {
+  era: number | "all";
+  free: ArmFunnel;
+  constrained: ArmFunnel;
+};
+type FunnelModel = {
+  eras: number[];
+  rows: FunnelEra[]; // one per era + an "all" aggregate
+  scientific: boolean;
+};
+
 // GRADE-5 level → ordinal (for direction-of-travel arrows) and short label.
 const LEVEL_ORDER: Record<string, number> = {
   "strong-for": 2,
@@ -87,6 +116,7 @@ export function RunViewer({ runId }: { runId: string }) {
   const [selectedYear, setSelectedYear] = useState(10);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [detailView, setDetailView] = useState<DetailView>("comparison");
+  const [funnelEra, setFunnelEra] = useState<number | "all" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -162,6 +192,7 @@ export function RunViewer({ runId }: { runId: string }) {
   const isScientific = artifacts?.bundle.scientific !== false;
   const runVerdict = evaluateRunVerdict(artifacts);
   const reversal = buildReversalModel(artifacts);
+  const funnel = buildFunnelModel(artifacts);
   const summaryHeadline = buildSummaryHeadline(freeClaim, constrainedClaim);
   const constrainedLineage = activeLineage.find((record) => record.branch === "constrained");
   const freeLineage = activeLineage.find((record) => record.branch === "free");
@@ -356,6 +387,14 @@ export function RunViewer({ runId }: { runId: string }) {
             </div>
           </section>
         </div>
+
+        {funnel ? (
+          <FlowSection
+            model={funnel}
+            selectedEra={funnelEra}
+            onSelectEra={setFunnelEra}
+          />
+        ) : null}
 
         {reversal ? <ReversalSection model={reversal} /> : null}
 
@@ -627,6 +666,82 @@ function buildReversalModel(artifacts: ArtifactResponse | null): ReversalModel |
   };
 }
 
+function buildFunnelModel(artifacts: ArtifactResponse | null): FunnelModel | null {
+  const dbGrowth = artifacts?.bundle.db_growth;
+  const timeline = artifacts?.bundle.guideline_timeline;
+  const audit = artifacts?.bundle.audit_trail;
+  if (!dbGrowth || !timeline || !audit) {
+    return null;
+  }
+
+  const eras = Object.keys(dbGrowth)
+    .map((era) => Number(era))
+    .sort((a, b) => a - b);
+  if (!eras.length) {
+    return null;
+  }
+
+  const countEvent = (era: number, branch: BranchName, eventType: string) =>
+    audit.filter(
+      (event) =>
+        event.year === era && event.branch === branch && event.event_type === eventType,
+    ).length;
+
+  const armForEra = (era: number, branch: BranchName): ArmFunnel => {
+    const studies = dbGrowth[String(era)]?.studies?.[branch];
+    const rows = (timeline[branch] ?? []).filter((row) => row.year === era);
+    return {
+      emitted: countEvent(era, branch, "investigator-emitted"),
+      civerAdmitted: countEvent(era, branch, "article-i-issued"),
+      civerRefused: countEvent(era, branch, "article-i-refused"),
+      releaseRevoked: countEvent(era, branch, "release-revoked"),
+      dbCount: studies?.count ?? 0,
+      dbGrounded: studies?.grounded ?? 0,
+      dbUngrounded: studies?.ungrounded ?? 0,
+      srmaIncluded: rows.reduce((sum, row) => sum + (row.n_included ?? 0), 0),
+      srmaExcluded: rows.reduce((sum, row) => sum + (row.n_excluded ?? 0), 0),
+      outputGateRefused: rows.filter((row) => row.output_gate_refused).length,
+      guidelines: rows
+        .filter((row) => !row.output_gate_refused)
+        .map((row) => ({ claimId: row.claim_id, direction: row.direction, level: row.level })),
+    };
+  };
+
+  const rows: FunnelEra[] = eras.map((era) => ({
+    era,
+    free: armForEra(era, "free"),
+    constrained: armForEra(era, "constrained"),
+  }));
+
+  // "all" aggregate: sum the per-era flow stages; DB shown as the latest cumulative snapshot.
+  const latestEra = eras[eras.length - 1];
+  const aggregate = (branch: BranchName): ArmFunnel => {
+    const per = rows.map((row) => row[branch]);
+    const latest = armForEra(latestEra, branch);
+    return {
+      emitted: per.reduce((sum, arm) => sum + arm.emitted, 0),
+      civerAdmitted: per.reduce((sum, arm) => sum + arm.civerAdmitted, 0),
+      civerRefused: per.reduce((sum, arm) => sum + arm.civerRefused, 0),
+      releaseRevoked: per.reduce((sum, arm) => sum + arm.releaseRevoked, 0),
+      dbCount: latest.dbCount,
+      dbGrounded: latest.dbGrounded,
+      dbUngrounded: latest.dbUngrounded,
+      srmaIncluded: per.reduce((sum, arm) => sum + arm.srmaIncluded, 0),
+      srmaExcluded: per.reduce((sum, arm) => sum + arm.srmaExcluded, 0),
+      outputGateRefused: per.reduce((sum, arm) => sum + arm.outputGateRefused, 0),
+      guidelines: latest.guidelines,
+    };
+  };
+
+  rows.push({ era: "all", free: aggregate("free"), constrained: aggregate("constrained") });
+
+  return {
+    eras,
+    rows,
+    scientific: artifacts?.bundle.scientific !== false,
+  };
+}
+
 function evaluateRunVerdict(artifacts: ArtifactResponse | null): RunVerdict | null {
   if (!artifacts) {
     return null;
@@ -716,6 +831,406 @@ function GuidelineChip({ cell }: { cell: GuidelineCell | undefined }) {
         {LEVEL_LABEL[cell.level] ?? cell.level}
       </div>
     </div>
+  );
+}
+
+function FlowSection({
+  model,
+  selectedEra,
+  onSelectEra,
+}: {
+  model: FunnelModel;
+  selectedEra: number | "all" | null;
+  onSelectEra: (era: number | "all") => void;
+}) {
+  // Default to the latest era so the recorded demo opens on the divergent state.
+  const latestEra = model.eras[model.eras.length - 1];
+  const activeEra: number | "all" = selectedEra ?? latestEra;
+  const row =
+    model.rows.find((item) => item.era === activeEra) ??
+    model.rows[model.rows.length - 1];
+  const free = row.free;
+  const constrained = row.constrained;
+  const eraLabel = activeEra === "all" ? "all eras" : `era ${activeEra}`;
+
+  return (
+    <section className="mt-6 rounded-[2rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_70px_rgba(17,35,30,0.08)] backdrop-blur lg:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-[var(--muted)]">
+            <ArrowDown className="h-4 w-4 text-[var(--accent)]" />
+            How the run flows
+          </div>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--foreground)] sm:text-3xl">
+            One funnel, two arms: where the gate blocks evidence
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)]">
+            Read top to bottom. On the left, the open branch lets every emitted study through; on
+            the right, the constitutional gate refuses ungrounded evidence at each tier — so the
+            two arms can end on different guidelines from the same starting research.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-3">
+          <StatusBadge
+            label={model.scientific ? "scientific" : "illustrative"}
+            tone={model.scientific ? "ready" : "warn"}
+          />
+          <div className="flex flex-wrap justify-end gap-2">
+            {model.eras.map((era) => (
+              <EraPill
+                key={era}
+                active={activeEra === era}
+                label={String(era)}
+                onClick={() => onSelectEra(era)}
+              />
+            ))}
+            <EraPill active={activeEra === "all"} label="All eras" onClick={() => onSelectEra("all")} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-x-5 gap-y-3 lg:grid-cols-2">
+        <ArmHeader
+          tone="free"
+          title="Free branch"
+          subtitle="No constitutional gate — everything flows"
+        />
+        <ArmHeader
+          tone="constrained"
+          title="Constrained branch"
+          subtitle="CIVER gate refuses ungrounded evidence"
+        />
+
+        <FunnelTier
+          tier="Tier 1 · Research"
+          note="Investigator agents emit candidate studies."
+          icon={<FlaskConical className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[{ label: "studies emitted", value: free.emitted }]}
+          tone="free"
+          delay={0}
+        />
+        <FunnelTier
+          tier="Tier 1 · Research"
+          note="Same research agents run on both arms."
+          icon={<FlaskConical className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[{ label: "studies emitted", value: constrained.emitted }]}
+          tone="constrained"
+          delay={0}
+        />
+
+        <FunnelTier
+          tier="Tier 2 · CIVER gate"
+          note="Open branch: no provenance check — all admitted."
+          icon={<ShieldX className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[
+            { label: "admitted", value: free.civerAdmitted },
+            { label: "refused", value: free.civerRefused, danger: true },
+            { label: "release revoked", value: free.releaseRevoked, danger: true },
+          ]}
+          chokepoint={free.civerRefused + free.releaseRevoked}
+          tone="free"
+          delay={0.08}
+        />
+        <FunnelTier
+          tier="Tier 2 · CIVER gate"
+          note="Refuses studies without real provenance — the chokepoint."
+          icon={<ShieldCheck className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[
+            { label: "admitted", value: constrained.civerAdmitted },
+            { label: "refused", value: constrained.civerRefused, danger: true },
+            { label: "release revoked", value: constrained.releaseRevoked, danger: true },
+          ]}
+          chokepoint={constrained.civerRefused + constrained.releaseRevoked}
+          tone="constrained"
+          delay={0.08}
+        />
+
+        <FunnelTier
+          tier="Tier 3 · Database"
+          note="Cumulative store — ungrounded studies accumulate."
+          icon={<Database className="h-4 w-4" />}
+          eraLabel={`cumulative @ ${eraLabel}`}
+          rows={[
+            { label: "grounded", value: free.dbGrounded },
+            { label: "ungrounded", value: free.dbUngrounded, danger: true },
+            { label: "total in DB", value: free.dbCount, strong: true },
+          ]}
+          tone="free"
+          delay={0.16}
+        />
+        <FunnelTier
+          tier="Tier 3 · Database"
+          note="Cumulative store — only grounded studies survived the gate."
+          icon={<Database className="h-4 w-4" />}
+          eraLabel={`cumulative @ ${eraLabel}`}
+          rows={[
+            { label: "grounded", value: constrained.dbGrounded },
+            { label: "ungrounded", value: constrained.dbUngrounded, danger: true },
+            { label: "total in DB", value: constrained.dbCount, strong: true },
+          ]}
+          tone="constrained"
+          delay={0.16}
+        />
+
+        <FunnelTier
+          tier="Tier 4 · SRMA"
+          note="Systematic review screens the DB for each claim."
+          icon={<Beaker className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[
+            { label: "screened in", value: free.srmaIncluded },
+            { label: "screened out", value: free.srmaExcluded },
+          ]}
+          tone="free"
+          delay={0.24}
+        />
+        <FunnelTier
+          tier="Tier 4 · SRMA"
+          note="Systematic review screens the DB for each claim."
+          icon={<Beaker className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[
+            { label: "screened in", value: constrained.srmaIncluded },
+            { label: "screened out", value: constrained.srmaExcluded },
+          ]}
+          tone="constrained"
+          delay={0.24}
+        />
+
+        <FunnelTier
+          tier="Output gate"
+          note="Open branch issues every guideline it screens."
+          icon={<ShieldAlert className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[{ label: "guidelines refused", value: free.outputGateRefused, danger: true }]}
+          chokepoint={free.outputGateRefused}
+          tone="free"
+          delay={0.32}
+        />
+        <FunnelTier
+          tier="Output gate"
+          note="Refuses a guideline when integrity floor is not met."
+          icon={<ShieldCheck className="h-4 w-4" />}
+          eraLabel={eraLabel}
+          rows={[
+            { label: "guidelines refused", value: constrained.outputGateRefused, danger: true },
+          ]}
+          chokepoint={constrained.outputGateRefused}
+          tone="constrained"
+          delay={0.32}
+        />
+
+        <GuidelineTier guidelines={free.guidelines} tone="free" delay={0.4} />
+        <GuidelineTier guidelines={constrained.guidelines} tone="constrained" delay={0.4} />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-4 text-[0.7rem] uppercase tracking-[0.14em] text-[var(--muted)]">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[var(--accent)]" /> grounded / admitted
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[var(--danger)]" /> refused / ungrounded
+        </span>
+        <span>🔴 free · 🟢 constrained</span>
+      </div>
+    </section>
+  );
+}
+
+function EraPill({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
+        active
+          ? "bg-[var(--foreground)] text-white"
+          : "border border-[var(--border)] bg-white/70 text-[var(--foreground)]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ArmHeader({
+  tone,
+  title,
+  subtitle,
+}: {
+  tone: "free" | "constrained";
+  title: string;
+  subtitle: string;
+}) {
+  const dot = tone === "free" ? "🔴" : "🟢";
+  return (
+    <div
+      className={`rounded-[1.3rem] border px-4 py-3 ${
+        tone === "free"
+          ? "border-[rgba(181,74,52,0.26)] bg-[rgba(181,74,52,0.06)]"
+          : "border-[rgba(15,141,119,0.28)] bg-[rgba(15,141,119,0.07)]"
+      }`}
+    >
+      <div className="flex items-center gap-2 text-base font-semibold text-[var(--foreground)]">
+        <span>{dot}</span>
+        {title}
+      </div>
+      <div className="mt-1 text-xs leading-5 text-[var(--muted)]">{subtitle}</div>
+    </div>
+  );
+}
+
+type TierRow = { label: string; value: number; danger?: boolean; strong?: boolean };
+
+function FunnelTier({
+  tier,
+  note,
+  icon,
+  eraLabel,
+  rows,
+  chokepoint,
+  tone,
+  delay,
+}: {
+  tier: string;
+  note: string;
+  icon: ReactNode;
+  eraLabel: string;
+  rows: TierRow[];
+  chokepoint?: number;
+  tone: "free" | "constrained";
+  delay: number;
+}) {
+  const isChoke = (chokepoint ?? 0) > 0;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay }}
+      className={`relative rounded-[1.4rem] border bg-white/85 p-4 ${
+        isChoke
+          ? "border-2 border-[rgba(181,74,52,0.42)] bg-[rgba(181,74,52,0.05)]"
+          : "border-[var(--border)]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+          <span className={tone === "free" ? "text-[var(--danger)]" : "text-[var(--accent)]"}>
+            {icon}
+          </span>
+          {tier}
+        </div>
+        <div className="text-[0.62rem] uppercase tracking-[0.12em] text-[var(--muted)]">
+          {eraLabel}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {rows.map((entry) => (
+          <div
+            key={entry.label}
+            className={`rounded-xl border px-3 py-2 ${
+              entry.danger && entry.value > 0
+                ? "border-[rgba(181,74,52,0.30)] bg-[rgba(181,74,52,0.08)]"
+                : entry.strong
+                  ? "border-[var(--border)] bg-[rgba(17,35,30,0.04)]"
+                  : "border-[var(--border)] bg-white/80"
+            }`}
+          >
+            <div
+              className={`text-xl font-semibold tabular-nums ${
+                entry.danger && entry.value > 0
+                  ? "text-[var(--danger)]"
+                  : "text-[var(--foreground)]"
+              }`}
+            >
+              {entry.value}
+            </div>
+            <div className="text-[0.62rem] uppercase tracking-[0.1em] text-[var(--muted)]">
+              {entry.label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 text-xs leading-5 text-[var(--muted)]">{note}</div>
+      {isChoke ? (
+        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(181,74,52,0.10)] px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[var(--danger)]">
+          <ShieldAlert className="h-3 w-3" />
+          {chokepoint} dropped here
+        </div>
+      ) : null}
+    </motion.div>
+  );
+}
+
+function GuidelineTier({
+  guidelines,
+  tone,
+  delay,
+}: {
+  guidelines: ArmFunnel["guidelines"];
+  tone: "free" | "constrained";
+  delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay }}
+      className={`rounded-[1.4rem] border-2 p-4 ${
+        tone === "free"
+          ? "border-[rgba(181,74,52,0.30)] bg-[rgba(181,74,52,0.05)]"
+          : "border-[rgba(15,141,119,0.32)] bg-[rgba(15,141,119,0.06)]"
+      }`}
+    >
+      <div className="flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+        <ScrollText
+          className={`h-4 w-4 ${tone === "free" ? "text-[var(--danger)]" : "text-[var(--accent)]"}`}
+        />
+        Guideline issued
+      </div>
+      <div className="mt-3 grid gap-2">
+        {guidelines.length ? (
+          guidelines.map((guideline, index) => {
+            const cellTone = directionTone(guideline.direction);
+            return (
+              <div
+                key={`${guideline.claimId}-${index}`}
+                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${cellTone.bg} ${cellTone.border}`}
+              >
+                <div className="text-[0.62rem] uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Claim {index + 1}
+                </div>
+                <div className={`flex items-center gap-1.5 text-sm font-semibold ${cellTone.text}`}>
+                  {cellTone.icon}
+                  {guideline.direction}
+                  <span className="text-[0.66rem] font-normal text-[var(--foreground)]">
+                    · {LEVEL_LABEL[guideline.level] ?? guideline.level}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="rounded-xl border border-dashed border-[var(--border)] bg-white/50 px-3 py-3 text-xs text-[var(--muted)]">
+            No guideline issued this era.
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
