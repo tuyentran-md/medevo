@@ -7,6 +7,7 @@ from app.eval.eval_runner import evaluate_calibration, verify_bundle_seal
 from app.llm import DeterministicFakeClient
 from app.models import RunRequestModel
 from app.simulator import simulate_run
+from scripts.evaluate import estimate_call_plan
 
 
 def _request() -> RunRequestModel:
@@ -84,3 +85,19 @@ def test_calibration_harness_reports_confusion_metrics() -> None:
     assert report["matrix"]["fn"] == 0
     assert report["fnr"] == 0.0
     assert report["fpr"] == 0.0
+
+
+def test_evaluate_call_plan_is_conservative_and_structured() -> None:
+    plan = estimate_call_plan(
+        input_text=(
+            "Claim one should be supported by evidence. "
+            "Claim two should be refuted by evidence."
+        ),
+        input_mode="guideline",
+        horizons=[2000, 2010],
+    )
+
+    assert plan["claim_count"] == 2
+    assert plan["horizon_count"] == 2
+    assert plan["ecology_passes"] == 3
+    assert plan["estimated_llm_calls_upper"] == 144

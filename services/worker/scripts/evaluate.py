@@ -15,9 +15,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
+from app.config import DATA_DIR
 from app.c0 import evaluate
+from app.ecology import extract_claims
 from app.models import RunRequestModel
 
 
@@ -84,6 +89,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--iterations", type=int, default=500)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the run plan/call estimate and exit without model or PubMed calls.",
+    )
+    parser.add_argument(
+        "--max-calls",
+        type=int,
+        default=None,
+        help="Abort before spending model calls if the estimated call count exceeds this ceiling.",
+    )
+    parser.add_argument(
+        "--manifest-out",
+        type=Path,
+        default=None,
+        help="Where to write the scored-run manifest. Defaults to data/run_manifests/<timestamp>.json.",
+    )
+    parser.add_argument(
         "--horizons",
         default=None,
         help="ABSOLUTE calendar years for the retro date-cut (Entrez maxdate). "
@@ -129,10 +151,66 @@ def parse_horizons(raw: str) -> list[int]:
     return [int(part.strip()) for part in raw.split(",") if part.strip()]
 
 
+def estimate_call_plan(
+    *,
+    input_text: str,
+    input_mode: str,
+    horizons: list[int],
+    evaluate_mode: bool = True,
+) -> dict[str, int | bool]:
+    """Conservative LLM-call estimate for budget guards.
+
+    One ecology pass does, per claim-era cell, up to two free Tier-1 calls, up to
+    four constrained design/execute calls, and six SRMA calls (3 steps x 2 arms).
+    ``evaluate`` runs C0, C0 rerun, and contaminated ecology, so multiply by 3.
+    Actual calls can be lower when designs are refused or cache hits serve calls.
+    """
+    claim_count = len(extract_claims(input_text, input_mode))  # type: ignore[arg-type]
+    claim_era_cells = claim_count * len(horizons)
+    calls_per_ecology_upper = claim_era_cells * 12
+    ecology_passes = 3 if evaluate_mode else 1
+    return {
+        "claim_count": claim_count,
+        "horizon_count": len(horizons),
+        "claim_era_cells": claim_era_cells,
+        "calls_per_ecology_upper": calls_per_ecology_upper,
+        "ecology_passes": ecology_passes,
+        "estimated_llm_calls_upper": calls_per_ecology_upper * ecology_passes,
+        "cache_can_reduce_calls": True,
+    }
+
+
+def _git_sha() -> str:
+    repo_root = Path(__file__).resolve().parents[3]
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except Exception:
+        return "unknown"
+
+
+def _default_manifest_path(started_at: datetime) -> Path:
+    stamp = started_at.strftime("%Y%m%dT%H%M%SZ")
+    return DATA_DIR / "run_manifests" / f"evaluate-{stamp}.json"
+
+
+def _request_public_payload(request: RunRequestModel) -> dict[str, object]:
+    payload = request.model_dump(mode="json", exclude={"api_key"})
+    payload["api_key_present"] = bool(request.api_key)
+    return payload
+
+
 def main() -> None:
     args = parse_args()
     input_text = resolve_input_text(args)
     raw_horizons = args.horizons or _HORIZONS_MAP.get(args.topic, "2000,2010,2020")
+    horizons = parse_horizons(raw_horizons)
     request = RunRequestModel(
         title=args.title,
         input_mode="guideline",
@@ -142,8 +220,38 @@ def main() -> None:
         model=args.model,
         api_key=resolve_api_key(args),
         base_url=args.base_url,
-        horizons=parse_horizons(raw_horizons),
+        horizons=horizons,
     )
+    call_plan = estimate_call_plan(
+        input_text=input_text,
+        input_mode=request.input_mode,
+        horizons=horizons,
+    )
+    if args.dry_run:
+        print(
+            json.dumps(
+                {
+                    "mode": "dry-run",
+                    "request": _request_public_payload(request),
+                    "call_plan": call_plan,
+                    "git_sha": _git_sha(),
+                    "llm_cache_enabled": os.environ.get("MEDEVO_LLM_CACHE", "1") != "0",
+                    "llm_cache_only": os.environ.get("MEDEVO_LLM_CACHE_ONLY") == "1",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+
+    estimated_calls = int(call_plan["estimated_llm_calls_upper"])
+    if args.max_calls is not None and estimated_calls > args.max_calls:
+        raise SystemExit(
+            f"Refusing to run: estimated {estimated_calls} LLM calls exceeds --max-calls={args.max_calls}. "
+            "Use --dry-run to inspect the plan or raise the ceiling intentionally."
+        )
+
+    started_at = datetime.now(UTC)
     report = evaluate(
         request=request,
         input_text=input_text,
@@ -152,10 +260,32 @@ def main() -> None:
         seed=args.seed,
         ground_truth_path=resolve_ground_truth_path(args),
     )
+    ended_at = datetime.now(UTC)
+    manifest = {
+        "started_at": started_at.isoformat(),
+        "ended_at": ended_at.isoformat(),
+        "wall_clock_seconds": round((ended_at - started_at).total_seconds(), 3),
+        "git_sha": _git_sha(),
+        "request": _request_public_payload(request),
+        "call_plan": call_plan,
+        "report_summary": {
+            "verdict": report.get("verdict"),
+            "scientific": report.get("scientific"),
+            "ground_truth_status": report.get("ground_truth_status"),
+            "model_descriptor": report.get("model_descriptor"),
+            "degradation_reason": report.get("degradation_reason"),
+            "run_ops": report.get("run_ops"),
+        },
+    }
+    manifest_path = args.manifest_out or _default_manifest_path(started_at)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    report["run_manifest_path"] = str(manifest_path)
     print(json.dumps(report, indent=2, sort_keys=True))
     print(f"\nVERDICT: {report['verdict']}")
     print(f"scientific: {report['scientific']}")
     print(f"ground-truth status: {report['ground_truth_status']}")
+    print(f"manifest: {manifest_path}", file=sys.stderr)
     ext = report.get("external_truth", {})
     if ext:
         print(

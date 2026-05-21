@@ -131,6 +131,18 @@ python -m scripts.evaluate --topic hrt --backend claude-cli \
   --model claude-sonnet-4-5 --horizons 2000,2010,2020
 ```
 
+Run-ops guardrails before spending model calls:
+
+```bash
+cd services/worker
+./.venv/bin/python -m scripts.evaluate --topic cvd --backend claude-cli --dry-run
+./.venv/bin/python -m scripts.evaluate --topic cvd --backend claude-cli --max-calls 500
+```
+
+Live LLM calls are cached by default in `services/worker/data/llm_cache` (gitignored).
+Set `MEDEVO_LLM_CACHE_ONLY=1` to replay only cached responses, or
+`MEDEVO_LLM_CACHE=0` to force fresh calls.
+
 Static replay site: `npm run build:static --prefix apps/web`.
 Tests: `cd services/worker && ./.venv/bin/pytest`.
 

@@ -14,7 +14,7 @@ from app.synthesis import admit_guideline_output
 from app.config import YEARS
 from app.db import insert_ecology_records, insert_guideline_claims, insert_tier3_study
 from app.harness import branch_gap, replay_counts
-from app.llm import LLMClient
+from app.llm import LLMClient, llm_cache_stats
 from app.microdata import MicrodataAgent, supports_claim as microdata_supports_claim
 from app.models import (
     ArtifactBundle,
@@ -47,13 +47,13 @@ ANCHORS = [
     "Every year-10/20/30 panel is rendered as one draw from a distribution, never a forecast.",
 ]
 
-CLAIM_LIMIT = 3
+CLAIM_LIMIT = 4
 REAL_SOURCES_PER_CLAIM = 4
 # Tier-1 study replicates emitted per (claim, era). SPEC §3/§12: the phenomenon
 # shows at ~tens of studies, and a real SR/MA needs a screenable corpus, not one
-# study per claim. With CLAIM_LIMIT=3 claims and len(YEARS)=3 eras, k=2 yields
-# 3 x 3 x 2 = 18 studies per arm across the run (inside the SPEC §13 target band
-# of 15-20). Declared as one named constant, never a magic literal in the loop.
+# study per claim. With CLAIM_LIMIT=4 claims and len(YEARS)=3 eras, k=2 yields
+# up to 4 x 3 x 2 = 24 studies per arm across the run; shorter inputs still emit
+# fewer claims. Declared as one named constant, never a magic literal in the loop.
 STUDIES_PER_CLAIM_PER_ERA = 2
 # DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
 # fraction placeholder; SPEC §11-A anchors it to A0 in a later slice. It drives
@@ -1622,6 +1622,7 @@ def run_ecology(
             "srma_pooling": "llm-appraisal-plus-deterministic-pool",
         },
         "failure_rate": failure_rate,
+        "llm_cache": llm_cache_stats(llm),
         "calls": [trace.__dict__ for trace in telemetry.traces],
     }
 
@@ -1684,6 +1685,7 @@ def run_ecology(
         ),
         "population_stats": population_stats,
         "llm_call_count": telemetry.call_count,
+        "llm_cache": llm_cache_stats(llm),
         "degradation_reason": degradation_reason,
         "bundle_seal": bundle.bundle_seal,
         "provenance_log": provenance_log,

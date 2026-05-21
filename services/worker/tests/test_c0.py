@@ -180,6 +180,7 @@ def test_evaluate_entrypoint_runs_offline_and_is_structured() -> None:
     # External truth block present (informational).
     assert "external_truth" in report
     assert "free_to_truth" in report["external_truth"]
+    assert report["run_ops"]["contaminated_llm_call_count"] > 0
 
     # Phase B structure present with BOTH axes carrying a CI, regardless of verdict.
     for axis in ("direction", "level"):

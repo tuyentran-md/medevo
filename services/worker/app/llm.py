@@ -11,15 +11,20 @@ Integrity rules (SPEC §0/§8):
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import random
 import re
 import shutil
 import subprocess
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 import requests
+
+from app.config import DATA_DIR
 
 
 @dataclass
@@ -35,6 +40,117 @@ class LLMClient(Protocol):
     def generate(self, prompt: str, *, seed: int) -> str: ...
 
     def describe(self) -> ModelDescriptor: ...
+
+
+@dataclass
+class LLMCacheStats:
+    enabled: bool
+    cache_only: bool = False
+    hits: int = 0
+    misses: int = 0
+    writes: int = 0
+
+    def to_dict(self) -> dict[str, int | bool]:
+        return {
+            "enabled": self.enabled,
+            "cache_only": self.cache_only,
+            "hits": self.hits,
+            "misses": self.misses,
+            "writes": self.writes,
+        }
+
+
+class CachedLLMClient:
+    """Persistent prompt/seed response cache for live model calls.
+
+    This keeps expensive Claude/OpenRouter calls out of ordinary reruns while
+    preserving the exact same downstream agent logic. Cache entries are local
+    artifacts under ``services/worker/data/llm_cache`` and are ignored by git.
+    """
+
+    def __init__(
+        self,
+        inner: LLMClient,
+        *,
+        namespace: str,
+        cache_dir: Path | None = None,
+        cache_only: bool = False,
+    ) -> None:
+        self._inner = inner
+        self._namespace = namespace
+        self._cache_dir = cache_dir or (DATA_DIR / "llm_cache")
+        self.cache_stats = LLMCacheStats(enabled=True, cache_only=cache_only)
+
+    @property
+    def scientific(self) -> bool:
+        return self._inner.scientific
+
+    @property
+    def degradation_reason(self) -> str | None:
+        return self._inner.degradation_reason
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        key = self._key(prompt=prompt, seed=seed)
+        path = self._path_for_key(key)
+        if path.exists():
+            self.cache_stats.hits += 1
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            return str(payload.get("response", ""))
+
+        self.cache_stats.misses += 1
+        if self.cache_stats.cache_only:
+            digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+            raise RuntimeError(
+                f"LLM cache miss in cache-only mode: namespace={self._namespace} seed={seed} prompt={digest}"
+            )
+
+        response = self._inner.generate(prompt, seed=seed)
+        if self._inner.scientific and self._inner.degradation_reason is None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "namespace": self._namespace,
+                "seed": seed,
+                "prompt_digest": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                "response": response,
+            }
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+            tmp.replace(path)
+            self.cache_stats.writes += 1
+        return response
+
+    def describe(self) -> ModelDescriptor:
+        return self._inner.describe()
+
+    def _key(self, *, prompt: str, seed: int) -> str:
+        payload = {
+            "namespace": self._namespace,
+            "seed": seed,
+            "prompt_digest": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+    def _path_for_key(self, key: str) -> Path:
+        return self._cache_dir / key[:2] / f"{key}.json"
+
+
+def llm_cache_stats(client: LLMClient) -> dict[str, int | bool]:
+    stats = getattr(client, "cache_stats", None)
+    if isinstance(stats, LLMCacheStats):
+        return stats.to_dict()
+    inner = getattr(client, "_inner", None)
+    if inner is not None:
+        return llm_cache_stats(inner)
+    return {"enabled": False, "cache_only": False, "hits": 0, "misses": 0, "writes": 0}
+
+
+def _cache_enabled_for_live_client() -> bool:
+    return os.environ.get("MEDEVO_LLM_CACHE", "1") != "0"
+
+
+def _cache_only_mode() -> bool:
+    return os.environ.get("MEDEVO_LLM_CACHE_ONLY") == "1"
 
 
 class OllamaClient:
@@ -345,7 +461,16 @@ def make_client(
     if backend == "claude-cli":
         if using_fallback:
             return DeterministicFakeClient()
-        return LiveOrFallbackClient(ClaudeCLIClient(model=model), DeterministicFakeClient())
+        client: LLMClient = LiveOrFallbackClient(
+            ClaudeCLIClient(model=model), DeterministicFakeClient()
+        )
+        if _cache_enabled_for_live_client():
+            client = CachedLLMClient(
+                client,
+                namespace=f"{backend}:{model}:local-cli",
+                cache_only=_cache_only_mode(),
+            )
+        return client
     if using_fallback or not base_url:
         return DeterministicFakeClient()
     if backend == "ollama":
@@ -354,7 +479,14 @@ def make_client(
         if not api_key:
             return DeterministicFakeClient()
         live = OpenAICompatClient(base_url=base_url, model=model, api_key=api_key)
-    return LiveOrFallbackClient(live, DeterministicFakeClient())
+    client = LiveOrFallbackClient(live, DeterministicFakeClient())
+    if _cache_enabled_for_live_client():
+        client = CachedLLMClient(
+            client,
+            namespace=f"{backend}:{model}:{base_url.rstrip('/')}",
+            cache_only=_cache_only_mode(),
+        )
+    return client
 
 
 import json as _json

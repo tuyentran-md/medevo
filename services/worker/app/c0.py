@@ -634,7 +634,7 @@ def evaluate(
         client=client,
         pubmed_client=pubmed_client,
     )
-    c0_rerun_bundle, _ = run_c0_reference(
+    c0_rerun_bundle, c0_rerun_summary = run_c0_reference(
         request=request,
         input_text=input_text,
         client=client,
@@ -731,6 +731,15 @@ def evaluate(
         "mode_banner": contaminated_bundle.mode_banner,
         "degradation_reason": contaminated_bundle.degradation_reason,
         "model_descriptor": contaminated_bundle.model_descriptor,
+        "run_ops": {
+            "c0_llm_call_count": c0_summary.get("llm_call_count"),
+            "c0_rerun_llm_call_count": c0_rerun_summary.get("llm_call_count"),
+            "contaminated_llm_call_count": contaminated_summary.get("llm_call_count"),
+            "contaminated_llm_cache": contaminated_summary.get("llm_cache"),
+            "contaminated_bundle_seal": contaminated_bundle.bundle_seal,
+            "c0_bundle_seal": c0_bundle.bundle_seal,
+            "c0_rerun_bundle_seal": c0_rerun_bundle.bundle_seal,
+        },
         "verdict": "PASS" if verdict_pass else "FAIL",
     }
 
