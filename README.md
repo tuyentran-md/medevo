@@ -128,7 +128,7 @@ Or spend a Claude subscription as the model (no API key — uses the local `clau
 
 ```bash
 python -m scripts.evaluate --topic hrt --backend claude-cli \
-  --model claude-sonnet-4-5 --horizons 2000,2010,2020
+  --model claude-sonnet-4-6 --horizons 2000,2010,2020
 ```
 
 Cheap lane via Google AI Studio Gemini API (uses `GEMINI_API_KEY`, default model

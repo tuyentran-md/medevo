@@ -4,7 +4,7 @@ web replay UI.
 Default (no args) = deterministic offline ILLUSTRATIVE run (free, non-scientific).
 Pass a real backend to produce a SCORED run, e.g.:
 
-    python -m scripts.gen_hrt_showcase --backend claude-cli --model claude-sonnet-4-5
+    python -m scripts.gen_hrt_showcase --backend claude-cli --model claude-sonnet-4-6
 
 After writing data/artifacts/<run>, it runs apps/web/scripts/stage-replays.mjs so
 the run shows up in the web viewer (public/replays/). Eras 2000 / 2010 / 2020.

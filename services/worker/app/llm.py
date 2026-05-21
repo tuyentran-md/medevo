@@ -415,7 +415,7 @@ class LiveOrFallbackClient:
         return self._fake.describe() if self._degraded else self._live.describe()
 
 
-DEFAULT_CLAUDE_CLI_MODEL = "claude-sonnet-4-5"
+DEFAULT_CLAUDE_CLI_MODEL = "claude-sonnet-4-6"
 
 
 class ClaudeCLIClient:
