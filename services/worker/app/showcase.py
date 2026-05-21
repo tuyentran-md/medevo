@@ -5,6 +5,27 @@ from app.models import ShowcaseRecord
 
 SHOWCASES: list[ShowcaseRecord] = [
     ShowcaseRecord(
+        id="hrt-chronic-disease-prevention",
+        title="Illustrative Hormone Therapy for Chronic-Disease Prevention",
+        description=(
+            "Demo-only guideline excerpt tracking how recommendations on menopausal "
+            "hormone therapy for chronic-disease prevention drift across eras when the "
+            "evidence base is left ungated, versus held by the provenance gate."
+        ),
+        input_mode="guideline",
+        input_text=(
+            "Menopausal hormone therapy with estrogen should be offered to postmenopausal "
+            "women for the primary prevention of coronary heart disease. Hormone replacement "
+            "therapy reduces the long-term risk of cardiovascular events in menopausal women. "
+            "Estrogen plus progestin should be considered to prevent chronic disease and "
+            "all-cause mortality after menopause. Hormone therapy lowers the incidence of "
+            "osteoporotic fracture and should be continued for chronic-disease prevention. "
+            "Routine use of menopausal hormone therapy for chronic-disease prevention should "
+            "be reassessed against observed cardiovascular and breast-cancer outcomes."
+        ),
+        tags=["showcase", "guideline", "hormone-therapy"],
+    ),
+    ShowcaseRecord(
         id="showcase-sepsis-supportive-care",
         title="Illustrative Pediatric Sepsis Supportive Care",
         description=(

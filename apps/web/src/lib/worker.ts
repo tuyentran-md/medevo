@@ -1,6 +1,7 @@
 import type {
   BackendKind,
   BranchGapReport,
+  CalibrationMatrix,
   DriftSnapshot,
   GuidelineClaim,
   InputMode,
@@ -127,6 +128,7 @@ export interface ArtifactResponse {
       integrity_score: number;
       threshold: number;
     }>;
+    calibration_matrix?: CalibrationMatrix | null;
     bundle_seal?: string;
     degradation_reason?: string | null;
   };

@@ -1,38 +1,12 @@
 [
   {
-    "id": "showcase-showcase-antibiotic-paper",
-    "run_id": "showcase-showcase-antibiotic-paper",
-    "title": "Conclusion: In hospitalized children with complicated intra-abdominal infection,",
-    "description": "Relative free-vs-constrained contrast is the primary validated quantity; shared agent + shared draws cancel training leakage.",
+    "id": "showcase-hrt-chronic-disease-prevention",
+    "run_id": "showcase-hrt-chronic-disease-prevention",
+    "title": "Menopausal hormone therapy with estrogen should be offered to postmenopausal wom",
+    "description": "DEGRADED RUN: deterministic PubMed fixture",
     "input_mode": "guideline",
     "tags": [
-      "scientific",
-      "sealed-bundle",
-      "static-replay"
-    ],
-    "status": "completed"
-  },
-  {
-    "id": "showcase-showcase-bronchiolitis-oxygen",
-    "run_id": "showcase-showcase-bronchiolitis-oxygen",
-    "title": "Infants with bronchiolitis should receive supportive care with hydration and nas",
-    "description": "Relative free-vs-constrained contrast is the primary validated quantity; shared agent + shared draws cancel training leakage.",
-    "input_mode": "guideline",
-    "tags": [
-      "scientific",
-      "sealed-bundle",
-      "static-replay"
-    ],
-    "status": "completed"
-  },
-  {
-    "id": "showcase-showcase-sepsis-supportive-care",
-    "run_id": "showcase-showcase-sepsis-supportive-care",
-    "title": "Children with suspected sepsis should receive cultures before antibiotics when t",
-    "description": "Relative free-vs-constrained contrast is the primary validated quantity; shared agent + shared draws cancel training leakage.",
-    "input_mode": "guideline",
-    "tags": [
-      "scientific",
+      "illustrative",
       "sealed-bundle",
       "static-replay"
     ],

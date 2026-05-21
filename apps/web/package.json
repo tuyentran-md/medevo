@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:static": "NEXT_PUBLIC_MEDEVO_STATIC_REPLAY=1 next dev",
     "build": "next build",
     "build:static": "node ./scripts/stage-replays.mjs && NEXT_PUBLIC_MEDEVO_STATIC_REPLAY=1 next build",
     "stage:replays": "node ./scripts/stage-replays.mjs",

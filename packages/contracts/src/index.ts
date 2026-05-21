@@ -166,6 +166,18 @@ export interface BranchGapReport {
   level: BootstrapInterval;
 }
 
+export interface CalibrationMatrix {
+  branch?: BranchName;
+  true_positive: number;
+  true_negative: number;
+  false_negative: number;
+  false_positive: number;
+  grounded_total: number;
+  ungrounded_total: number;
+  fnr: number;
+  fpr: number;
+}
+
 export interface ReplayCounts {
   studies: Record<
     BranchName,

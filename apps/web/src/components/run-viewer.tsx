@@ -5,10 +5,13 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
   CheckCircle2,
   FileSearch,
   GitCompareArrows,
   LoaderCircle,
+  Minus,
   ShieldAlert,
   ShieldCheck,
   ShieldX,
@@ -34,6 +37,48 @@ type RunVerdict = {
   body: string;
   branchSplitCount: number;
   maxBranchDiff: number;
+};
+
+type GuidelineCell = {
+  direction: "SUPPORTS" | "REFUTES" | "NEUTRAL";
+  level: string;
+};
+type ReversalModel = {
+  eras: number[];
+  claims: Array<{
+    claimId: string;
+    label: string;
+    free: Record<number, GuidelineCell | undefined>;
+    constrained: Record<number, GuidelineCell | undefined>;
+    diverges: boolean;
+  }>;
+  divergingClaimCount: number;
+  eraCounts: Array<{
+    era: number;
+    free: { grounded: number; ungrounded: number };
+    constrained: { grounded: number; ungrounded: number };
+    civerRefused: number;
+  }>;
+  latestEra: number | null;
+  gap: NonNullable<ArtifactResponse["bundle"]["population_stats"]>[string] | null;
+  calibration: NonNullable<ArtifactResponse["bundle"]["calibration_matrix"]> | null;
+  scientific: boolean;
+};
+
+// GRADE-5 level → ordinal (for direction-of-travel arrows) and short label.
+const LEVEL_ORDER: Record<string, number> = {
+  "strong-for": 2,
+  "conditional-for": 1,
+  "no-recommendation": 0,
+  "conditional-against": -1,
+  "strong-against": -2,
+};
+const LEVEL_LABEL: Record<string, string> = {
+  "strong-for": "Strong FOR",
+  "conditional-for": "Conditional FOR",
+  "no-recommendation": "No rec.",
+  "conditional-against": "Conditional AGAINST",
+  "strong-against": "Strong AGAINST",
 };
 
 export function RunViewer({ runId }: { runId: string }) {
@@ -116,6 +161,7 @@ export function RunViewer({ runId }: { runId: string }) {
   const isLoading = !summary || (summary.run.status !== "completed" && !error);
   const isScientific = artifacts?.bundle.scientific !== false;
   const runVerdict = evaluateRunVerdict(artifacts);
+  const reversal = buildReversalModel(artifacts);
   const summaryHeadline = buildSummaryHeadline(freeClaim, constrainedClaim);
   const constrainedLineage = activeLineage.find((record) => record.branch === "constrained");
   const freeLineage = activeLineage.find((record) => record.branch === "free");
@@ -311,6 +357,8 @@ export function RunViewer({ runId }: { runId: string }) {
           </section>
         </div>
 
+        {reversal ? <ReversalSection model={reversal} /> : null}
+
         <div className="mt-6 grid gap-6 xl:grid-cols-3">
           <OutcomeCard
             title="Free branch"
@@ -483,6 +531,102 @@ export function RunViewer({ runId }: { runId: string }) {
   );
 }
 
+function buildReversalModel(artifacts: ArtifactResponse | null): ReversalModel | null {
+  const timeline = artifacts?.bundle.guideline_timeline;
+  const dbGrowth = artifacts?.bundle.db_growth;
+  if (!timeline || !dbGrowth) {
+    return null;
+  }
+
+  const eraSet = new Set<number>();
+  for (const branch of ["free", "constrained"] as const) {
+    for (const row of timeline[branch] ?? []) {
+      eraSet.add(row.year);
+    }
+  }
+  for (const era of Object.keys(dbGrowth)) {
+    eraSet.add(Number(era));
+  }
+  const eras = [...eraSet].sort((a, b) => a - b);
+
+  const claimIds: string[] = [];
+  const claimText: Record<string, string> = {};
+  for (const row of timeline.free ?? []) {
+    if (!claimIds.includes(row.claim_id)) {
+      claimIds.push(row.claim_id);
+    }
+  }
+  const graphText = (id: string) =>
+    artifacts?.bundle.claim_graphs.find((graph) => graph.claim_id === id)?.claim_text;
+
+  const cellFor = (branch: "free" | "constrained", claimId: string, era: number) => {
+    const row = (timeline[branch] ?? []).find(
+      (item) => item.claim_id === claimId && item.year === era,
+    );
+    return row ? { direction: row.direction, level: row.level } : undefined;
+  };
+
+  const claims = claimIds.map((claimId, index) => {
+    const free: Record<number, GuidelineCell | undefined> = {};
+    const constrained: Record<number, GuidelineCell | undefined> = {};
+    let diverges = false;
+    for (const era of eras) {
+      const f = cellFor("free", claimId, era);
+      const c = cellFor("constrained", claimId, era);
+      free[era] = f;
+      constrained[era] = c;
+      if (f && c && (f.direction !== c.direction || f.level !== c.level)) {
+        diverges = true;
+      }
+    }
+    return {
+      claimId,
+      label: claimText[claimId] ?? graphText(claimId) ?? `Claim ${index + 1}`,
+      free,
+      constrained,
+      diverges,
+    };
+  });
+
+  const warrants = artifacts?.bundle.warrants ?? [];
+  const eraCounts = eras.map((era) => {
+    const counts = dbGrowth[String(era)]?.studies;
+    const refused = warrants.filter(
+      (warrant) =>
+        warrant.year === era &&
+        warrant.branch === "constrained" &&
+        (warrant.status === "REFUSED" || warrant.status === "REVOKED" || !warrant.issued),
+    ).length;
+    return {
+      era,
+      free: {
+        grounded: counts?.free.grounded ?? 0,
+        ungrounded: counts?.free.ungrounded ?? 0,
+      },
+      constrained: {
+        grounded: counts?.constrained.grounded ?? 0,
+        ungrounded: counts?.constrained.ungrounded ?? 0,
+      },
+      civerRefused: refused,
+    };
+  });
+
+  const latestEra = eras.length ? eras[eras.length - 1] : null;
+  const gap =
+    latestEra != null ? (artifacts?.bundle.population_stats?.[String(latestEra)] ?? null) : null;
+
+  return {
+    eras,
+    claims,
+    divergingClaimCount: claims.filter((claim) => claim.diverges).length,
+    eraCounts,
+    latestEra,
+    gap,
+    calibration: artifacts?.bundle.calibration_matrix ?? null,
+    scientific: artifacts?.bundle.scientific !== false,
+  };
+}
+
 function evaluateRunVerdict(artifacts: ArtifactResponse | null): RunVerdict | null {
   if (!artifacts) {
     return null;
@@ -524,6 +668,303 @@ function evaluateRunVerdict(artifacts: ArtifactResponse | null): RunVerdict | nu
     branchSplitCount,
     maxBranchDiff,
   };
+}
+
+function directionTone(direction: "SUPPORTS" | "REFUTES" | "NEUTRAL") {
+  if (direction === "SUPPORTS") {
+    return {
+      bg: "bg-[rgba(242,142,43,0.14)]",
+      border: "border-[rgba(242,142,43,0.40)]",
+      text: "text-[var(--accent-2)]",
+      icon: <ArrowUpRight className="h-3.5 w-3.5" />,
+    };
+  }
+  if (direction === "REFUTES") {
+    return {
+      bg: "bg-[rgba(15,141,119,0.12)]",
+      border: "border-[rgba(15,141,119,0.36)]",
+      text: "text-[var(--accent)]",
+      icon: <ArrowDownRight className="h-3.5 w-3.5" />,
+    };
+  }
+  return {
+    bg: "bg-[rgba(17,35,30,0.05)]",
+    border: "border-[var(--border)]",
+    text: "text-[var(--muted)]",
+    icon: <Minus className="h-3.5 w-3.5" />,
+  };
+}
+
+function GuidelineChip({ cell }: { cell: GuidelineCell | undefined }) {
+  if (!cell) {
+    return (
+      <div className="flex h-full min-h-[3.4rem] items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-white/40 px-2 text-[0.65rem] uppercase tracking-[0.12em] text-[var(--muted)]">
+        no read
+      </div>
+    );
+  }
+  const tone = directionTone(cell.direction);
+  return (
+    <div
+      className={`flex h-full min-h-[3.4rem] flex-col justify-center gap-1 rounded-xl border px-2.5 py-2 ${tone.bg} ${tone.border}`}
+    >
+      <div className={`flex items-center gap-1 text-[0.7rem] font-semibold uppercase tracking-[0.1em] ${tone.text}`}>
+        {tone.icon}
+        {cell.direction}
+      </div>
+      <div className="text-[0.66rem] leading-tight text-[var(--foreground)]">
+        {LEVEL_LABEL[cell.level] ?? cell.level}
+      </div>
+    </div>
+  );
+}
+
+function ReversalSection({ model }: { model: ReversalModel }) {
+  const ev = model.eraCounts;
+  const maxStudies = Math.max(
+    1,
+    ...ev.flatMap((row) => [
+      row.free.grounded + row.free.ungrounded,
+      row.constrained.grounded + row.constrained.ungrounded,
+    ]),
+  );
+
+  return (
+    <section className="mt-6 rounded-[2rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_70px_rgba(17,35,30,0.08)] backdrop-blur lg:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 text-sm uppercase tracking-[0.22em] text-[var(--muted)]">
+            <GitCompareArrows className="h-4 w-4 text-[var(--accent)]" />
+            Free vs constrained, era by era
+          </div>
+          <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl leading-tight text-[var(--foreground)] sm:text-3xl">
+            {model.divergingClaimCount > 0
+              ? "Where the open branch drifts and the gate holds"
+              : "The gate refuses every ungrounded admission"}
+          </h2>
+        </div>
+        <StatusBadge
+          label={model.scientific ? "scientific" : "illustrative"}
+          tone={model.scientific ? "ready" : "warn"}
+        />
+      </div>
+
+      {/* (a) per-claim direction + level timeline */}
+      <div className="mt-6 overflow-x-auto">
+        <div
+          className="grid min-w-[640px] gap-3"
+          style={{ gridTemplateColumns: `minmax(180px, 1.4fr) repeat(${model.eras.length}, minmax(0, 1fr))` }}
+        >
+          <div className="text-[0.7rem] uppercase tracking-[0.16em] text-[var(--muted)]">
+            Recommendation
+          </div>
+          {model.eras.map((era) => (
+            <div
+              key={`hdr-${era}`}
+              className="text-center text-[0.7rem] uppercase tracking-[0.16em] text-[var(--muted)]"
+            >
+              {era}
+            </div>
+          ))}
+
+          {model.claims.map((claim, claimIndex) => (
+            <FragmentRow key={claim.claimId}>
+              <div className="flex flex-col justify-center gap-1 py-1">
+                <div className="text-[0.66rem] uppercase tracking-[0.14em] text-[var(--muted)]">
+                  Claim {claimIndex + 1}
+                  {claim.diverges ? (
+                    <span className="ml-2 rounded-full bg-[rgba(242,142,43,0.18)] px-2 py-0.5 text-[0.6rem] font-semibold tracking-[0.08em] text-[var(--accent-2)]">
+                      diverges
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-sm leading-5 text-[var(--foreground)] line-clamp-2">
+                  {claim.label}
+                </div>
+              </div>
+              {model.eras.map((era, eraIndex) => (
+                <motion.div
+                  key={`${claim.claimId}-${era}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.06 * eraIndex + 0.05 * claimIndex }}
+                  className="grid grid-cols-2 gap-1.5"
+                >
+                  <GuidelineChip cell={claim.free[era]} />
+                  <GuidelineChip cell={claim.constrained[era]} />
+                </motion.div>
+              ))}
+            </FragmentRow>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.7rem] uppercase tracking-[0.14em] text-[var(--muted)]">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-[rgba(242,142,43,0.6)]" /> left cell = free branch
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-[rgba(15,141,119,0.6)]" /> right cell = constrained branch
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-7 grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+        {/* (b) per-era counts strip */}
+        <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/82 p-5">
+          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+            Studies admitted per era — grounded vs ungrounded
+          </div>
+          <div className="mt-4 grid gap-4">
+            {ev.map((row) => (
+              <div key={`counts-${row.era}`} className="grid gap-2">
+                <div className="flex items-center justify-between text-sm text-[var(--foreground)]">
+                  <span className="font-semibold">{row.era}</span>
+                  <span className="text-[0.7rem] uppercase tracking-[0.12em] text-[var(--muted)]">
+                    CIVER refused {row.civerRefused}
+                  </span>
+                </div>
+                <CountsBar label="free" counts={row.free} max={maxStudies} />
+                <CountsBar label="constrained" counts={row.constrained} max={maxStudies} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-[0.7rem] uppercase tracking-[0.14em] text-[var(--muted)]">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[var(--accent)]" /> grounded
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[var(--danger)]" /> ungrounded
+            </span>
+          </div>
+        </div>
+
+        {/* (c) CIVER-value gap + CI + verdict */}
+        <div className="grid gap-4">
+          <GapCard model={model} />
+          {model.calibration ? (
+            <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/82 p-5">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                Gate calibration
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <CalibStat label="False positive rate" value={model.calibration.fpr.toFixed(2)} good={model.calibration.fpr === 0} />
+                <CalibStat label="False negative rate" value={model.calibration.fnr.toFixed(2)} good={model.calibration.fnr === 0} />
+                <CalibStat label="Grounded seen" value={String(model.calibration.grounded_total)} />
+                <CalibStat label="Ungrounded seen" value={String(model.calibration.ungrounded_total)} />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FragmentRow({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
+function CountsBar({
+  label,
+  counts,
+  max,
+}: {
+  label: string;
+  counts: { grounded: number; ungrounded: number };
+  max: number;
+}) {
+  const total = counts.grounded + counts.ungrounded;
+  return (
+    <div className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-3">
+      <div className="text-[0.7rem] uppercase tracking-[0.12em] text-[var(--muted)]">{label}</div>
+      <div className="flex h-5 overflow-hidden rounded-full bg-[rgba(17,35,30,0.06)]">
+        <motion.div
+          className="h-full bg-[var(--accent)]"
+          initial={{ width: 0 }}
+          animate={{ width: `${(counts.grounded / max) * 100}%` }}
+          transition={{ duration: 0.6 }}
+        />
+        <motion.div
+          className="h-full bg-[var(--danger)]"
+          initial={{ width: 0 }}
+          animate={{ width: `${(counts.ungrounded / max) * 100}%` }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        />
+      </div>
+      <div className="text-xs tabular-nums text-[var(--foreground)]">
+        {counts.grounded}
+        <span className="text-[var(--danger)]"> +{counts.ungrounded}</span> = {total}
+      </div>
+    </div>
+  );
+}
+
+function CalibStat({ label, value, good }: { label: string; value: string; good?: boolean }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-white/85 px-3 py-2">
+      <div className="text-[0.62rem] uppercase tracking-[0.12em] text-[var(--muted)]">{label}</div>
+      <div className={`mt-1 text-lg font-semibold tabular-nums ${good ? "text-[var(--accent)]" : "text-[var(--foreground)]"}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function GapCard({ model }: { model: ReversalModel }) {
+  const gap = model.gap;
+  const totalUngrounded = model.eraCounts.reduce(
+    (sum, row) => sum + row.constrained.ungrounded,
+    0,
+  );
+  const freeUngrounded = model.eraCounts.reduce((sum, row) => sum + row.free.ungrounded, 0);
+  const held = gap != null && gap.direction.mean === 0 && gap.level.mean === 0;
+
+  const verdict = held
+    ? `The constrained branch admitted ${totalUngrounded} ungrounded studies; the free branch absorbed ${freeUngrounded}. At ${model.latestEra}, the free−constrained verdict gap is zero on both axes — the gate held the recommendation in place.`
+    : `At ${model.latestEra}, the free branch and the constrained branch no longer agree: the verdict gap is ${gap ? gap.direction.mean.toFixed(2) : "0.00"} on direction and ${gap ? gap.level.mean.toFixed(2) : "0.00"} on GRADE level.`;
+
+  return (
+    <div className="rounded-[1.6rem] border-2 border-[rgba(15,141,119,0.30)] bg-[rgba(15,141,119,0.07)] p-5">
+      <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+        Free − constrained gap · era {model.latestEra}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <GapStat
+          label="Direction"
+          interval={gap?.direction ?? null}
+        />
+        <GapStat
+          label="GRADE level"
+          interval={gap?.level ?? null}
+        />
+      </div>
+      <div className="mt-4 text-sm leading-6 text-[var(--foreground)]">{verdict}</div>
+      {!model.scientific ? (
+        <div className="mt-3 text-[0.72rem] leading-5 text-[var(--muted)]">
+          Illustrative offline run — shows the mechanism, not scored evidence.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function GapStat({
+  label,
+  interval,
+}: {
+  label: string;
+  interval: { mean: number; low: number; high: number } | null;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-white/85 px-3 py-3">
+      <div className="text-[0.62rem] uppercase tracking-[0.12em] text-[var(--muted)]">{label}</div>
+      <div className="mt-1 text-xl font-semibold tabular-nums text-[var(--foreground)]">
+        {interval ? interval.mean.toFixed(2) : "—"}
+      </div>
+      <div className="mt-0.5 text-[0.66rem] tabular-nums text-[var(--muted)]">
+        {interval ? `95% CI [${interval.low.toFixed(2)}, ${interval.high.toFixed(2)}]` : "no interval"}
+      </div>
+    </div>
+  );
 }
 
 function RunVerdictBanner({ verdict }: { verdict: RunVerdict }) {

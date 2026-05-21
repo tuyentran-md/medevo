@@ -1,0 +1,214 @@
+{
+  "summary": {
+    "claim_count": 3,
+    "years": [
+      2000,
+      2010,
+      2020
+    ],
+    "scientific": false,
+    "model": "deterministic-fallback",
+    "has_blocked_outputs": true,
+    "population_stats": {
+      "2000": {
+        "pair_count": 3,
+        "direction": {
+          "mean": 0.1667,
+          "low": 0.0,
+          "high": 0.5
+        },
+        "level": {
+          "mean": 0.0833,
+          "low": 0.0,
+          "high": 0.25
+        }
+      },
+      "2010": {
+        "pair_count": 3,
+        "direction": {
+          "mean": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        },
+        "level": {
+          "mean": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        }
+      },
+      "2020": {
+        "pair_count": 3,
+        "direction": {
+          "mean": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        },
+        "level": {
+          "mean": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        }
+      }
+    },
+    "llm_call_count": 17,
+    "degradation_reason": "deterministic PubMed fixture",
+    "bundle_seal": "d67c22177ff60a12097babb6be250c88177fa0421f878550ad9c0e75342c5986",
+    "provenance_log": {
+      "model": "deterministic-fallback",
+      "model_digest": "n/a",
+      "provider": "ollama",
+      "base_url": "",
+      "temperature": 0.2,
+      "seed_mode": "engine-seeded-structure",
+      "prompt_template_digests": {
+        "tier1_pubmed": "entrez-date-cut",
+        "srma_pooling": "llm-appraisal-plus-deterministic-pool"
+      },
+      "failure_rate": 0.3,
+      "calls": [
+        {
+          "label": "srma/claim-1/year-2000",
+          "seed": 115185860274381,
+          "prompt_digest": "66b35526158ae54c5ae1d823e6edba3744181437617d74e5f0e93d902afced66",
+          "response_hash": "6c9bb7e674a433d55a4b2e4fb369f62c4807b2420aa67ffb1c009e8e0d0f7072",
+          "timestamp": "2026-05-21T01:50:46.894067+00:00"
+        },
+        {
+          "label": "srma/claim-1/year-2000",
+          "seed": 115185860274381,
+          "prompt_digest": "66b35526158ae54c5ae1d823e6edba3744181437617d74e5f0e93d902afced66",
+          "response_hash": "6c9bb7e674a433d55a4b2e4fb369f62c4807b2420aa67ffb1c009e8e0d0f7072",
+          "timestamp": "2026-05-21T01:50:46.895300+00:00"
+        },
+        {
+          "label": "srma/claim-2/year-2000",
+          "seed": 276861914891189,
+          "prompt_digest": "18717d82d6543f6cb11215f52620696a1bb56b21052a3569e1cdeecd384731f0",
+          "response_hash": "b7c78ce43f1811867a73b635f57c48bf8b3406084cdbebb0c5ad420f76d1c8d6",
+          "timestamp": "2026-05-21T01:50:47.632283+00:00"
+        },
+        {
+          "label": "srma/claim-2/year-2000",
+          "seed": 276861914891189,
+          "prompt_digest": "18717d82d6543f6cb11215f52620696a1bb56b21052a3569e1cdeecd384731f0",
+          "response_hash": "b7c78ce43f1811867a73b635f57c48bf8b3406084cdbebb0c5ad420f76d1c8d6",
+          "timestamp": "2026-05-21T01:50:47.633264+00:00"
+        },
+        {
+          "label": "srma/claim-3/year-2000",
+          "seed": 40942525304551,
+          "prompt_digest": "6ef22874a67a16de05bc87005810bface060ed66292963706b920ef6c60c2124",
+          "response_hash": "759b87df3700b7b453a64ee45d0860c121f31ec6ec6e42ca32cf0829a6fc3025",
+          "timestamp": "2026-05-21T01:50:47.634071+00:00"
+        },
+        {
+          "label": "srma/claim-1/year-2010",
+          "seed": 240136893309742,
+          "prompt_digest": "493100a6c12095ab8bac70e24c1b5083899f406c7264e56f0010b74c653444e5",
+          "response_hash": "b26de49000dab24f198c3e5a0be6268ebbf304173662ef6aa7d2d4ad3960bbde",
+          "timestamp": "2026-05-21T01:50:48.363228+00:00"
+        },
+        {
+          "label": "srma/claim-1/year-2010",
+          "seed": 240136893309742,
+          "prompt_digest": "493100a6c12095ab8bac70e24c1b5083899f406c7264e56f0010b74c653444e5",
+          "response_hash": "b26de49000dab24f198c3e5a0be6268ebbf304173662ef6aa7d2d4ad3960bbde",
+          "timestamp": "2026-05-21T01:50:48.364477+00:00"
+        },
+        {
+          "label": "srma/claim-2/year-2010",
+          "seed": 222199748596303,
+          "prompt_digest": "80be265b310e13a11fe9dc3ecd83765a9fc8104066f91ef325466b0f7dc1d55b",
+          "response_hash": "d4933d1b664d3053dc10b362c061e8fc69e142ba0830cc6dc08fe70421ef678d",
+          "timestamp": "2026-05-21T01:50:49.098707+00:00"
+        },
+        {
+          "label": "srma/claim-2/year-2010",
+          "seed": 222199748596303,
+          "prompt_digest": "80be265b310e13a11fe9dc3ecd83765a9fc8104066f91ef325466b0f7dc1d55b",
+          "response_hash": "d4933d1b664d3053dc10b362c061e8fc69e142ba0830cc6dc08fe70421ef678d",
+          "timestamp": "2026-05-21T01:50:49.099787+00:00"
+        },
+        {
+          "label": "srma/claim-3/year-2010",
+          "seed": 263593512039100,
+          "prompt_digest": "3fa58318ca6b60ed11cb9609ce40642eb8d2e440a46037aadace5e8b7a554b7b",
+          "response_hash": "fa42cd4ab80e42664d1a9587625c2c3ae9ee5231e958d35b1d91408cb83d3f83",
+          "timestamp": "2026-05-21T01:50:49.838496+00:00"
+        },
+        {
+          "label": "srma/claim-3/year-2010",
+          "seed": 15923895414948,
+          "prompt_digest": "2f9bde9bc3f879e2ea4c3c681787710a929d19136b420f2246e020ccf89635a7",
+          "response_hash": "7b4e47c96bd1edd4bab0d815b72c4a2a60f5f72beec50a1a13d053b69f629eb6",
+          "timestamp": "2026-05-21T01:50:49.839618+00:00"
+        },
+        {
+          "label": "srma/claim-1/year-2020",
+          "seed": 135771816849732,
+          "prompt_digest": "fa31417c77e02da7906efde42584d5374092937f175eb56bd3889feb7c663d66",
+          "response_hash": "2cb1644274befbaa0150d251c819e891afd7bb0bb1f5a5fde96063bb662acb10",
+          "timestamp": "2026-05-21T01:50:50.570214+00:00"
+        },
+        {
+          "label": "srma/claim-1/year-2020",
+          "seed": 135771816849732,
+          "prompt_digest": "fa31417c77e02da7906efde42584d5374092937f175eb56bd3889feb7c663d66",
+          "response_hash": "2cb1644274befbaa0150d251c819e891afd7bb0bb1f5a5fde96063bb662acb10",
+          "timestamp": "2026-05-21T01:50:50.571178+00:00"
+        },
+        {
+          "label": "srma/claim-2/year-2020",
+          "seed": 228662788033566,
+          "prompt_digest": "12335c81fe24c6b3c881736ce631e732854be94e1f3563aa1c8a5fa54f51db4f",
+          "response_hash": "40e46f1da1fb8a9d7d9b7e2a47107cf9058ab7d5195d2cc9b994ef14d52602f5",
+          "timestamp": "2026-05-21T01:50:51.305852+00:00"
+        },
+        {
+          "label": "srma/claim-2/year-2020",
+          "seed": 228662788033566,
+          "prompt_digest": "12335c81fe24c6b3c881736ce631e732854be94e1f3563aa1c8a5fa54f51db4f",
+          "response_hash": "40e46f1da1fb8a9d7d9b7e2a47107cf9058ab7d5195d2cc9b994ef14d52602f5",
+          "timestamp": "2026-05-21T01:50:51.306955+00:00"
+        },
+        {
+          "label": "srma/claim-3/year-2020",
+          "seed": 205510744157491,
+          "prompt_digest": "fef115ddbc214dd20ec54bc54bd8a7d5425f60b831a7d0c4d6bff001e7f85a5d",
+          "response_hash": "7d63fc7b15010248c5080ace08ebfa082274a2e8045d3bd36040c73fa1c43310",
+          "timestamp": "2026-05-21T01:50:52.038258+00:00"
+        },
+        {
+          "label": "srma/claim-3/year-2020",
+          "seed": 66446942549020,
+          "prompt_digest": "95a26606382f34c169f93d92527c56facfd0974c467d31a31ee0b98c5d3f81c4",
+          "response_hash": "07e94602266ac1e44e72cd3e44286ca96e2bf991811aec77f055c8b4c9b10260",
+          "timestamp": "2026-05-21T01:50:52.039370+00:00"
+        }
+      ]
+    },
+    "failure_rate": 0.3,
+    "calibration_matrix": {
+      "branch": "constrained",
+      "true_positive": 8,
+      "true_negative": 1,
+      "false_negative": 0,
+      "false_positive": 0,
+      "grounded_total": 8,
+      "ungrounded_total": 1,
+      "fnr": 0.0,
+      "fpr": 0.0
+    }
+  },
+  "validation": [
+    "DEGRADED RUN: deterministic PubMed fixture",
+    "This run is illustrative only; any branch contrast shown here is non-scientific.",
+    "The fallback path is explicit so plausible-looking verdicts are never presented as scientific output."
+  ],
+  "description": "Demo-only guideline excerpt tracking how recommendations on menopausal hormone therapy for chronic-disease prevention drift across eras when the evidence base is left ungated, versus held by the provenance gate.",
+  "tags": [
+    "showcase",
+    "guideline",
+    "hormone-therapy"
+  ]
+}
