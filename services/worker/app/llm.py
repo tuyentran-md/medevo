@@ -157,10 +157,50 @@ class DeterministicFakeClient:
     def generate(self, prompt: str, *, seed: int) -> str:
         h = hashlib.sha256(f"{seed}:{prompt}".encode("utf-8")).hexdigest()
         bucket = int(h[:8], 16) % 3
+        # Group-A/B research prompts ask for the 4-line structured emission. The
+        # fake emits a mostly-grounded answer (cites a real catalog/slice pmid,
+        # scope at-source) with a deterministic minority that mildly over-reaches
+        # the scope within the gate tolerance -> realizes a non-zero FNR without
+        # any harness-authored contamination. Output is a pure function of the
+        # prompt, so runs stay reproducible (and stamped non-scientific).
+        if "DIRECTION: SUPPORTS | REFUTES | NEUTRAL" in prompt:
+            return self._research_emission(prompt, h, bucket)
         if "DIRECTION:" in prompt or "study's conclusion" in prompt:
             direction = ("SUPPORTS", "NEUTRAL", "REFUTES")[bucket]
             return f"DIRECTION: {direction}\nRATIONALE: deterministic fallback draw."
         return f"Deterministic synthetic summary {h[:12]} reporting a finding."
+
+    def _research_emission(self, prompt: str, h: str, bucket: int) -> str:
+        # Direction is read from the supplied abstract's content (the same keyword
+        # appraisal a real reader would do), NOT from the seed/year — so a stable
+        # source yields a stable conclusion across eras (low C0 self-drift). The
+        # over-reach FLAVOR below is the only seed-dependent part.
+        direction = _direction_from_prompt_sources(prompt)
+        pmid = _first_source_pmid(prompt)
+        if not pmid:
+            # No retrievable source supplied -> the honest conclusion is that the
+            # evidence is insufficient (UNGROUNDED-by-no-cite, the model's call).
+            return "DIRECTION: NEUTRAL\nSCOPE: pop=18-65 years=2000-2025\nPMIDS: none\nRATIONALE: no abstracts supplied."
+        low, high, ystart, yend = _first_source_scope(prompt)
+        # Deterministic minority emits a scope over-reach. Two flavors so the gate
+        # is exercised both ways: a MILD one (+2y, within SCOPE_TOLERANCE_YEARS ->
+        # slips the gate -> FNR>0) and an AGGRESSIVE one (+12y, beyond tolerance ->
+        # caught -> reduces constrained ungrounded below free). The remainder are
+        # honestly grounded (scope at source). All are the model's own emission.
+        flavor = int(h[8:10], 16) % 4
+        if flavor == 0:
+            inflate = 2  # mild: within gate tolerance
+        elif flavor == 1:
+            inflate = 12  # aggressive: beyond gate tolerance
+        else:
+            inflate = 0  # grounded
+        scope = f"pop={low}-{high + inflate} years={ystart}-{yend + inflate}"
+        return (
+            f"DIRECTION: {direction}\n"
+            f"SCOPE: {scope}\n"
+            f"PMIDS: {pmid}\n"
+            f"RATIONALE: deterministic appraisal grounded in source {pmid}."
+        )
 
     def describe(self) -> ModelDescriptor:
         return ModelDescriptor(name="deterministic-fallback", digest="n/a")
@@ -257,6 +297,109 @@ def make_client(
             return DeterministicFakeClient()
         live = OpenAICompatClient(base_url=base_url, model=model, api_key=api_key)
     return LiveOrFallbackClient(live, DeterministicFakeClient())
+
+
+import json as _json
+
+
+def _first_source_pmid(prompt: str) -> str | None:
+    """Extract the first cited source id from a research prompt.
+
+    Group-A microdata prompts hand the model the slice id explicitly
+    (``Cite the dataset slice as PMIDS: NHANES:...``); Group-B prompts embed a
+    ``sources=[...]`` JSON array. Pure string parsing — the fake never reaches
+    the network."""
+    slice_match = re.search(r"PMIDS:\s*(NHANES:[^\s]+)", prompt)
+    if slice_match:
+        return slice_match.group(1).strip()
+    match = re.search(r"sources=(\[.*\])", prompt, re.DOTALL)
+    if not match:
+        return None
+    try:
+        sources = _json.loads(match.group(1))
+    except (ValueError, TypeError):
+        return None
+    if isinstance(sources, list) and sources and isinstance(sources[0], dict):
+        pmid = sources[0].get("pmid")
+        return str(pmid) if pmid else None
+    return None
+
+
+def _direction_from_prompt_sources(prompt: str) -> str:
+    """Appraise the first supplied abstract by keyword, mirroring how a reader
+    would conclude. Used by the deterministic fake so its conclusion tracks the
+    source content (stable per source) rather than the seed."""
+    from app.pubmed import infer_direction_from_record
+    from app.models import PubMedRecord
+
+    match = re.search(r"sources=(\[.*\])", prompt, re.DOTALL)
+    if match:
+        try:
+            sources = _json.loads(match.group(1))
+            if isinstance(sources, list) and sources and isinstance(sources[0], dict):
+                rec = PubMedRecord(
+                    pmid=str(sources[0].get("pmid", "x")),
+                    title=str(sources[0].get("title", "")),
+                    abstract=str(sources[0].get("abstract", "")),
+                    year=int(sources[0].get("year") or 2020),
+                )
+                return infer_direction_from_record(rec)
+        except (ValueError, TypeError):
+            pass
+    # Group-A microdata prompts hand a returned RR in the analysis_result blob.
+    # Interpret it as a careful reader would, accounting for the claim's polarity
+    # ("should not / harm / outweigh" = negative): an elevated RR>1 SUPPORTS a
+    # negative claim but REFUTES a positive one.
+    rr = re.search(r'"rr":\s*([0-9.]+)', prompt)
+    if rr:
+        value = float(rr.group(1))
+        claim_match = re.search(r"claim=(['\"])(.*?)\1", prompt, re.DOTALL)
+        claim_text = claim_match.group(2).lower() if claim_match else ""
+        negative_claim = any(
+            token in claim_text
+            for token in ("should not", "do not", "does not", "avoid", "harm", "outweigh")
+        )
+        if 0.95 <= value <= 1.05:
+            return "NEUTRAL"
+        if negative_claim:
+            return "SUPPORTS" if value > 1.0 else "REFUTES"
+        return "SUPPORTS" if value < 1.0 else "REFUTES"
+    return "NEUTRAL"
+
+
+def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
+    """Best-effort source scope for the fake's SCOPE line.
+
+    Group-A prompts state ``pop=<low>-<high>`` and ``years=2005-2006`` inline;
+    Group-B records carry no parseable population band offline, so default broad
+    bands keyed to the source year are used."""
+    pop = re.search(r"pop=(\d+)-(\d+)", prompt)
+    if pop:
+        low, high = int(pop.group(1)), int(pop.group(2))
+        years = re.search(r"years=((?:19|20)\d{2})-((?:19|20)\d{2})", prompt)
+        if years:
+            return low, high, int(years.group(1)), int(years.group(2))
+        return low, high, 2005, 2006
+    match = re.search(r"sources=(\[.*\])", prompt, re.DOTALL)
+    year = 2020
+    if match:
+        try:
+            sources = _json.loads(match.group(1))
+            if isinstance(sources, list) and sources and isinstance(sources[0], dict):
+                first = sources[0]
+                year = int(first.get("year") or 2020)
+                pop_band = first.get("population_band")
+                year_band = first.get("year_band")
+                if (
+                    isinstance(pop_band, list)
+                    and len(pop_band) == 2
+                    and isinstance(year_band, list)
+                    and len(year_band) == 2
+                ):
+                    return int(pop_band[0]), int(pop_band[1]), int(year_band[0]), int(year_band[1])
+        except (ValueError, TypeError):
+            pass
+    return 0, 120, 1900, year
 
 
 _DIRECTION_RE = re.compile(r"DIRECTION:\s*(SUPPORTS|REFUTES|NEUTRAL)", re.IGNORECASE)

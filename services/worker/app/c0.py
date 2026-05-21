@@ -49,10 +49,64 @@ from app.pubmed import DeterministicPubMedClient, PubMedClient
 from app.synthesis import synthesize_guideline_claim
 
 
-# A failure-fraction this small means the seeded per-(claim, era) draw effectively
-# never fires: C0 is the strong-grounded-only counterfactual (SPEC §5). Kept as a
-# declared constant, not a magic literal in call sites.
+# Difficulty-knob value carried into the C0 run for parity with the contaminated
+# run's call signature. It is INERT (failure is emergent, not drawn), so C0's
+# no-contamination property comes from GroundedOnlyClient below, not this number.
 C0_FAILURE_RATE = 0.0
+
+
+class GroundedOnlyClient:
+    """The C0 no-emergent-contamination counterfactual (SPEC §5).
+
+    Failure is now an EMERGENT property of the research agents' own emissions, so
+    a rate knob can no longer guarantee a contamination-free reference run.
+    Instead this adapter wraps the resolved client and, for the 4-line research/
+    interpretation emissions, rewrites the SCOPE line to exactly the supplied
+    source band (and ensures a source citation) — i.e. the model NEVER over-reaches
+    or fabricates. SRMA and all other prompts pass through untouched. The harness
+    authors no study; it only removes the emergent over-reach to obtain the strong-
+    grounded-only trajectory the CIVER-value contrast is measured against.
+    """
+
+    def __init__(self, inner: LLMClient) -> None:
+        self._inner = inner
+
+    @property
+    def scientific(self) -> bool:
+        return self._inner.scientific
+
+    @property
+    def degradation_reason(self) -> str | None:
+        return self._inner.degradation_reason
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        raw = self._inner.generate(prompt, seed=seed)
+        if "DIRECTION: SUPPORTS | REFUTES | NEUTRAL" not in prompt:
+            return raw
+        return _force_grounded_emission(raw, prompt)
+
+    def describe(self):
+        return self._inner.describe()
+
+
+def _force_grounded_emission(raw: str, prompt: str) -> str:
+    """Pin a research emission to a fully-grounded chain: cite the first supplied
+    source at its exact source scope. Pure string rewrite — no network."""
+    from app.agents import parse_research_emission
+    from app.llm import _first_source_pmid, _first_source_scope
+
+    emission = parse_research_emission(raw)
+    pmid = _first_source_pmid(prompt)
+    if not pmid:
+        return raw  # nothing retrievable -> honest insufficiency stays as emitted
+    low, high, ystart, yend = _first_source_scope(prompt)
+    direction = emission.direction if emission.parse_ok else "NEUTRAL"
+    return (
+        f"DIRECTION: {direction}\n"
+        f"SCOPE: pop={low}-{high} years={ystart}-{yend}\n"
+        f"PMIDS: {pmid}\n"
+        "RATIONALE: C0 reference appraisal grounded at source scope."
+    )
 
 DEFAULT_GROUND_TRUTH = (
     Path(__file__).resolve().parent.parent / "data" / "ground_truth" / "hrt_uspstf.json"
@@ -180,18 +234,21 @@ def run_c0_reference(
     client: LLMClient | None = None,
     pubmed_client: PubMedClient | DeterministicPubMedClient | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
-    """Run the ecology with the failure-fraction driven to ~0 → the C0 trajectory.
+    """Run the ecology as the C0 no-emergent-contamination counterfactual.
 
-    The GOLD STANDARD for CIVER value (SPEC §5): same ecology, same seed, no
-    emergent contamination. NOT real-world truth. If no explicit client/pubmed
-    are supplied, the standard simulator backend resolution is used.
+    The GOLD STANDARD for CIVER value (SPEC §5): same ecology, same seed, but the
+    research agents NEVER over-reach (GroundedOnlyClient pins every research
+    emission to its source scope). NOT real-world truth. The supplied/resolved
+    client is wrapped so the contamination-free property holds by construction
+    rather than via an (now inert) failure-rate knob.
     """
-    from app.simulator import simulate_run  # local import to avoid cycle
+    from app.simulator import resolve_client, simulate_run  # local import to avoid cycle
 
+    resolved = resolve_client(request=request, client=client)
     return simulate_run(
         request=request,
         input_text=input_text,
-        client=client,
+        client=GroundedOnlyClient(resolved),
         pubmed_client=pubmed_client,
         failure_rate=C0_FAILURE_RATE,
     )

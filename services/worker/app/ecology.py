@@ -943,23 +943,25 @@ def run_ecology(
 
     source_catalog: dict[str, list[SourceRecord]] = {claim.claim_id: [] for claim in claims}
     source_ids_seen: dict[str, set[str]] = {claim.claim_id: set() for claim in claims}
+    invoke_model = lambda label, prompt, seed: _invoke_model(
+        llm,
+        telemetry,
+        label,
+        prompt,
+        seed=seed,
+    )
     research_agent = ResearchAgent(
         pubmed=pubmed_client,
+        invoke_model=invoke_model,
         failure_rate=failure_rate,
         seed=_seed_int(f"run-failure-seed:{run_id or 'preview-run'}"),
     )
-    microdata_agent = MicrodataAgent()
+    microdata_agent = MicrodataAgent(invoke_model=invoke_model)
     tier3_store = Tier3RunStore(run_id=run_id)
     srma_agent = SrmaAgent(
         study_reader=tier3_store,
         llm=llm,
-        invoke_model=lambda label, prompt, seed: _invoke_model(
-            llm,
-            telemetry,
-            label,
-            prompt,
-            seed=seed,
-        ),
+        invoke_model=invoke_model,
         seed_namespace=f"srma:{run_id or 'preview-run'}",
     )
     states: dict[tuple[str, BranchName], BranchState] = {

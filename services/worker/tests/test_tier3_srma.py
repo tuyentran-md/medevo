@@ -100,7 +100,7 @@ def test_srma_agent_reads_tier3_db_without_pubmed_import(tmp_path, monkeypatch) 
     )
 
     source = Path(app.agents.__file__).read_text(encoding="utf-8")
-    source = source[source.index("class SrmaAgent") : source.index("def _select_record")]
+    source = source[source.index("class SrmaAgent") : source.index("def _attempt_seed")]
     assert "pubmed" not in source.lower()
 
     guideline = SrmaAgent(Tier3StudyStore()).run(

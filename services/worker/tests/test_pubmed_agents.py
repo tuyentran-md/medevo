@@ -4,8 +4,19 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.agents import ResearchAgent
-from app.pubmed import PubMedClient, extract_effect_estimate
+from app.agents import ResearchAgent, parse_research_emission
+from app.ecology import (
+    ClaimSeed,
+    CorpusItem,
+    SCOPE_TOLERANCE_YEARS,
+    admit_evidence_unit,
+    _reachable_lookup_from_catalog,
+    _study_to_evidence_unit,
+)
+from app.llm import ModelDescriptor
+from app.models import EvidenceScope, PubMedRecord
+from app.pubmed import PubMedClient, PubMedSearchResult, extract_effect_estimate
+from app.simulator import build_claim_graph
 
 
 PUBMED_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -88,23 +99,151 @@ def test_effect_extraction_reads_point_and_ci() -> None:
     assert effect.measure == "RR"
 
 
-def test_research_agent_emits_real_grounded_study(tmp_path: Path) -> None:
-    client = PubMedClient(cache_dir=tmp_path, http=FakeHttp(), min_interval_seconds=0)
-    agent = ResearchAgent(pubmed=client, retmax=5, failure_rate=0.0)
+# --------------------------------------------------------------------------- #
+# Scripted LLM: routes by the response text injected per test. The research
+# agent now drives every study via a genuine generate() call, so the four
+# scenarios below are produced by the MODEL's emission, not a harness coin flip.
+# --------------------------------------------------------------------------- #
+class ScriptedLLM:
+    scientific = True
+    degradation_reason = None
 
+    def __init__(self, response: str, *, calls: list[str] | None = None) -> None:
+        self._response = response
+        self.calls = calls if calls is not None else []
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        self.calls.append(prompt)
+        return self._response
+
+    def describe(self) -> ModelDescriptor:
+        return ModelDescriptor(name="scripted", digest="test")
+
+
+class ScopedPubMed:
+    """One real record (pmid 111) with a NARROW source scope so scope over-reach
+    is observable; serves as the retrieved catalog the gate resolves against."""
+
+    SCOPE = EvidenceScope(population_low=40, population_high=60, year_start=2015, year_end=2018)
+
+    def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+        record = PubMedRecord(
+            pmid="111",
+            title="Antibiotics did not reduce bronchiolitis admissions",
+            abstract="Randomized trial n=240 found antibiotics did not reduce admissions; RR 1.08, 95% CI 0.92 to 1.26.",
+            year=min(max_year, 2018),
+            journal="Test Journal",
+            locator="PMID:111",
+            scope=self.SCOPE.model_copy(deep=True),
+        )
+        return PubMedSearchResult(query=query, max_year=max_year, pmids=["111"], records=[record])
+
+
+def _run(agent_response: str):
+    calls: list[str] = []
+    agent = ResearchAgent(
+        pubmed=ScopedPubMed(), llm=ScriptedLLM(agent_response, calls=calls), retmax=5
+    )
     study, catalog = agent.run(
         claim_id="claim-1",
         claim_text="Routine antibiotics should be given for acute viral bronchiolitis in infants.",
         simulated_year=2020,
     )
+    return study, catalog, calls
 
-    assert [record.pmid for record in catalog] == ["111"]
+
+def _admit_in_gate(study, catalog):
+    """Push the study through the (blind) constrained gate exactly as ecology does."""
+    catalog_pmids = {record.pmid for record in catalog}
+    unit = _study_to_evidence_unit(study=study, branch="constrained", catalog_pmids=catalog_pmids)
+    claim = ClaimSeed("claim-1", "Some clinical claim.", "moderate")
+    verdict, _warrant = admit_evidence_unit(
+        run_id="run-1",
+        claim=claim,
+        claim_graph=build_claim_graph(claim),
+        branch="constrained",
+        year=2020,
+        unit=unit,
+        reachable_lookup=_reachable_lookup_from_catalog(catalog),
+        warrants_by_output={},
+        threshold=0.6,
+    )
+    return verdict
+
+
+def test_every_research_attempt_calls_the_llm() -> None:
+    _study, _catalog, calls = _run(
+        "DIRECTION: REFUTES\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok."
+    )
+    assert len(calls) == 1
+    assert "DIRECTION: SUPPORTS | REFUTES | NEUTRAL" in calls[0]
+
+
+def test_grounded_emission_is_admitted_by_the_gate() -> None:
+    # Model cites the retrieved PMID at the source scope -> GROUNDED -> admitted.
+    study, catalog, _ = _run(
+        "DIRECTION: REFUTES\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: trial showed no benefit."
+    )
     assert study.provenance == "GROUNDED"
+    assert study.failure_mode == "none"
     assert study.pmids == ["111"]
-    assert study.year == 2020
     assert study.direction == "REFUTES"
+    # Numbers are extracted verbatim from the cited abstract, never from the model.
     assert study.numeric is True
     assert study.effect_point == 1.08
     assert study.effect_ci == (0.92, 1.26)
     assert study.n == 240
     assert study.output_hash
+    assert _admit_in_gate(study, catalog).passed is True
+
+
+def test_overreaching_scope_emission_is_ungrounded_and_refused() -> None:
+    # Cites the real PMID but inflates the population/timeframe far beyond the
+    # source -> the model's own over-reach -> UNGROUNDED -> refused by the gate.
+    study, catalog, _ = _run(
+        "DIRECTION: SUPPORTS\nSCOPE: pop=0-100 years=1990-2025\nPMIDS: 111\nRATIONALE: overclaim."
+    )
+    assert study.provenance == "UNGROUNDED"
+    assert study.failure_mode == "scope-overreach"
+    verdict = _admit_in_gate(study, catalog)
+    assert verdict.passed is False
+    assert any("scope clause" in reason for reason in verdict.reasons)
+
+
+def test_fabricated_citation_emission_is_ungrounded_and_refused() -> None:
+    # Cites a PMID that is NOT in the retrieved catalog -> unresolvable.
+    study, catalog, _ = _run(
+        "DIRECTION: SUPPORTS\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: 99999\nRATIONALE: hallucinated cite."
+    )
+    assert study.provenance == "UNGROUNDED"
+    assert study.failure_mode == "unresolvable"
+    assert _admit_in_gate(study, catalog).passed is False
+
+
+def test_unparseable_emission_is_ungrounded_and_refused() -> None:
+    # Garbled / over-confident free text with no structured conclusion.
+    study, catalog, _ = _run("Yes, antibiotics clearly help. Trust me.")
+    assert study.provenance == "UNGROUNDED"
+    assert study.failure_mode == "unresolvable"
+    assert _admit_in_gate(study, catalog).passed is False
+
+
+def test_mild_scope_overreach_within_tolerance_slips_the_gate() -> None:
+    # Model inflates scope by exactly the gate tolerance: ground-truth UNGROUNDED
+    # (agent uses tolerance=0) yet the blind gate admits it -> a genuine FNR.
+    study, catalog, _ = _run(
+        f"DIRECTION: REFUTES\nSCOPE: pop=40-{60 + SCOPE_TOLERANCE_YEARS} years=2015-2018\nPMIDS: 111\nRATIONALE: mild."
+    )
+    assert study.provenance == "UNGROUNDED"
+    assert study.failure_mode == "scope-overreach"
+    assert _admit_in_gate(study, catalog).passed is True
+
+
+def test_emission_parser_is_robust_to_ordering_and_case() -> None:
+    emission = parse_research_emission(
+        "rationale: because.\npmids: 111, 222\nscope: pop=40-60 years=2015-2018\ndirection: supports"
+    )
+    assert emission.parse_ok is True
+    assert emission.direction == "SUPPORTS"
+    assert emission.cited_pmids == ["111", "222"]
+    assert emission.claimed_scope.population_low == 40

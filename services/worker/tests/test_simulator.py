@@ -5,8 +5,23 @@ from app.simulator import contamination_clock, resolve_backend, simulate_run
 
 
 class RefutingUniverseClient(DeterministicFakeClient):
+    """Scientific-stamped fake whose research agents conclude REFUTES, citing the
+    one refuting PMID at its true (broad default) scope, and whose SRMA appraisal
+    falls through to the base deterministic handler. Models a universe where the
+    grounded evidence refutes the claim."""
+
     scientific = True
     degradation_reason = None
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        if "DIRECTION: SUPPORTS | REFUTES | NEUTRAL" in prompt:
+            return (
+                "DIRECTION: REFUTES\n"
+                "SCOPE: pop=0-120 years=1900-2025\n"
+                "PMIDS: 111\n"
+                "RATIONALE: the trial found antibiotics did not reduce admissions."
+            )
+        return super().generate(prompt, seed=seed)
 
 
 class RefutingPubMed:

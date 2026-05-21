@@ -8,12 +8,16 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import requests
 
+from app.agents import parse_research_emission
 from app.config import DATA_DIR
 from app.models import ClaimDirection, EvidenceScope, PubMedRecord, Study
+
+if TYPE_CHECKING:
+    from app.llm import LLMClient
 
 
 NHANES_FILES = {
@@ -245,6 +249,8 @@ class MicrodataAgent:
     cache_dir: Path = DATA_DIR / "nhanes_cache"
     file_provider: Callable[[], dict[str, Path]] | None = None
     analysis_runner: Callable[[dict[str, Path]], dict[str, Any]] | None = None
+    llm: "LLMClient | None" = None
+    invoke_model: Callable[[str, str, int], str] | None = None
 
     def run(
         self,
@@ -253,45 +259,90 @@ class MicrodataAgent:
         claim_text: str,
         simulated_year: int,
     ) -> tuple[Study, list[PubMedRecord]]:
+        """Group-A: the sandbox runs the REAL stats (deterministic numbers); the
+        LLM then INTERPRETS that result and concludes a direction + scope grounded
+        in those numbers. Over-reach beyond the returned result = UNGROUNDED.
+
+        The LLM is called on EVERY path (including unsupported/failed analysis):
+        the contract is one generate call per study attempt, and a null result
+        is itself something the model must conclude UNGROUNDED about rather than
+        invent a finding.
+        """
+        analysis: dict[str, Any]
         if not supports_claim(claim_text):
-            return _unsupported_study(
-                claim_id=claim_id,
-                claim_text=claim_text,
-                simulated_year=simulated_year,
-                reason="NHANES slice not applicable to this claim.",
-            ), []
+            analysis = {"supported": False, "reason": "NHANES slice not applicable to this claim."}
+        else:
+            try:
+                files = self.file_provider() if self.file_provider is not None else self._default_files()
+                analysis = (
+                    self.analysis_runner(files)
+                    if self.analysis_runner is not None
+                    else self._run_analysis(files)
+                )
+            except Exception as exc:
+                analysis = {"supported": False, "reason": f"NHANES analysis failed: {type(exc).__name__}: {exc}"}
 
-        try:
-            files = self.file_provider() if self.file_provider is not None else self._default_files()
-            analysis = (
-                self.analysis_runner(files)
-                if self.analysis_runner is not None
-                else self._run_analysis(files)
+        source_id = f"NHANES:2005-2006:HRT-CARDIOMETABOLIC:{claim_id}"
+        source_scope = (
+            EvidenceScope(
+                population_low=int(analysis["age_low"]),
+                population_high=int(analysis["age_high"]),
+                year_start=2005,
+                year_end=2006,
             )
-        except Exception as exc:
-            return _unsupported_study(
-                claim_id=claim_id,
-                claim_text=claim_text,
-                simulated_year=simulated_year,
-                reason=f"NHANES analysis failed: {type(exc).__name__}: {exc}",
-            ), []
+            if analysis.get("supported")
+            else EvidenceScope(population_low=45, population_high=85, year_start=2005, year_end=2006)
+        )
 
+        prompt = _microdata_prompt(
+            claim_id=claim_id,
+            claim_text=claim_text,
+            simulated_year=simulated_year,
+            analysis=analysis,
+            source_scope=source_scope,
+        )
+        seed = int(
+            hashlib.sha256(
+                f"microdata:{claim_id}:{simulated_year}".encode("utf-8")
+            ).hexdigest()[:12],
+            16,
+        )
+        raw = self._generate(
+            label=f"microdata/{claim_id}/year-{simulated_year}", prompt=prompt, seed=seed
+        )
+        emission = parse_research_emission(raw)
+
+        # The sole resolvable source for Group-A is the dataset slice itself, and
+        # only when the analysis actually returned a supported result.
         if not analysis.get("supported"):
-            return _unsupported_study(
+            study = _unsupported_study(
                 claim_id=claim_id,
                 claim_text=claim_text,
                 simulated_year=simulated_year,
                 reason=str(analysis.get("reason") or "Unsupported NHANES slice."),
-            ), []
+            )
+            return study, []
 
-        source_id = f"NHANES:2005-2006:HRT-CARDIOMETABOLIC:{claim_id}"
-        direction = _direction_from_rr(float(analysis["rr"]), claim_text=claim_text)
-        scope = EvidenceScope(
-            population_low=int(analysis["age_low"]),
-            population_high=int(analysis["age_high"]),
-            year_start=2005,
-            year_end=2006,
+        # Provenance derived from the model's own interpretation: it must cite the
+        # dataset slice and not over-reach its scope beyond the analyzed cohort.
+        cited_slice = source_id in emission.cited_pmids and len(emission.cited_pmids) == 1
+        claimed_scope = (
+            emission.claimed_scope
+            if emission.claimed_scope != EvidenceScope()
+            else source_scope.model_copy(deep=True)
         )
+        scope_overreaches = claimed_scope.exceeds(source_scope, tolerance=0)
+
+        if not emission.parse_ok or not cited_slice:
+            provenance = "UNGROUNDED"
+            failure_mode: str = "unresolvable"
+        elif scope_overreaches:
+            provenance = "UNGROUNDED"
+            failure_mode = "scope-overreach"
+        else:
+            provenance = "GROUNDED"
+            failure_mode = "none"
+
         record = PubMedRecord(
             pmid=source_id,
             title="NHANES 2005-2006 women 45+ hormone-use cardiometabolic slice",
@@ -299,27 +350,36 @@ class MicrodataAgent:
             year=2006,
             journal="NHANES 2005-2006",
             locator=source_id,
-            scope=scope,
+            scope=source_scope,
         )
         study = Study(
-            id=f"{claim_id}-study-{simulated_year}-nhanes-hrt-cardiometabolic",
+            id=f"{claim_id}-study-{simulated_year}-nhanes-{'hrt-cardiometabolic' if provenance == 'GROUNDED' else 'ungrounded'}",
             claim_id=claim_id,
             year=simulated_year,
-            direction=direction,
-            effect_point=float(analysis["rr"]),
-            effect_ci=(float(analysis["ci_low"]), float(analysis["ci_high"])),
-            n=int(analysis["n_total"]),
-            quality=0.66,
-            provenance="GROUNDED",
-            pmids=[source_id],
-            numeric=True,
-            rationale=str(analysis["summary"]),
-            claimed_scope=scope.model_copy(deep=True),
-            source_scope=scope.model_copy(deep=True),
-            failure_mode="none",
+            direction=emission.direction,
+            effect_point=float(analysis["rr"]) if provenance == "GROUNDED" else None,
+            effect_ci=(float(analysis["ci_low"]), float(analysis["ci_high"])) if provenance == "GROUNDED" else None,
+            n=int(analysis["n_total"]) if provenance == "GROUNDED" else None,
+            quality=0.66 if provenance == "GROUNDED" else (0.3 if failure_mode == "scope-overreach" else 0.2),
+            provenance=provenance,
+            pmids=list(emission.cited_pmids),
+            numeric=provenance == "GROUNDED",
+            rationale=emission.rationale or str(analysis["summary"]),
+            claimed_scope=claimed_scope,
+            source_scope=source_scope.model_copy(deep=True),
+            failure_mode=failure_mode,  # type: ignore[arg-type]
         )
         study.output_hash = _study_hash(study)
         return study, [record]
+
+    def _generate(self, *, label: str, prompt: str, seed: int) -> str:
+        if self.invoke_model is not None:
+            return self.invoke_model(label, prompt, seed)
+        if self.llm is not None:
+            return self.llm.generate(prompt, seed=seed)
+        raise RuntimeError(
+            "MicrodataAgent requires an llm or invoke_model to drive the interpretation call."
+        )
 
     def _default_files(self) -> dict[str, Path]:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -356,6 +416,42 @@ class MicrodataAgent:
             if completed.returncode != 0:
                 raise RuntimeError((completed.stderr or completed.stdout or "analysis runner failed").strip())
             return json.loads(output_path.read_text(encoding="utf-8"))
+
+
+def _microdata_prompt(
+    *,
+    claim_id: str,
+    claim_text: str,
+    simulated_year: int,
+    analysis: dict[str, Any],
+    source_scope: EvidenceScope,
+) -> str:
+    source_id = f"NHANES:2005-2006:HRT-CARDIOMETABOLIC:{claim_id}"
+    result = json.dumps(analysis, ensure_ascii=True, sort_keys=True, default=str)
+    # DATA-GROUNDING (SPEC §1): the model interprets the REAL statistics returned
+    # by the sandbox and concludes only what those numbers support. It must cite
+    # the dataset slice id and must NOT widen the scope beyond the analyzed cohort
+    # (NHANES 2005-2006 women, ages {pop band}). If the analysis is unsupported it
+    # must conclude NEUTRAL with no citation rather than invent an effect.
+    return (
+        "You are a research agent interpreting the result of a statistical "
+        "analysis you ran on the NHANES 2005-2006 microdata for a clinical claim. "
+        "Conclude ONLY what the returned numbers support; do NOT use prior or "
+        "external knowledge, and do NOT widen the population/timeframe beyond the "
+        "analyzed cohort. If the analysis is unsupported, conclude DIRECTION: "
+        "NEUTRAL with PMIDS: none.\n"
+        f"Cite the dataset slice as PMIDS: {source_id} (the only resolvable "
+        "source for this analysis). State the scope as the analyzed cohort's age "
+        f"band (pop={source_scope.population_low}-{source_scope.population_high}) "
+        "and observation years (years=2005-2006); do not widen it.\n"
+        "Respond with EXACTLY these four lines and nothing else:\n"
+        "DIRECTION: SUPPORTS | REFUTES | NEUTRAL\n"
+        "SCOPE: pop=<low>-<high> years=<start>-<end>\n"
+        "PMIDS: <the dataset slice id, or 'none'>\n"
+        "RATIONALE: <one or two sentences grounded in the returned numbers>\n"
+        f"claim_id={claim_id} simulated_year={simulated_year} claim={claim_text!r} "
+        f"analysis_result={result}"
+    )
 
 
 def _direction_from_rr(rr: float, *, claim_text: str) -> ClaimDirection:

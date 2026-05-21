@@ -144,6 +144,30 @@ def build_claim_graph(claim: ClaimSeed) -> ClaimGraph:
     ]
     return ClaimGraph(claim_id=claim.claim_id, claim_text=claim.text, nodes=nodes, edges=edges)
 
+def resolve_client(
+    *, request: RunRequestModel, client: LLMClient | None
+) -> LLMClient:
+    """Resolve the LLM client the simulator would use for ``request``.
+
+    Extracted so C0's GroundedOnlyClient can wrap the SAME resolved client the
+    contaminated run uses (identical model, identical fallback behavior). Honors
+    the PYTEST fallback override so tests stay network-free."""
+    if client is not None:
+        return client
+    backend = resolve_backend(request)
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        backend.using_fallback = True
+        backend.base_url = None
+        backend.model = "deterministic-fallback"
+    return make_client(
+        using_fallback=backend.using_fallback,
+        base_url=backend.base_url,
+        model=backend.model,
+        backend=backend.backend,
+        api_key=request.api_key,
+    )
+
+
 def simulate_run(
     *,
     request: RunRequestModel,
@@ -154,25 +178,11 @@ def simulate_run(
     failure_rate: float = DEFAULT_FAILURE_RATE,
     study_sink: dict[str, list] | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
-    backend = resolve_backend(request)
-    if client is None and os.environ.get("PYTEST_CURRENT_TEST"):
-        backend.using_fallback = True
-        backend.base_url = None
-        backend.model = "deterministic-fallback"
-    llm = client or make_client(
-        using_fallback=backend.using_fallback,
-        base_url=backend.base_url,
-        model=backend.model,
-        backend=backend.backend,
-        api_key=request.api_key,
-    )
+    llm = resolve_client(request=request, client=client)
     if pubmed_client is None:
-        use_deterministic_pubmed = (
-            client is not None and not client.scientific
-        ) or (client is None and backend.using_fallback)
-        pubmed_client = build_pubmed_client(
-            deterministic=use_deterministic_pubmed
-        )
+        # A non-scientific client (explicit fake OR resolved fallback) pairs with
+        # the deterministic PubMed fixture so demo/test runs never hit the network.
+        pubmed_client = build_pubmed_client(deterministic=not llm.scientific)
 
     claims = extract_claims(input_text, request.input_mode)
     claim_graphs = [build_claim_graph(claim) for claim in claims]
