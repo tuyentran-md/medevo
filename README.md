@@ -46,11 +46,21 @@ flowchart LR
 
 The headline output is the contrast: as fallible agents accumulate work across
 the eras, does the **free** arm drift off the real USPSTF trajectory while the
-**constrained** (gated) arm tracks it? That gap — with confidence intervals, on
-both the *direction* and the *strength* axis — is the measure of the gate's value.
+**constrained** (gated) arm tracks it?
 
-A sealed run is replayed as a static animation (no live compute), so the
-demonstration is reproducible and inspectable by anyone.
+*Illustrative — the trajectory the gate is tested to preserve, not a scored
+result:*
+
+| Era | Real recommendation (USPSTF) | 🟢 Constrained (CIVER) | 🔴 Free (no gate) |
+|---|---|---|---|
+| ~2000 (pre-WHI) | HRT recommended *for* prevention | matches era | matches era |
+| ~2010 (post-WHI) | recommend **against** (grade D) | flips to *against* | lags — drifts toward *for* |
+| ~2020 | sustained strong **against** | strong *against* (tracks truth) | off-trajectory / weakened |
+
+That gap — with confidence intervals, on both the *direction* and the *strength*
+axis, and surviving controls — is the measure of the gate's value. A sealed run
+is replayed as a static animation (no live compute), so the demonstration is
+reproducible and inspectable by anyone.
 
 ## Why the result is honest, not staged
 
