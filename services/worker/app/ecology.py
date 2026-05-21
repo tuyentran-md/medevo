@@ -34,6 +34,7 @@ from app.models import (
     LineageRecord,
     PubMedRecord,
     RecommendationStrength,
+    ResearchPlan,
     RunRequestModel,
     Study,
 )
@@ -262,44 +263,6 @@ def _invoke_model(
     return response
 
 
-def _research_studies_for_year(
-    *,
-    research_agent: ResearchAgent,
-    microdata_agent: MicrodataAgent,
-    claim: ClaimSeed,
-    year: int,
-    telemetry: CallTelemetry,
-) -> list[tuple[Study, list[PubMedRecord]]]:
-    """Produce STUDIES_PER_CLAIM_PER_ERA Tier-1 studies for one (claim, era).
-
-    Group A (microdata/NHANES) is a single deterministic dataset slice per era, so
-    it contributes ONE study; the remaining replicates come from Group B (the
-    PubMed literature agent), each a distinct seeded attempt. This yields a
-    screenable corpus for the Tier-4 SR/MA rather than one study per claim.
-    """
-    studies: list[tuple[Study, list[PubMedRecord]]] = []
-    for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
-        if replicate == 0 and _use_microdata_group(claim=claim, year=year):
-            studies.append(
-                microdata_agent.run(
-                    claim_id=claim.claim_id,
-                    claim_text=claim.text,
-                    simulated_year=year,
-                )
-            )
-            continue
-        studies.append(
-            _research_study_for_year(
-                research_agent=research_agent,
-                claim=claim,
-                year=year,
-                telemetry=telemetry,
-                replicate=replicate,
-            )
-        )
-    return studies
-
-
 def _research_study_for_year(
     *,
     research_agent: ResearchAgent,
@@ -344,6 +307,149 @@ def _use_microdata_group(*, claim: ClaimSeed, year: int) -> bool:
     return bucket % 2 == 0
 
 
+@dataclass(frozen=True)
+class ResearchOutcome:
+    """One Tier-1 attempt's result for a SINGLE branch.
+
+    ``study`` is None ONLY for a constrained attempt whose DESIGN was refused by the
+    pre-execution gate — that attempt never executed, so no Study exists. ``catalog``
+    is the source universe the gate resolves cites against. ``design_refused`` /
+    ``design_reasons`` carry the pre-execution audit detail; ``execution_deviated``
+    / ``deviation_note`` carry the Article-II plan→execution deviation (WARN).
+    """
+
+    study: Study | None
+    catalog: list[PubMedRecord]
+    design_refused: bool = False
+    design_reasons: list[str] = field(default_factory=list)
+    execution_deviated: bool = False
+    deviation_note: str = ""
+
+
+def _free_research_batch(
+    *,
+    research_agent: ResearchAgent,
+    microdata_agent: MicrodataAgent,
+    claim: ClaimSeed,
+    year: int,
+    telemetry: CallTelemetry,
+) -> list[ResearchOutcome]:
+    """FREE arm: each study = ONE merged research call (design+execute+conclude)."""
+    outcomes: list[ResearchOutcome] = []
+    for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
+        if replicate == 0 and _use_microdata_group(claim=claim, year=year):
+            study, catalog = microdata_agent.run(
+                claim_id=claim.claim_id, claim_text=claim.text, simulated_year=year
+            )
+            outcomes.append(ResearchOutcome(study=study, catalog=catalog))
+            continue
+        study, catalog = _research_study_for_year(
+            research_agent=research_agent,
+            claim=claim,
+            year=year,
+            telemetry=telemetry,
+            replicate=replicate,
+        )
+        outcomes.append(ResearchOutcome(study=study, catalog=catalog))
+    return outcomes
+
+
+def _constrained_research_batch(
+    *,
+    research_agent: ResearchAgent,
+    microdata_agent: MicrodataAgent,
+    claim: ClaimSeed,
+    claim_graph: ClaimGraph,
+    year: int,
+    telemetry: CallTelemetry,
+) -> list[ResearchOutcome]:
+    """CONSTRAINED arm: DESIGN call → pre-execution CIVER gate → EXECUTE call.
+
+    The asymmetry is intentional (the gate REQUIRES a separable design step): the
+    agent pre-registers a plan, the gate admits/refuses it BEFORE any execution,
+    and only an admitted plan is executed. A refused design yields no study (it
+    never ran). Microdata (Group A) is effectively pre-registered already — the
+    dataset-slice id is the committed source and the analyzed cohort is the scope —
+    so it stays a single call on both arms (design/execute split there would be
+    gold-plating).
+    """
+    outcomes: list[ResearchOutcome] = []
+    for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
+        if replicate == 0 and _use_microdata_group(claim=claim, year=year):
+            study, catalog = microdata_agent.run(
+                claim_id=claim.claim_id, claim_text=claim.text, simulated_year=year
+            )
+            outcomes.append(ResearchOutcome(study=study, catalog=catalog))
+            continue
+        try:
+            plan, catalog = research_agent.run_design(
+                claim_id=claim.claim_id,
+                claim_text=claim.text,
+                simulated_year=year,
+                max_pubmed_year=pubmed_cutoff_year(year),
+                replicate=replicate,
+            )
+        except Exception as exc:
+            if telemetry.degradation_reason is None:
+                telemetry.degradation_reason = (
+                    f"design/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
+                )
+            outcomes.append(
+                ResearchOutcome(
+                    study=None,
+                    catalog=[],
+                    design_refused=True,
+                    design_reasons=[f"DESIGN retrieval failed: {type(exc).__name__}: {exc}"],
+                )
+            )
+            continue
+
+        reachable_lookup = _reachable_lookup_from_catalog(catalog)
+        admitted, reasons = admit_research_plan(
+            plan=plan, claim_graph=claim_graph, reachable_lookup=reachable_lookup
+        )
+        if not admitted:
+            # Plan refused PRE-EXECUTION: the agent does NOT execute; no study.
+            outcomes.append(
+                ResearchOutcome(
+                    study=None,
+                    catalog=catalog,
+                    design_refused=True,
+                    design_reasons=reasons,
+                )
+            )
+            continue
+
+        study = research_agent.run_execute(
+            plan=plan, catalog=catalog, claim_text=claim.text, replicate=replicate
+        )
+        # Article II — execution deviation from the registered plan (WARN): the
+        # execute step cited a PMID outside the committed set, or widened the scope
+        # beyond the registered plan. Made visible; the release gate / scope clause
+        # may also catch gross over-reach (do not double-revoke here).
+        committed = set(plan.committed_pmids)
+        out_of_plan = [pmid for pmid in study.pmids if pmid not in committed]
+        scope_over_plan = study.claimed_scope.exceeds(plan.claimed_scope, tolerance=0)
+        deviated = bool(out_of_plan) or scope_over_plan
+        note = ""
+        if deviated:
+            parts = []
+            if out_of_plan:
+                parts.append(f"cited outside committed plan: {', '.join(out_of_plan)}")
+            if scope_over_plan:
+                parts.append("execution scope exceeds the registered plan scope")
+            note = "; ".join(parts)
+        outcomes.append(
+            ResearchOutcome(
+                study=study,
+                catalog=catalog,
+                execution_deviated=deviated,
+                deviation_note=note,
+            )
+        )
+    return outcomes
+
+
 def record_transition(
     *,
     audit_trail: list[AuditEvent],
@@ -385,6 +491,69 @@ def record_transition(
     last_hashes[key] = event.current_state_hash
     audit_trail.append(event)
     return event
+
+
+def admit_research_plan(
+    *,
+    plan: "ResearchPlan",
+    claim_graph: ClaimGraph,
+    reachable_lookup: dict[str, CorpusItem],
+) -> tuple[bool, list[str]]:
+    """PRE-EXECUTION CIVER gate (CONSTITUTION Article I) on a constrained-arm
+    DESIGN plan, BEFORE the agent executes. Returns (admitted, reasons).
+
+    Admits the plan to execute ONLY if all hold:
+      * the claim graph carries the required Q→M→E→A→C nodes (method design is
+        present and coherent with the question);
+      * the plan emitted a parseable method (an incoherent / missing design fails);
+      * the plan COMMITS to at least one source, and every committed source
+        RESOLVES in the retrieved catalog (no fabricated commitment);
+      * the committed scope is bounded (non-degenerate population/timeframe band).
+
+    A refused plan never executes; no study enters the constrained corpus. This is
+    the warrant-to-EXECUTE — distinct from the post-execution ``admit_evidence_unit``
+    warrant-to-RELEASE.
+
+    BLINDNESS (SPEC §8.3): this reads ONLY the plan's structure, its committed ids,
+    its claimed scope, the claim graph, and the catalog. It accepts NO field that
+    reveals ground-truth provenance/failure_mode — there is none to read yet
+    (results do not exist pre-execution), and the signature must never grow one.
+    """
+    required_nodes = {"QUESTION", "METHOD", "EVIDENCE", "ANALYSIS", "CLAIM"}
+    graph_complete = required_nodes.issubset({node.node_type for node in claim_graph.nodes})
+    method_coherent = plan.parse_ok and bool(plan.method.strip())
+    committed_resolve = bool(plan.committed_pmids) and all(
+        pmid in reachable_lookup for pmid in plan.committed_pmids
+    )
+    scope = plan.claimed_scope
+    scope_bounded = (
+        scope.population_low <= scope.population_high
+        and scope.year_start <= scope.year_end
+    )
+
+    reasons: list[str] = []
+    reasons.append(
+        "Question→Method→Evidence→Analysis→Claim design chain present."
+        if graph_complete
+        else "Design is missing one or more required constitutional nodes."
+    )
+    reasons.append(
+        "Method design is coherent with the question."
+        if method_coherent
+        else "Method design is incoherent or unparseable (no executable plan)."
+    )
+    reasons.append(
+        "Every committed source resolves in the retrieved catalog."
+        if committed_resolve
+        else "One or more committed sources do not resolve in the catalog (Article I pre-execution)."
+    )
+    reasons.append(
+        "Committed scope is bounded."
+        if scope_bounded
+        else "Committed scope is unbounded or degenerate."
+    )
+    admitted = graph_complete and method_coherent and committed_resolve and scope_bounded
+    return admitted, reasons
 
 
 def admit_evidence_unit(
@@ -497,13 +666,15 @@ def _clean_integrity_score(events: list[AuditEvent], scientific: bool) -> float:
         return 0.0
     penalties = 0.0
     for event in events:
-        # article-i-refused and guideline-refused are EXPECTED gate refusals
-        # (Article I / IV doing their job at the study-input and SRMA-output
-        # boundaries), not process-integrity drift — they must not depress the
-        # release-gate score of subsequent admissible studies (Article II/III
-        # double-counting, CONSTITUTION §4).
+        # article-i-refused, design-refused and guideline-refused are EXPECTED gate
+        # refusals (Article I pre-execution at the design boundary, Article I at the
+        # study-input boundary, Article I/IV at the SRMA-output boundary) — the gate
+        # doing its job, not process-integrity drift. They must not depress the
+        # release-gate score of subsequent admissible studies in the same
+        # (claim, branch) stream (Article II/III double-counting, CONSTITUTION §4).
         if event.severity == "block" and event.event_type not in (
             "article-i-refused",
+            "design-refused",
             "guideline-refused",
         ):
             penalties += 0.8
@@ -997,24 +1168,6 @@ def run_ecology(
         branch_guidelines: dict[str, list[GuidelineClaim]] = {"free": [], "constrained": []}
 
         for claim in claims:
-            # Tier-1: emit STUDIES_PER_CLAIM_PER_ERA studies for this (claim, era).
-            study_batch = _research_studies_for_year(
-                research_agent=research_agent,
-                microdata_agent=microdata_agent,
-                claim=claim,
-                year=year,
-                telemetry=telemetry,
-            )
-            catalog_pmids: set[str] = set()
-            reachable_lookup: dict[str, CorpusItem] = {}
-            for research_study, catalog_records in study_batch:
-                catalog_pmids.update(record.pmid for record in catalog_records)
-                reachable_lookup.update(_reachable_lookup_from_catalog(catalog_records))
-                for source in _source_records_from_study(research_study):
-                    if source.source_id not in source_ids_seen[claim.claim_id]:
-                        source_catalog[claim.claim_id].append(source)
-                        source_ids_seen[claim.claim_id].add(source.source_id)
-
             for branch in ("free", "constrained"):
                 state = states[(claim.claim_id, branch)]
                 surviving_units: list[EvidenceUnit] = []
@@ -1023,9 +1176,87 @@ def run_ecology(
                 warranted_ids: set[str] = set()
                 blocked_this_era = 0
 
+                # Tier-1 is now ASYMMETRIC by arm (the pre-execution gate REQUIRES a
+                # separable design step). FREE = one merged research call per study;
+                # CONSTRAINED = DESIGN call -> pre-execution CIVER gate -> EXECUTE
+                # call, so a refused design never executes and yields no study.
+                # NOTE: per-arm calls CAN be parallelized later (independent per
+                # claim/replicate); not implemented now to keep determinism + the
+                # telemetry call-count contract obvious.
+                if branch == "free":
+                    outcomes = _free_research_batch(
+                        research_agent=research_agent,
+                        microdata_agent=microdata_agent,
+                        claim=claim,
+                        year=year,
+                        telemetry=telemetry,
+                    )
+                else:
+                    outcomes = _constrained_research_batch(
+                        research_agent=research_agent,
+                        microdata_agent=microdata_agent,
+                        claim=claim,
+                        claim_graph=graph_lookup[claim.claim_id],
+                        year=year,
+                        telemetry=telemetry,
+                    )
+
+                catalog_pmids: set[str] = set()
+                reachable_lookup: dict[str, CorpusItem] = {}
+                for outcome in outcomes:
+                    catalog_pmids.update(record.pmid for record in outcome.catalog)
+                    reachable_lookup.update(_reachable_lookup_from_catalog(outcome.catalog))
+                    if outcome.study is not None:
+                        for source in _source_records_from_study(outcome.study):
+                            if source.source_id not in source_ids_seen[claim.claim_id]:
+                                source_catalog[claim.claim_id].append(source)
+                                source_ids_seen[claim.claim_id].add(source.source_id)
+
                 # Tier-1 -> Tier-2 (CIVER) -> Tier-3 admission, per replicate study.
-                for research_study, _catalog in study_batch:
-                    branch_study = research_study.model_copy(deep=True)
+                for outcome in outcomes:
+                    if outcome.study is None:
+                        # Constrained DESIGN was refused PRE-EXECUTION (Article I):
+                        # the agent never executed; log a design-refused audit event
+                        # and admit no study to the constrained corpus.
+                        record_transition(
+                            audit_trail=audit_trail,
+                            audit_counters=audit_counters,
+                            last_hashes=last_hashes,
+                            run_id=run_id or "preview-run",
+                            claim_id=claim.claim_id,
+                            branch=branch,
+                            year=year,
+                            phase="design",
+                            event_type="design-refused",
+                            severity="block",
+                            integrity_score_before=1.0,
+                            integrity_score_after=0.0,
+                            message="Pre-execution gate refused the design: "
+                            + " ".join(outcome.design_reasons),
+                        )
+                        blocked_this_era += 1
+                        continue
+
+                    branch_study = outcome.study.model_copy(deep=True)
+                    # Article II — execution deviation from the registered plan
+                    # (WARN, constrained only): made visible, does not block.
+                    if outcome.execution_deviated:
+                        record_transition(
+                            audit_trail=audit_trail,
+                            audit_counters=audit_counters,
+                            last_hashes=last_hashes,
+                            run_id=run_id or "preview-run",
+                            claim_id=claim.claim_id,
+                            branch=branch,
+                            year=year,
+                            phase="execution",
+                            event_type="execution-deviated",
+                            severity="warn",
+                            integrity_score_before=1.0,
+                            integrity_score_after=1.0,
+                            message="Execution deviated from the registered plan: "
+                            + outcome.deviation_note,
+                        )
                     investigator = _study_to_evidence_unit(
                         study=branch_study,
                         branch=branch,

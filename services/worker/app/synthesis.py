@@ -228,14 +228,31 @@ def synthesize_guideline_claim(
     year: int,
     studies: list[Study],
     review: SrmaReview | None = None,
+    screening: SrReview | None = None,
 ) -> GuidelineClaim:
     """Real SR/MA: screen → risk-of-bias → pool ONLY the included studies.
 
     The recommendation LEVEL is derived from the pooled direction × the GRADE
     certainty of the SCREENED+APPRAISED set — so strength reflects appraised
     certainty, not raw vote magnitude over an unscreened corpus.
+
+    ``screening`` lets the caller supply an SR record produced by the LLM screen
+    step (SPEC §3 multi-step SRMA); when omitted, the deterministic screener runs.
+    The RoB certainty in ``screening`` is recomputed here so a caller-supplied
+    ``review`` (LLM appraisal nudge) is applied to the graded certainty.
     """
-    sr = run_systematic_review(studies, review=review)
+    if screening is not None:
+        included_for_rob = [s for s in studies if s.id in set(screening.included_ids)]
+        rob = assess_risk_of_bias(included_for_rob, review=review)
+        sr = SrReview(
+            screening=screening.screening,
+            rob=rob,
+            included_ids=list(screening.included_ids),
+            n_included=screening.n_included,
+            n_excluded=screening.n_excluded,
+        )
+    else:
+        sr = run_systematic_review(studies, review=review)
     included = [study for study in studies if study.id in set(sr.included_ids)]
     pooled = pooled_effect(included, review=review)
     direction = direction_from_pooled_effect(pooled)

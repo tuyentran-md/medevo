@@ -151,8 +151,14 @@ def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_determin
     # unresolvable cite. Across many studies/era one within-tolerance slip is the
     # intended falsifiable behavior, not a leak the test should forbid.
     assert final["constrained"]["ungrounded"] < final["free"]["ungrounded"]
-    # Free is a strict superset: it inherits the grounded ones too.
-    assert final["free"]["grounded"] == final["constrained"]["grounded"]
+    # v4 pre-execution split: free and constrained no longer share emitted studies
+    # (free = one merged call; constrained = DESIGN -> pre-execution gate -> EXECUTE).
+    # The old strict-equality on grounded was a shared-study artifact of the v3
+    # merged path. Now constrained can LOSE grounded studies whose DESIGN was
+    # refused pre-execution — that IS the gate's value, not a leak. The surviving
+    # invariant: constrained never has MORE grounded than free, and free's total
+    # corpus is strictly larger (it keeps refused/ungrounded studies too).
+    assert final["constrained"]["grounded"] <= final["free"]["grounded"]
     assert final["free"]["count"] > final["constrained"]["count"]
 
     # No harness-authored contamination: the v2 injection audit event is gone.

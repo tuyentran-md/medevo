@@ -161,6 +161,34 @@ class EvidenceUnit(BaseModel):
     output_hash: str | None = None
 
 
+class ResearchPlan(BaseModel):
+    """A pre-registration PLAN emitted by a constrained-arm agent BEFORE it
+    executes (CONSTITUTION Article I — prove integrity before the process runs).
+
+    The agent commits, ahead of seeing any result, to: the question, the method,
+    the specific evidence sources it WILL use (``committed_pmids`` — real PMIDs /
+    dataset-slice ids), and the scope it claims it will support. The pre-execution
+    CIVER gate (``app.synthesis.admit_research_plan``) admits the plan to execute
+    ONLY if the method is coherent with the question, every committed source
+    resolves in the retrieved catalog, and the scope is bounded. A refused plan is
+    never executed; no study enters the constrained corpus.
+
+    Article II then monitors EXECUTION against this registered plan: a Study whose
+    cited PMIDs leave ``committed_pmids`` or whose scope over-reaches
+    ``claimed_scope`` is a deviation (WARN), made visible in the audit trail.
+    """
+
+    plan_id: str
+    claim_id: str
+    year: int
+    question: str
+    method: str
+    committed_pmids: list[str] = Field(default_factory=list)
+    claimed_scope: EvidenceScope = Field(default_factory=EvidenceScope)
+    rationale: str = ""
+    parse_ok: bool = True
+
+
 class PubMedRecord(BaseModel):
     pmid: str
     title: str = ""
@@ -201,6 +229,10 @@ class Study(BaseModel):
     claimed_scope: EvidenceScope = Field(default_factory=EvidenceScope)
     source_scope: EvidenceScope = Field(default_factory=EvidenceScope)
     failure_mode: Literal["none", "unresolvable", "scope-overreach"] = "none"
+    # Set on the constrained arm: the id of the pre-registered ResearchPlan this
+    # study executed against (Article II deviation is measured plan→study). Empty
+    # on the free arm (no pre-registration; one merged call).
+    plan_id: str = ""
     output_hash: str | None = None
 
 

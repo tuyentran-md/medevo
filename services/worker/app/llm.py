@@ -163,6 +163,17 @@ class DeterministicFakeClient:
         # the scope within the gate tolerance -> realizes a non-zero FNR without
         # any harness-authored contamination. Output is a pure function of the
         # prompt, so runs stay reproducible (and stamped non-scientific).
+        # Multi-step constrained DESIGN call: emit a pre-registration PLAN (no
+        # results) committing the first retrievable source at its source scope, so
+        # the pre-execution gate admits it. A deterministic minority commits a
+        # bogus pmid -> plan refused (emergent design failure, no harness inject).
+        if "PRE-REGISTER a research PLAN" in prompt:
+            return self._design_plan(prompt, h)
+        # Multi-step SRMA: SCREEN / RISK-OF-BIAS / SYNTHESIZE LLM steps return JSON.
+        if "SCREEN each study for inclusion" in prompt:
+            return self._screen_json(prompt)
+        if "grade the RISK OF BIAS" in prompt or "SYNTHESIZE the appraised body" in prompt:
+            return self._appraisal_json(prompt)
         if "DIRECTION: SUPPORTS | REFUTES | NEUTRAL" in prompt:
             return self._research_emission(prompt, h, bucket)
         if "DIRECTION:" in prompt or "study's conclusion" in prompt:
@@ -200,6 +211,53 @@ class DeterministicFakeClient:
             f"SCOPE: {scope}\n"
             f"PMIDS: {pmid}\n"
             f"RATIONALE: deterministic appraisal grounded in source {pmid}."
+        )
+
+    def _design_plan(self, prompt: str, h: str) -> str:
+        # Pre-registration PLAN. Commit the first retrievable source at its source
+        # scope (the honest plan). A deterministic minority commits a fabricated
+        # pmid -> the pre-execution gate refuses it (emergent design failure; no
+        # harness-authored contamination). Pure function of the prompt -> stable.
+        pmid = _first_source_pmid(prompt)
+        if not pmid:
+            return (
+                "QUESTION: appraise the claim\n"
+                "METHOD: narrative appraisal of the supplied abstracts\n"
+                "SCOPE: pop=18-65 years=2000-2025\n"
+                "PMIDS: none\n"
+                "RATIONALE: no resolvable source supplied to commit to."
+            )
+        low, high, ystart, yend = _first_source_scope(prompt)
+        commit_bogus = int(h[10:12], 16) % 8 == 0  # ~12% emit an unresolvable commit
+        committed = "PMID-FABRICATED-0" if commit_bogus else pmid
+        return (
+            "QUESTION: appraise the claim against the committed evidence\n"
+            "METHOD: structured appraisal of the committed source abstracts\n"
+            f"SCOPE: pop={low}-{high} years={ystart}-{yend}\n"
+            f"PMIDS: {committed}\n"
+            f"RATIONALE: committing to source {committed} for this question."
+        )
+
+    def _screen_json(self, prompt: str) -> str:
+        # Include every supplied study (the LLM screen JUDGMENT here is permissive;
+        # the deterministic GRADE arithmetic still appraises them downstream). The
+        # study ids are read straight from the supplied JSON rows.
+        ids = _study_ids_from_prompt(prompt)
+        rows = ", ".join(
+            f'{{"study_id": "{sid}", "include": true, "reason": "meets eligibility"}}'
+            for sid in ids
+        )
+        return f'{{"screening": [{rows}]}}'
+
+    def _appraisal_json(self, prompt: str) -> str:
+        # Neutral appraisal: unit weights, no certainty nudge. Deterministic.
+        ids = _study_ids_from_prompt(prompt)
+        rows = ", ".join(
+            f'{{"study_id": "{sid}", "weight_multiplier": 1.0, "concern": ""}}' for sid in ids
+        )
+        return (
+            f'{{"study_appraisals": [{rows}], "certainty_adjustment": 0.0, '
+            '"summary": "deterministic appraisal."}'
         )
 
     def describe(self) -> ModelDescriptor:
@@ -312,7 +370,7 @@ def _first_source_pmid(prompt: str) -> str | None:
     slice_match = re.search(r"PMIDS:\s*(NHANES:[^\s]+)", prompt)
     if slice_match:
         return slice_match.group(1).strip()
-    match = re.search(r"sources=(\[.*\])", prompt, re.DOTALL)
+    match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
     if not match:
         return None
     try:
@@ -332,7 +390,7 @@ def _direction_from_prompt_sources(prompt: str) -> str:
     from app.pubmed import infer_direction_from_record
     from app.models import PubMedRecord
 
-    match = re.search(r"sources=(\[.*\])", prompt, re.DOTALL)
+    match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
     if match:
         try:
             sources = _json.loads(match.group(1))
@@ -380,7 +438,7 @@ def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
         if years:
             return low, high, int(years.group(1)), int(years.group(2))
         return low, high, 2005, 2006
-    match = re.search(r"sources=(\[.*\])", prompt, re.DOTALL)
+    match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
     year = 2020
     if match:
         try:
@@ -400,6 +458,23 @@ def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
         except (ValueError, TypeError):
             pass
     return 0, 120, 1900, year
+
+
+def _study_ids_from_prompt(prompt: str) -> list[str]:
+    """Extract study ids from the ``studies=[...]`` JSON in an SRMA-step prompt."""
+    match = re.search(r"studies=(\[.*\])", prompt, re.DOTALL)
+    if not match:
+        return []
+    try:
+        rows = _json.loads(match.group(1))
+    except (ValueError, TypeError):
+        return []
+    ids: list[str] = []
+    if isinstance(rows, list):
+        for row in rows:
+            if isinstance(row, dict) and row.get("study_id"):
+                ids.append(str(row["study_id"]))
+    return ids
 
 
 _DIRECTION_RE = re.compile(r"DIRECTION:\s*(SUPPORTS|REFUTES|NEUTRAL)", re.IGNORECASE)

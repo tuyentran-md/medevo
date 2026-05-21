@@ -12,9 +12,18 @@ from app.models import (
     EvidenceScope,
     GuidelineClaim,
     PubMedRecord,
+    ResearchPlan,
     Study,
 )
-from app.synthesis import SrmaReview, parse_srma_review, synthesize_guideline_claim
+from app.synthesis import (
+    SrReview,
+    SrmaReview,
+    assess_risk_of_bias,
+    parse_srma_review,
+    run_systematic_review,
+    screen_studies,
+    synthesize_guideline_claim,
+)
 
 if TYPE_CHECKING:
     from app.llm import LLMClient
@@ -93,20 +102,20 @@ class ResearchAgent:
         max_pubmed_year: int | None = None,
         replicate: int = 0,
     ) -> tuple[Study, list[PubMedRecord]]:
-        """Emit a Study plus the authoritative catalog the agent actually saw.
+        """FREE-arm research: ONE merged LLM call (design + execute + conclude).
 
         The catalog (the real search results) is the source universe the gate
         resolves cites against — NOT the study's own claimed pmids. The LLM is
-        called exactly once per attempt; its emission decides grounding.
+        called exactly once per attempt; its emission decides grounding. The
+        constrained arm instead splits this into ``run_design`` (pre-registration)
+        + a pre-execution CIVER gate + ``run_execute`` (carry out the plan), so the
+        gate can prove integrity BEFORE results exist (Article I pre-execution).
         """
-        result = self.pubmed.search(
-            query=claim_text,
-            max_year=max_pubmed_year or simulated_year,
-            retmax=self.retmax,
+        catalog, catalog_by_pmid = self._retrieve(
+            claim_text=claim_text,
+            simulated_year=simulated_year,
+            max_pubmed_year=max_pubmed_year,
         )
-        catalog = list(result.records)
-        catalog_by_pmid = {record.pmid: record for record in catalog}
-
         prompt = _research_prompt(
             claim_id=claim_id,
             claim_text=claim_text,
@@ -136,6 +145,112 @@ class ResearchAgent:
             catalog_by_pmid=catalog_by_pmid,
         )
         return study, catalog
+
+    def _retrieve(
+        self,
+        *,
+        claim_text: str,
+        simulated_year: int,
+        max_pubmed_year: int | None,
+    ) -> tuple[list[PubMedRecord], dict[str, PubMedRecord]]:
+        result = self.pubmed.search(
+            query=claim_text,
+            max_year=max_pubmed_year or simulated_year,
+            retmax=self.retmax,
+        )
+        catalog = list(result.records)
+        return catalog, {record.pmid: record for record in catalog}
+
+    def run_design(
+        self,
+        *,
+        claim_id: str,
+        claim_text: str,
+        simulated_year: int,
+        max_pubmed_year: int | None = None,
+        replicate: int = 0,
+    ) -> tuple[ResearchPlan, list[PubMedRecord]]:
+        """CONSTRAINED-arm step 1 — DESIGN: emit a pre-registration plan, no results.
+
+        The agent retrieves the date-cut catalog and, BEFORE analyzing anything,
+        commits to a question, a method, the specific PMIDs it will use, and the
+        scope it claims it will support. This plan is what the pre-execution CIVER
+        gate (``admit_research_plan``) admits or refuses; only an admitted plan is
+        ever executed. Routes through the telemetry-wrapped client (one real call).
+        """
+        catalog, _ = self._retrieve(
+            claim_text=claim_text,
+            simulated_year=simulated_year,
+            max_pubmed_year=max_pubmed_year,
+        )
+        prompt = _design_prompt(
+            claim_id=claim_id,
+            claim_text=claim_text,
+            simulated_year=simulated_year,
+            catalog=catalog,
+            difficulty_hint=self.failure_rate,
+        )
+        seed = _attempt_seed(
+            namespace="design",
+            claim_id=claim_id,
+            year=simulated_year,
+            replicate=replicate,
+        )
+        raw = self._generate(
+            label=f"design/{claim_id}/year-{simulated_year}/r{replicate}",
+            prompt=prompt,
+            seed=seed,
+        )
+        plan = parse_research_plan(
+            raw,
+            plan_id=f"{claim_id}-plan-{simulated_year}-r{replicate}",
+            claim_id=claim_id,
+            year=simulated_year,
+            claim_text=claim_text,
+        )
+        return plan, catalog
+
+    def run_execute(
+        self,
+        *,
+        plan: ResearchPlan,
+        catalog: list[PubMedRecord],
+        claim_text: str,
+        replicate: int = 0,
+    ) -> Study:
+        """CONSTRAINED-arm step 3 — EXECUTE the registered plan and conclude.
+
+        Called ONLY after the plan was admitted by the pre-execution gate. The
+        agent analyzes the committed evidence and concludes a direction + scope
+        STRICTLY within the plan. Whether the emission stays inside the plan
+        (Article II) is judged by the caller against ``plan``; grounding
+        (resolvability / scope vs source) is derived as in the merged path.
+        """
+        catalog_by_pmid = {record.pmid: record for record in catalog}
+        prompt = _execute_prompt(plan=plan, claim_text=claim_text, catalog=catalog)
+        seed = _attempt_seed(
+            namespace="execute",
+            claim_id=plan.claim_id,
+            year=plan.year,
+            replicate=replicate,
+        )
+        raw = self._generate(
+            label=f"execute/{plan.claim_id}/year-{plan.year}/r{replicate}",
+            prompt=prompt,
+            seed=seed,
+        )
+        emission = parse_research_emission(raw)
+        study = _study_from_emission(
+            claim_id=plan.claim_id,
+            claim_text=claim_text,
+            simulated_year=plan.year,
+            replicate=replicate,
+            emission=emission,
+            catalog_by_pmid=catalog_by_pmid,
+        )
+        study.plan_id = plan.plan_id
+        study.output_hash = _study_hash(study)
+        return study
 
     def _generate(self, *, label: str, prompt: str, seed: int) -> str:
         if self.invoke_model is not None:
@@ -174,49 +289,119 @@ class SrmaAgent:
         claim_text: str = "",
         year: int,
     ) -> GuidelineClaim:
+        """Tier-4 SR/MA as a REAL multi-step process — each cognitive step is its
+        own LLM call (SPEC §3): (1) SCREEN include/exclude per study against
+        eligibility, (2) RISK-OF-BIAS grade the included set (GRADE domains),
+        (3) SYNTHESIZE pool the included+appraised set and conclude. The final
+        pooled NUMBER stays deterministic arithmetic; the screening / RoB /
+        appraisal JUDGMENTS are the LLM's. Falls back to the deterministic
+        synthesis path when no model is wired (tests/no-model fallback).
+        """
         studies = self.study_reader.list_studies(
             run_id=run_id,
             branch=branch,
             claim_id=claim_id,
             up_to_year=year,
         )
-        review = self._review(
+        if not studies or self.invoke_model is None:
+            return synthesize_guideline_claim(claim_id=claim_id, year=year, studies=studies)
+
+        # Step 1 — SCREEN (LLM): include/exclude each study with reasons.
+        sr = self._screen_llm(
+            claim_id=claim_id, claim_text=claim_text, year=year, studies=studies
+        )
+        included = [study for study in studies if study.id in set(sr.included_ids)]
+        # Step 2 — RISK-OF-BIAS (LLM): grade the included set; the LLM nudge feeds
+        # the deterministic GRADE downgrades via certainty_adjustment.
+        review = self._assess_rob_llm(
             claim_id=claim_id,
             claim_text=claim_text,
             year=year,
-            studies=studies,
+            included=included,
+            screening=sr,
+        )
+        # Step 3 — SYNTHESIZE (LLM): pool + conclude. The LLM owns the appraisal /
+        # weighting / certainty judgement carried in ``review``; the pooled
+        # arithmetic is deterministic over the already-screened+appraised set.
+        review = self._synthesize_llm(
+            claim_id=claim_id,
+            claim_text=claim_text,
+            year=year,
+            included=included,
+            review=review,
         )
         return synthesize_guideline_claim(
             claim_id=claim_id,
             year=year,
             studies=studies,
+            screening=sr,
             review=review,
         )
 
-    def _review(
+    def _seed(self, label: str) -> int:
+        return int(
+            hashlib.sha256(f"{self.seed_namespace}:{label}".encode("utf-8")).hexdigest()[:12],
+            16,
+        )
+
+    def _screen_llm(
         self,
         *,
         claim_id: str,
         claim_text: str,
         year: int,
         studies: list[Study],
+    ) -> SrReview:
+        assert self.invoke_model is not None
+        prompt = _screen_prompt(claim_id=claim_id, claim_text=claim_text, year=year, studies=studies)
+        response = self.invoke_model(
+            f"srma-screen/{claim_id}/year-{year}", prompt, self._seed(f"screen:{claim_id}:{year}:{len(studies)}")
+        )
+        return parse_screening(response, studies=studies)
+
+    def _assess_rob_llm(
+        self,
+        *,
+        claim_id: str,
+        claim_text: str,
+        year: int,
+        included: list[Study],
+        screening: SrReview,
     ) -> SrmaReview:
-        if not studies or self.invoke_model is None:
-            return SrmaReview(summary="SRMA appraisal unavailable; deterministic weighting only.")
-        prompt = _srma_prompt(
-            claim_id=claim_id,
-            claim_text=claim_text,
-            year=year,
-            studies=studies,
+        assert self.invoke_model is not None
+        prompt = _rob_prompt(claim_id=claim_id, claim_text=claim_text, year=year, included=included)
+        response = self.invoke_model(
+            f"srma-rob/{claim_id}/year-{year}", prompt, self._seed(f"rob:{claim_id}:{year}:{len(included)}")
         )
-        seed = int(
-            hashlib.sha256(
-                f"{self.seed_namespace}:{claim_id}:{year}:{len(studies)}".encode("utf-8")
-            ).hexdigest()[:12],
-            16,
+        return parse_srma_review(response, study_ids=[study.id for study in included])
+
+    def _synthesize_llm(
+        self,
+        *,
+        claim_id: str,
+        claim_text: str,
+        year: int,
+        included: list[Study],
+        review: SrmaReview,
+    ) -> SrmaReview:
+        assert self.invoke_model is not None
+        prompt = _synthesize_prompt(
+            claim_id=claim_id, claim_text=claim_text, year=year, included=included
         )
-        response = self.invoke_model(f"srma/{claim_id}/year-{year}", prompt, seed)
-        return parse_srma_review(response, study_ids=[study.id for study in studies])
+        response = self.invoke_model(
+            f"srma-synth/{claim_id}/year-{year}", prompt, self._seed(f"synth:{claim_id}:{year}:{len(included)}")
+        )
+        synth = parse_srma_review(response, study_ids=[study.id for study in included])
+        # Merge the RoB-step appraisals with the synthesis-step appraisals/nudge:
+        # synthesis is the final judgement, so its non-empty fields win; RoB
+        # appraisals are retained where synthesis did not re-appraise a study.
+        merged = dict(review.study_appraisals)
+        merged.update(synth.study_appraisals)
+        return SrmaReview(
+            study_appraisals=merged,
+            certainty_adjustment=review.certainty_adjustment + synth.certainty_adjustment,
+            summary=synth.summary or review.summary,
+        )
 
 
 def _attempt_seed(*, namespace: str, claim_id: str, year: int, replicate: int) -> int:
@@ -278,6 +463,63 @@ def parse_research_emission(raw: str) -> ResearchStudyEmission:
         claimed_scope=scope,
         rationale=rationale or "Model returned no rationale.",
         parse_ok=parse_ok,
+    )
+
+
+_METHOD_LINE_RE = re.compile(r"^\s*METHOD\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_QUESTION_LINE_RE = re.compile(r"^\s*QUESTION\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+
+
+def parse_research_plan(
+    raw: str,
+    *,
+    plan_id: str,
+    claim_id: str,
+    year: int,
+    claim_text: str,
+) -> ResearchPlan:
+    """Parse the structured DESIGN emission into a pre-registration plan.
+
+    Expected lines (order-free, case-insensitive):
+        QUESTION: <restatement>
+        METHOD:   <how the agent will appraise the committed sources>
+        SCOPE:    pop=<low>-<high> years=<start>-<end>
+        PMIDS:    <committed source ids>   (empty -> nothing committed)
+        RATIONALE:<free text>
+
+    A missing METHOD line makes the plan ``parse_ok=False`` — an incoherent design
+    the pre-execution gate refuses. The committed PMIDs / scope are the agent's own
+    commitment; the gate resolves them blind against the retrieved catalog."""
+    text = raw or ""
+    method_match = _METHOD_LINE_RE.search(text)
+    question_match = _QUESTION_LINE_RE.search(text)
+    method = " ".join(method_match.group(1).split())[:300] if method_match else ""
+    question = (
+        " ".join(question_match.group(1).split())[:300] if question_match else claim_text
+    )
+
+    committed: list[str] = []
+    pmids_match = _PMIDS_LINE_RE.search(text)
+    if pmids_match:
+        body = pmids_match.group(1).strip()
+        if body.lower() not in ("", "none", "n/a", "-"):
+            committed = [tok.strip() for tok in re.split(r"[,;\s]+", body) if tok.strip()]
+
+    scope = _parse_scope(_SCOPE_LINE_RE.search(text))
+    rationale_match = _RATIONALE_LINE_RE.search(text)
+    rationale = (
+        " ".join(rationale_match.group(1).split())[:400] if rationale_match else ""
+    )
+    return ResearchPlan(
+        plan_id=plan_id,
+        claim_id=claim_id,
+        year=year,
+        question=question or claim_text,
+        method=method,
+        committed_pmids=committed,
+        claimed_scope=scope,
+        rationale=rationale or "Model returned no plan rationale.",
+        parse_ok=bool(method),
     )
 
 
@@ -459,6 +701,94 @@ def _research_prompt(
     )
 
 
+def _catalog_payload(catalog: list[PubMedRecord]) -> str:
+    sources = [
+        {
+            "pmid": record.pmid,
+            "title": record.title,
+            "abstract": (record.abstract or "")[:1200],
+            "year": record.year,
+            "journal": record.journal,
+            "population_band": [record.scope.population_low, record.scope.population_high],
+            "year_band": [record.scope.year_start, record.scope.year_end],
+        }
+        for record in catalog
+    ]
+    return json.dumps(sources, ensure_ascii=True, sort_keys=True)
+
+
+# Sentinel substring identifying a DESIGN prompt (used by the deterministic fake
+# and by tests counting per-step calls). Pre-execution = no results yet.
+_DESIGN_SENTINEL = "PRE-REGISTER a research PLAN"
+_EXECUTE_SENTINEL = "EXECUTE the pre-registered plan"
+
+
+def _design_prompt(
+    *,
+    claim_id: str,
+    claim_text: str,
+    simulated_year: int,
+    catalog: list[PubMedRecord],
+    difficulty_hint: float,
+) -> str:
+    payload = _catalog_payload(catalog)
+    # PRE-EXECUTION (CONSTITUTION Article I): the agent commits to a plan BEFORE it
+    # sees any result. It must NOT report a direction or effect here — only the
+    # question, the method, the exact PMIDS it commits to use (from the supplied
+    # set only; never invented), and the scope it claims it will support.
+    return (
+        "You are a research agent. PRE-REGISTER a research PLAN for a single "
+        "clinical claim BEFORE executing any analysis. Do NOT report results, a "
+        "direction, or an effect — only the design. Commit to PMIDS drawn ONLY from "
+        "the supplied catalog (never invent an identifier) and to a scope you can "
+        "support from those sources without widening it.\n"
+        "Respond with EXACTLY these five lines and nothing else:\n"
+        "QUESTION: <one-sentence restatement of the clinical question>\n"
+        "METHOD: <how you will appraise the committed sources>\n"
+        "SCOPE: pop=<low>-<high> years=<start>-<end>\n"
+        "PMIDS: <comma-separated pmids you commit to use, or 'none'>\n"
+        "RATIONALE: <why these sources fit the question>\n"
+        f"claim_id={claim_id} simulated_year={simulated_year} claim={claim_text!r} "
+        f"sources={payload}"
+    )
+
+
+def _execute_prompt(
+    *,
+    plan: ResearchPlan,
+    claim_text: str,
+    catalog: list[PubMedRecord],
+) -> str:
+    committed = {record.pmid: record for record in catalog if record.pmid in plan.committed_pmids}
+    payload = _catalog_payload(list(committed.values()))
+    plan_blob = json.dumps(
+        {
+            "question": plan.question,
+            "method": plan.method,
+            "committed_pmids": plan.committed_pmids,
+            "claimed_scope": plan.claimed_scope.model_dump(mode="json"),
+        },
+        ensure_ascii=True,
+        sort_keys=True,
+    )
+    # Article II monitoring: the agent must conclude STRICTLY within the registered
+    # plan — cite only the committed PMIDS and stay within the registered scope.
+    # Leaving the committed set / widening scope at execution is a deviation the
+    # caller flags (WARN) and the gate's scope clause may also catch.
+    return (
+        "You are a research agent. EXECUTE the pre-registered plan below: appraise "
+        "ONLY the committed sources and conclude. Cite ONLY the committed PMIDS and "
+        "do NOT widen the scope beyond the registered plan. If the committed "
+        "evidence is insufficient, conclude DIRECTION: NEUTRAL with no PMIDS.\n"
+        "Respond with EXACTLY these four lines and nothing else:\n"
+        "DIRECTION: SUPPORTS | REFUTES | NEUTRAL\n"
+        "SCOPE: pop=<low>-<high> years=<start>-<end>\n"
+        "PMIDS: <comma-separated committed pmids you relied on, or 'none'>\n"
+        "RATIONALE: <one or two sentences grounded in the committed abstracts>\n"
+        f"plan={plan_blob} claim={claim_text!r} committed_sources={payload}"
+    )
+
+
 def _quality_score(*, record: PubMedRecord, numeric: bool) -> float:
     score = 0.45
     text = f"{record.title} {record.abstract}".lower()
@@ -491,6 +821,135 @@ def _study_hash(study: Study) -> str:
     payload.pop("output_hash", None)
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _study_rows(studies: list[Study]) -> str:
+    rows = [
+        {
+            "study_id": study.id,
+            "direction": study.direction,
+            "effect_point": study.effect_point,
+            "effect_ci": study.effect_ci,
+            "n": study.n,
+            "quality": study.quality,
+            "numeric": study.numeric,
+            "claimed_scope": study.claimed_scope.model_dump(mode="json"),
+            "source_scope": study.source_scope.model_dump(mode="json"),
+            "rationale": study.rationale[:300],
+            "n_cited_sources": len(study.pmids),
+        }
+        for study in studies
+    ]
+    return json.dumps(rows, ensure_ascii=True, sort_keys=True)
+
+
+# GRADE-blind data-grounding note (SPEC §8.3): the SRMA steps are handed ONLY
+# observable study attributes (direction/effect/n/quality/scope/cited-source
+# count). They are NEVER handed ``study.provenance`` / ``study.failure_mode`` —
+# those are the harness ground-truth labels and would leak into the free arm too.
+_SCREEN_SENTINEL = "SCREEN each study for inclusion"
+_ROB_SENTINEL = "grade the RISK OF BIAS"
+_SYNTH_SENTINEL = "SYNTHESIZE the appraised body"
+
+
+def _screen_prompt(*, claim_id: str, claim_text: str, year: int, studies: list[Study]) -> str:
+    rows = _study_rows(studies)
+    return (
+        "You are a systematic-review screener. SCREEN each study for inclusion "
+        "against the claim's eligibility: relevance, minimum quality, a cited "
+        "source to appraise against, and adequate sample size. Exclude studies that "
+        "fail eligibility and give a reason. Judge ONLY on the observable attributes "
+        "supplied (do NOT use prior knowledge).\n"
+        'Return JSON only: {"screening": [{"study_id","include": true|false, '
+        '"reason"}]}.\n'
+        f"claim_id={claim_id} year={year} claim={claim_text!r} studies={rows}"
+    )
+
+
+def _rob_prompt(*, claim_id: str, claim_text: str, year: int, included: list[Study]) -> str:
+    rows = _study_rows(included)
+    return (
+        "You are a systematic-review appraiser. For the INCLUDED studies below, "
+        "grade the RISK OF BIAS across the GRADE domains (study limitations, "
+        "inconsistency, indirectness, imprecision, publication bias). Weight studies "
+        "by their methodological strength and scope coherence, and adjust overall "
+        "certainty for consistency and directness. Judge ONLY on observable "
+        "attributes.\n"
+        "Return JSON only with keys: "
+        '"study_appraisals" (array of {"study_id","weight_multiplier","concern"}), '
+        '"certainty_adjustment" (number from -0.18 to 0.18), "summary" (short string).\n'
+        f"claim_id={claim_id} year={year} claim={claim_text!r} studies={rows}"
+    )
+
+
+def _synthesize_prompt(*, claim_id: str, claim_text: str, year: int, included: list[Study]) -> str:
+    rows = _study_rows(included)
+    return (
+        "You are a systematic-review synthesist. SYNTHESIZE the appraised body of "
+        "INCLUDED studies into a pooled conclusion: weight the studies, reason about "
+        "heterogeneity and directness, and set a final certainty adjustment. The "
+        "numeric pool is computed deterministically from your weights; you own the "
+        "appraisal judgement, not the arithmetic. If the body is insufficient or "
+        "inconsistent, lower certainty rather than over-conclude.\n"
+        "Return JSON only with keys: "
+        '"study_appraisals" (array of {"study_id","weight_multiplier","concern"}), '
+        '"certainty_adjustment" (number from -0.18 to 0.18), "summary" (short string).\n'
+        f"claim_id={claim_id} year={year} claim={claim_text!r} studies={rows}"
+    )
+
+
+def parse_screening(text: str, *, studies: list[Study]) -> SrReview:
+    """Parse the LLM SCREEN step into an SrReview, then run the deterministic RoB
+    over the LLM-included set. The LLM owns the include/exclude JUDGMENT; we keep
+    the GRADE arithmetic deterministic over its decisions. An unparseable / empty
+    screen falls back to the deterministic screener so the pipeline never crashes.
+    """
+    from app.synthesis import ScreeningDecision, assess_risk_of_bias
+
+    decisions = _parse_screen_decisions(text, studies=studies)
+    if decisions is None:
+        return run_systematic_review(studies)
+    included_ids = {d.study_id for d in decisions if d.included}
+    included = [study for study in studies if study.id in included_ids]
+    rob = assess_risk_of_bias(included)
+    return SrReview(
+        screening=decisions,
+        rob=rob,
+        included_ids=[study.id for study in included],
+        n_included=len(included),
+        n_excluded=len(decisions) - len(included),
+    )
+
+
+def _parse_screen_decisions(text: str, *, studies: list[Study]):
+    from app.synthesis import ScreeningDecision, _extract_json_object
+
+    payload = _extract_json_object(text or "")
+    if payload is None or "screening" not in payload:
+        return None
+    by_id = {study.id: study for study in studies}
+    raw_items = payload.get("screening")
+    if not isinstance(raw_items, list):
+        return None
+    seen: dict[str, ScreeningDecision] = {}
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        study_id = str(item.get("study_id") or "").strip()
+        if study_id not in by_id:
+            continue
+        include = bool(item.get("include"))
+        reason = str(item.get("reason") or ("meets eligibility" if include else "excluded")).strip()
+        seen[study_id] = ScreeningDecision(study_id=study_id, included=include, reason=reason)
+    # Any study the screen did not mention defaults to the deterministic decision
+    # for that study (never silently dropped from the screening record).
+    if not seen:
+        return None
+    decisions: list[ScreeningDecision] = []
+    fallback = {d.study_id: d for d in screen_studies(studies)}
+    for study in studies:
+        decisions.append(seen.get(study.id) or fallback[study.id])
+    return decisions
 
 
 def _srma_prompt(
