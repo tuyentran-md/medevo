@@ -85,6 +85,10 @@ def test_pubmed_client_respects_date_cut_and_uses_cache(tmp_path: Path) -> None:
 
     assert [record.pmid for record in first.records] == ["111"]
     assert second.records[0].pmid == "111"
+    assert first.records[0].scope.year_start == 2015
+    assert first.records[0].scope.year_end == 2015
+    assert second.records[0].scope.year_start == 2015
+    assert second.records[0].scope.year_end == 2015
     assert len(http.calls) == 2
     cached_payload = json.loads(next(tmp_path.glob("*.json")).read_text(encoding="utf-8"))
     assert cached_payload["max_year"] == 2020

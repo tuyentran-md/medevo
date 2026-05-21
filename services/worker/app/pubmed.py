@@ -51,7 +51,10 @@ class PubMedClient:
         cache_path = self._cache_path(query=query, max_year=max_year, retmax=retmax)
         if cache_path.exists():
             payload = json.loads(cache_path.read_text(encoding="utf-8"))
-            records = [PubMedRecord.model_validate(item) for item in payload["records"]]
+            records = [
+                _with_pubmed_publication_scope(PubMedRecord.model_validate(item))
+                for item in payload["records"]
+            ]
             return PubMedSearchResult(
                 query=payload["query"],
                 max_year=int(payload["max_year"]),
@@ -218,9 +221,36 @@ def _parse_pubmed_xml(xml_text: str) -> list[PubMedRecord]:
                 year=year,
                 journal=journal,
                 locator=f"PMID:{pmid}",
+                scope=EvidenceScope(
+                    population_low=0,
+                    population_high=120,
+                    year_start=year,
+                    year_end=year,
+                ),
             )
         )
     return records
+
+
+def _with_pubmed_publication_scope(record: PubMedRecord) -> PubMedRecord:
+    """Real PubMed has an authoritative publication year even when population
+    scope is broad. Older cache entries predate the scope field and default to
+    1900-2100, which makes the shared temporal gate falsely classify every real
+    PubMed study as future data. Normalize cache/live records to publication-year
+    timeframe while leaving the population band broad unless explicitly provided.
+    """
+    if record.scope.year_start == record.year and record.scope.year_end == record.year:
+        return record
+    return record.model_copy(
+        update={
+            "scope": EvidenceScope(
+                population_low=record.scope.population_low,
+                population_high=record.scope.population_high,
+                year_start=record.year,
+                year_end=record.year,
+            )
+        }
+    )
 
 
 def _extract_year(article: ET.Element) -> int | None:

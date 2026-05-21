@@ -47,6 +47,7 @@ from app.models import (
 )
 from app.pubmed import DeterministicPubMedClient, PubMedClient
 from app.synthesis import synthesize_guideline_claim
+from app.ecology import _canonical_sha256
 
 
 # Difficulty-knob value carried into the C0 run for parity with the contaminated
@@ -252,6 +253,20 @@ def run_c0_reference(
         pubmed_client=pubmed_client,
         failure_rate=C0_FAILURE_RATE,
     )
+
+
+def stability_signature(bundle: ArtifactBundle) -> str:
+    """Deterministic signature for scientific outputs, excluding run telemetry.
+
+    ``bundle_seal`` intentionally seals the whole deliverable, including cache
+    hit/miss counters and call traces. Phase-A seed stability is a narrower claim:
+    two seed-identical C0 runs must produce the same scientific trajectory and
+    audit state. Cache operational metadata must not fail that bar.
+    """
+    payload = bundle.model_dump(mode="json")
+    payload.pop("bundle_seal", None)
+    payload.pop("provenance_log", None)
+    return _canonical_sha256(payload)
 
 
 # --------------------------------------------------------------------------- #
@@ -640,7 +655,7 @@ def evaluate(
         client=client,
         pubmed_client=pubmed_client,
     )
-    seed_identical = c0_bundle.bundle_seal == c0_rerun_bundle.bundle_seal
+    seed_identical = stability_signature(c0_bundle) == stability_signature(c0_rerun_bundle)
 
     c0_free = c0_bundle.guideline_timeline["free"]
 

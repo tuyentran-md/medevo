@@ -9,6 +9,7 @@ from app.c0 import (
     evaluate_phase_b_c0,
     load_ground_truth,
     run_c0_reference,
+    stability_signature,
 )
 from app.models import GuidelineClaim, RunRequestModel
 
@@ -103,7 +104,23 @@ def test_c0_rerun_is_seed_identical() -> None:
     first, _ = run_c0_reference(request=request, input_text=SEPSIS)
     second, _ = run_c0_reference(request=request, input_text=SEPSIS)
     assert first.bundle_seal == second.bundle_seal
+    assert stability_signature(first) == stability_signature(second)
     assert first.guideline_timeline == second.guideline_timeline
+
+
+def test_c0_stability_signature_ignores_cache_telemetry() -> None:
+    request = _request()
+    first, _ = run_c0_reference(request=request, input_text=SEPSIS)
+    second = first.model_copy(deep=True)
+    second.provenance_log = {
+        **first.provenance_log,
+        "llm_cache": {"enabled": True, "hits": 99, "misses": 3, "writes": 3},
+        "calls": [],
+    }
+    second.bundle_seal = "different-operational-seal"
+
+    assert first.bundle_seal != second.bundle_seal
+    assert stability_signature(first) == stability_signature(second)
 
 
 def test_c0_has_no_self_drift() -> None:
