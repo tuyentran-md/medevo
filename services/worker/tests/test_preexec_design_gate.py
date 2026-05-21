@@ -146,6 +146,31 @@ def test_admitted_design_executes_and_grounds() -> None:
     assert study.plan_id == plan.plan_id
 
 
+def test_overreaching_design_scope_is_refused_before_execution() -> None:
+    # The plan commits a real source but over-widens the population/timeframe it
+    # claims the source can support. This must fail before EXECUTE, not only after
+    # a study output exists.
+    llm = RoutingLLM(
+        design=(
+            "QUESTION: q\nMETHOD: appraise sources\n"
+            "SCOPE: pop=0-100 years=1990-2025\nPMIDS: 111\nRATIONALE: over-wide commit."
+        ),
+        execute="DIRECTION: REFUTES\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: x.",
+    )
+    agent = _agent(llm)
+    plan, catalog = agent.run_design(
+        claim_id="claim-1", claim_text=CLAIM.text, simulated_year=2020
+    )
+    admitted, reasons = admit_research_plan(
+        plan=plan,
+        claim_graph=build_claim_graph(CLAIM),
+        reachable_lookup=_reachable_lookup_from_catalog(catalog),
+    )
+    assert admitted is False
+    assert any("scope clause" in r for r in reasons)
+    assert len([p for p in llm.prompts if "EXECUTE the pre-registered plan" in p]) == 0
+
+
 # --- 2. free = 1 merged call, constrained = 2 (design + execute) ------------
 
 

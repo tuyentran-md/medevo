@@ -205,6 +205,13 @@ def test_overreaching_scope_emission_is_ungrounded_and_refused() -> None:
     )
     assert study.provenance == "UNGROUNDED"
     assert study.failure_mode == "scope-overreach"
+    # It still carries real, source-extracted numbers. Otherwise SRMA would get
+    # an easy proxy for the hidden provenance label and the CIVER contrast would
+    # be scientifically weak.
+    assert study.numeric is True
+    assert study.effect_point == 1.08
+    assert study.effect_ci == (0.92, 1.26)
+    assert study.n == 240
     verdict = _admit_in_gate(study, catalog)
     assert verdict.passed is False
     assert any("scope clause" in reason for reason in verdict.reasons)

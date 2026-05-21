@@ -530,7 +530,9 @@ def admit_research_plan(
       * the plan emitted a parseable method (an incoherent / missing design fails);
       * the plan COMMITS to at least one source, and every committed source
         RESOLVES in the retrieved catalog (no fabricated commitment);
-      * the committed scope is bounded (non-degenerate population/timeframe band).
+      * the committed scope is bounded (non-degenerate population/timeframe band);
+      * the committed scope does not exceed the committed sources' authoritative
+        scope (same Article I scope clause, but applied before execution).
 
     A refused plan never executes; no study enters the constrained corpus. This is
     the warrant-to-EXECUTE — distinct from the post-execution ``admit_evidence_unit``
@@ -547,10 +549,18 @@ def admit_research_plan(
     committed_resolve = bool(plan.committed_pmids) and all(
         pmid in reachable_lookup for pmid in plan.committed_pmids
     )
+    committed_items = [
+        reachable_lookup[pmid] for pmid in plan.committed_pmids if pmid in reachable_lookup
+    ]
     scope = plan.claimed_scope
     scope_bounded = (
         scope.population_low <= scope.population_high
         and scope.year_start <= scope.year_end
+    )
+    scope_within_committed_sources = committed_resolve and all(
+        hasattr(item, "scope")
+        and not scope.exceeds(item.scope, tolerance=SCOPE_TOLERANCE_YEARS)
+        for item in committed_items
     )
 
     reasons: list[str] = []
@@ -574,7 +584,18 @@ def admit_research_plan(
         if scope_bounded
         else "Committed scope is unbounded or degenerate."
     )
-    admitted = graph_complete and method_coherent and committed_resolve and scope_bounded
+    reasons.append(
+        "Committed scope is within the committed source evidence."
+        if scope_within_committed_sources
+        else "Committed scope exceeds the committed source evidence (Article I pre-execution scope clause)."
+    )
+    admitted = (
+        graph_complete
+        and method_coherent
+        and committed_resolve
+        and scope_bounded
+        and scope_within_committed_sources
+    )
     return admitted, reasons
 
 

@@ -598,10 +598,10 @@ def _study_from_emission(
         provenance = "GROUNDED"
         failure_mode = "none"
 
-    # The effect/n are read from the FIRST resolvable cited record (if any), so a
-    # grounded numeric study carries verbatim figures; an unresolvable emission
-    # carries none. claimed_scope falls back to the source scope when the model
-    # omitted a parseable SCOPE line for a grounded cite.
+    # The effect/n are read from the FIRST resolvable cited record (if any), so
+    # even a scope-overreach study can look numerically plausible to a
+    # provenance-blind SRMA. CIVER must block it through the scope clause, not
+    # because the study was stripped of observable signal.
     primary = resolved_records[0] if resolved_records else None
     effect = (
         extract_effect_estimate(f"{primary.title} {primary.abstract}")
@@ -616,21 +616,21 @@ def _study_from_emission(
         claim_id=claim_id,
         year=simulated_year,
         direction=emission.direction,
-        effect_point=effect.point if (effect and provenance == "GROUNDED") else None,
+        effect_point=effect.point if effect else None,
         effect_ci=(
             (effect.ci_low, effect.ci_high)
-            if effect and provenance == "GROUNDED" and effect.ci_low is not None and effect.ci_high is not None
+            if effect and effect.ci_low is not None and effect.ci_high is not None
             else None
         ),
-        n=_extract_sample_size(primary) if (primary and provenance == "GROUNDED") else None,
+        n=_extract_sample_size(primary) if primary else None,
         quality=(
             _quality_score(record=primary, numeric=numeric)
-            if (primary is not None and provenance == "GROUNDED")
+            if primary is not None
             else (0.3 if failure_mode == "scope-overreach" else 0.2)
         ),
         provenance=provenance,
         pmids=list(emission.cited_pmids),
-        numeric=numeric and provenance == "GROUNDED",
+        numeric=numeric,
         rationale=emission.rationale,
         claimed_scope=claimed_scope,
         source_scope=source_scope,
@@ -950,54 +950,3 @@ def _parse_screen_decisions(text: str, *, studies: list[Study]):
     for study in studies:
         decisions.append(seen.get(study.id) or fallback[study.id])
     return decisions
-
-
-def _srma_prompt(
-    *,
-    claim_id: str,
-    claim_text: str,
-    year: int,
-    studies: list[Study],
-) -> str:
-    rows = []
-    for study in studies:
-        rows.append(
-            {
-                "study_id": study.id,
-                "direction": study.direction,
-                "effect_point": study.effect_point,
-                "effect_ci": study.effect_ci,
-                "n": study.n,
-                "quality": study.quality,
-                "provenance": study.provenance,
-                "numeric": study.numeric,
-                "failure_mode": study.failure_mode,
-                "claimed_scope": study.claimed_scope.model_dump(mode="json"),
-                "source_scope": study.source_scope.model_dump(mode="json"),
-                "rationale": study.rationale[:400],
-            }
-        )
-    payload = json.dumps(rows, ensure_ascii=True, sort_keys=True)
-    # DATA-GROUNDING HARD INSTRUCTION (SPEC §1; CONSTITUTION §1). This is what
-    # makes CIVER's value VISIBLE: a model that shortcuts via prior/parametric
-    # knowledge instead of the retrieved evidence produces an over-reaching /
-    # unresolvable chain that the gate then catches. We are NOT trying to erase
-    # the model's prior — only to force it to ground in the supplied corpus so the
-    # gate has something real to bite on. If the evidence is insufficient, the
-    # model must SAY SO rather than fill the gap from memory.
-    return (
-        "You are appraising a Tier-4 SR/MA corpus for one claim. "
-        "HARD RULE: derive your appraisal and conclusion STRICTLY from the study "
-        "list provided below. Do NOT re-query external sources, and do NOT assert "
-        "anything from your prior/parametric knowledge or beyond what these studies "
-        "actually show. If the supplied evidence is insufficient to appraise the "
-        "claim, say so explicitly (lower certainty, neutral summary) — never fill "
-        "the gap from memory. Use only the study list below. "
-        "Return JSON only with keys: "
-        '"study_appraisals" (array of {"study_id","weight_multiplier","concern"}), '
-        '"certainty_adjustment" (number from -0.18 to 0.18), '
-        '"summary" (short string). '
-        "Weight up stronger grounded studies, weight down ungrounded or over-reaching studies, "
-        "and adjust certainty for consistency, directness, and scope support. "
-        f"claim_id={claim_id} year={year} claim={claim_text!r} studies={payload}"
-    )
