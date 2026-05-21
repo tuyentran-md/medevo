@@ -11,11 +11,11 @@ direction/level lattice, `_latest_by_claim`, `replay_counts`) rather than
 duplicating them, and `synthesize_guideline_claim` to re-pool sub-sampled corpora
 for the two §7b controls — so no second pass through `run_ecology` is needed.
 
-Everything here is deterministic and offline: the entrypoint drives the ecology
-through the `DeterministicPubMedClient` path (network never touched). The
-USPSTF ground-truth trajectory is loaded from a fixture file whose grades are
-PLACEHOLDERS marked UNVERIFIED — the scoring *mechanism* is the deliverable; the
-real grades are verified by a human later.
+The scoring machinery is deterministic, but the ecology itself may run either
+scientifically (real model + real PubMed) or illustratively (fallback client /
+deterministic PubMed). The USPSTF ground-truth trajectory is loaded from a
+fixture file whose grades are PLACEHOLDERS marked UNVERIFIED — the scoring
+*mechanism* is the deliverable; the real grades are verified by a human later.
 """
 
 from __future__ import annotations
@@ -183,17 +183,16 @@ def run_c0_reference(
     """Run the ecology with the failure-fraction driven to ~0 → the C0 trajectory.
 
     The GOLD STANDARD for CIVER value (SPEC §5): same ecology, same seed, no
-    emergent contamination. NOT real-world truth. Offline by default — falls back
-    to the DeterministicPubMedClient + DeterministicFakeClient path so no network
-    is touched.
+    emergent contamination. NOT real-world truth. If no explicit client/pubmed
+    are supplied, the standard simulator backend resolution is used.
     """
     from app.simulator import simulate_run  # local import to avoid cycle
 
     return simulate_run(
         request=request,
         input_text=input_text,
-        client=client or DeterministicFakeClient(),
-        pubmed_client=pubmed_client or DeterministicPubMedClient(),
+        client=client,
+        pubmed_client=pubmed_client,
         failure_rate=C0_FAILURE_RATE,
     )
 
@@ -562,29 +561,25 @@ def evaluate(
 ) -> dict[str, Any]:
     """Run C0 + a contaminated run; compute Phase A, Phase B, §6 replay counts.
 
-    Deterministic and offline (DeterministicPubMedClient path). Returns a
-    structured report with a SPEC §7 PASS/FAIL verdict. The contaminated run and
-    its matching C0 share the SAME seed/agents — only the failure-fraction (and
-    the gate, between branches) differ, which is what makes the C0-displacement
-    test leakage- and agent-quality-proof.
+    Returns a structured report with a SPEC §7 PASS/FAIL verdict. The
+    contaminated run and its matching C0 share the SAME seed/agents — only the
+    failure-fraction (and the gate, between branches) differ, which is what
+    makes the C0-displacement test leakage- and agent-quality-proof.
     """
     from app.simulator import simulate_run  # local import to avoid cycle
 
-    factory_client = client if client is not None else None
-    factory_pubmed = pubmed_client if pubmed_client is not None else None
-
-    def _client() -> LLMClient:
-        return factory_client or DeterministicFakeClient()
-
-    def _pubmed() -> PubMedClient | DeterministicPubMedClient:
-        return factory_pubmed or DeterministicPubMedClient()
-
     # --- C0 reference + a seed-identical rerun (stability) -----------------
     c0_bundle, c0_summary = run_c0_reference(
-        request=request, input_text=input_text, client=_client(), pubmed_client=_pubmed()
+        request=request,
+        input_text=input_text,
+        client=client,
+        pubmed_client=pubmed_client,
     )
     c0_rerun_bundle, _ = run_c0_reference(
-        request=request, input_text=input_text, client=_client(), pubmed_client=_pubmed()
+        request=request,
+        input_text=input_text,
+        client=client,
+        pubmed_client=pubmed_client,
     )
     seed_identical = c0_bundle.bundle_seal == c0_rerun_bundle.bundle_seal
 
@@ -595,8 +590,8 @@ def evaluate(
     contaminated_bundle, contaminated_summary = simulate_run(
         request=request,
         input_text=input_text,
-        client=_client(),
-        pubmed_client=_pubmed(),
+        client=client,
+        pubmed_client=pubmed_client,
         failure_rate=failure_rate,
         study_sink=study_sink,
     )
@@ -651,6 +646,12 @@ def evaluate(
         "ground_truth_verified": ground_truth.is_verified,
         "failure_rate": failure_rate,
         "c0_failure_rate": C0_FAILURE_RATE,
+        "scientific": bool(
+            c0_bundle.scientific and c0_rerun_bundle.scientific and contaminated_bundle.scientific
+        ),
+        "mode_banner": contaminated_bundle.mode_banner,
+        "degradation_reason": contaminated_bundle.degradation_reason,
+        "model_descriptor": contaminated_bundle.model_descriptor,
         "verdict": "PASS" if verdict_pass else "FAIL",
     }
 

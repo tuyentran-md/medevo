@@ -829,7 +829,7 @@ function ExplanationCard({
           <div className="font-medium">Lineage</div>
           <div className="mt-2">Surviving real: {lineage.surviving_real.join(", ") || "none"}</div>
           <div>Lost real: {lineage.lost_real.join(", ") || "none"}</div>
-          <div>Synthetic carriers: {lineage.synthetic_carriers.join(", ") || "none"}</div>
+          <div>Ungrounded carriers: {lineage.ungrounded_carriers.join(", ") || "none"}</div>
         </div>
       ) : null}
 

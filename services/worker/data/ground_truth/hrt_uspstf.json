@@ -1,8 +1,9 @@
 {
-  "_status": "UNVERIFIED — fill from USPSTF source before any real claim",
-  "_provenance": "PLACEHOLDER grades. NOT real USPSTF data. The scoring mechanism is the deliverable; a human must replace direction/level with verified USPSTF A/B/C/D/I grades (mapped to the GRADE-5 ordinal) from the primary source (https://www.uspreventiveservicestaskforce.org superseded HRT statements) before any scientific or external claim. Do not cite these values.",
+  "_status": "VERIFIED 2026-05-21 — USPSTF grades retrieved from primary source (see _provenance). Pre-2002 START point is a clinical-practice stance, NOT a USPSTF letter grade — flagged below.",
+  "_provenance": "USPSTF recommendation history for HORMONE THERAPY for the PRIMARY PREVENTION OF CHRONIC CONDITIONS in postmenopausal persons (NOT symptom treatment). Grade D ('recommends against') for combined estrogen+progestin since the 2002 statement (post-WHI E+P arm) and for estrogen-alone since 2005 (post-WHI estrogen-only arm); grade D reaffirmed 2012, 2017, 2022. Sources: 2012 archived statement https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/menopausal-hormone-therapy-preventive-medication-2012 ; 2022 final statement https://www.uspreventiveservicestaskforce.org/uspstf/document/RecommendationStatementFinal/menopausal-hormone-therapy-preventive-medication (JAMA 2022, PMID 36318127) ; 2002 statement Ann Intern Med 2002 https://www.acpjournals.org/doi/10.7326/0003-4819-137-10-200211190-00013 ; evidence review NBK97829 https://www.ncbi.nlm.nih.gov/books/NBK97829/ . The USPSTF history block lists prior versions Dec 2017, Oct 2012, Jan 2002, Jan 1996. The 1996 statement used the older I/II/III evidence framework (USPSTF adopted A-D/I letters in 1998) so it carries NO comparable letter grade [UNCONFIRMED]; the pre-2002 START point below encodes the documented pre-WHI clinical-practice stance (HRT widely recommended for CVD/chronic-disease prevention, per NBK97829), NOT a USPSTF letter grade.",
+  "_mapping_note": "USPSTF grade D ('recommends against using HRT for prevention') maps to strong agreement with these anti-HRT-for-prevention claims -> direction SUPPORTS, level strong-for. The USPSTF grade is for the OVERALL recommendation; the per-claim direction/level here is a faithful interpretation onto each atomic claim, not a separate USPSTF grade per sub-claim. Claims (from the eval input) are phrased in the modern against-HRT direction: claim-1='HRT should not be used for chronic-disease prevention', claim-2='no net cardiovascular prevention benefit', claim-3='harms outweigh prevention benefits'. Pre-WHI the field believed the opposite -> those claims were REFUTED then.",
   "topic": "hrt_chronic_disease_prevention_post_whi_2002",
-  "scope_note": "HRT for chronic-disease prevention; the documented 180-degree reversal (pre-2002 recommended for CVD prevention -> WHI 2002 RCT -> recommended against). ~6 atomic claims when filled from source; only 3 placeholder claims here to match the demo ecology input.",
+  "scope_note": "HRT for chronic-disease prevention; the documented 180-degree reversal: pre-2002 HRT recommended for CVD/chronic-disease prevention -> WHI 2002/2005 RCTs -> USPSTF grade D recommends against, sustained through 2022.",
   "level_ordinal": {
     "strong-for": 2,
     "conditional-for": 1,
@@ -12,16 +13,19 @@
   },
   "trajectory": {
     "claim-1": [
-      {"year": 1, "direction": "SUPPORTS", "level": "conditional-for"},
-      {"year": 30, "direction": "REFUTES", "level": "strong-against"}
+      {"year": 2000, "direction": "REFUTES", "level": "conditional-against", "_basis": "pre-WHI clinical-practice stance (HRT recommended for prevention) -> the should-not-use claim is refuted; NOT a USPSTF letter grade"},
+      {"year": 2010, "direction": "SUPPORTS", "level": "strong-for", "_basis": "USPSTF grade D (2002 E+P, 2005 estrogen-alone, 2012 D) recommends against use"},
+      {"year": 2020, "direction": "SUPPORTS", "level": "strong-for", "_basis": "USPSTF grade D reaffirmed 2017/2022"}
     ],
     "claim-2": [
-      {"year": 1, "direction": "SUPPORTS", "level": "conditional-for"},
-      {"year": 30, "direction": "REFUTES", "level": "conditional-against"}
+      {"year": 2000, "direction": "REFUTES", "level": "conditional-against", "_basis": "pre-WHI belief that HRT confers net cardiovascular benefit"},
+      {"year": 2010, "direction": "SUPPORTS", "level": "strong-for", "_basis": "WHI showed no net CV prevention benefit; USPSTF grade D"},
+      {"year": 2020, "direction": "SUPPORTS", "level": "strong-for", "_basis": "USPSTF grade D reaffirmed 2017/2022"}
     ],
     "claim-3": [
-      {"year": 1, "direction": "NEUTRAL", "level": "no-recommendation"},
-      {"year": 30, "direction": "REFUTES", "level": "strong-against"}
+      {"year": 2000, "direction": "REFUTES", "level": "conditional-against", "_basis": "pre-WHI: harms not believed to outweigh prevention benefits"},
+      {"year": 2010, "direction": "SUPPORTS", "level": "strong-for", "_basis": "WHI: excess stroke/thromboembolism; harms outweigh prevention benefits; USPSTF grade D"},
+      {"year": 2020, "direction": "SUPPORTS", "level": "strong-for", "_basis": "USPSTF grade D reaffirmed 2017/2022"}
     ]
   }
 }

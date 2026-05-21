@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Callable, Protocol
 
 from app.models import (
     BranchName,
@@ -13,7 +13,10 @@ from app.models import (
     PubMedRecord,
     Study,
 )
-from app.synthesis import synthesize_guideline_claim
+from app.synthesis import SrmaReview, parse_srma_review, synthesize_guideline_claim
+
+if TYPE_CHECKING:
+    from app.llm import LLMClient
 
 if TYPE_CHECKING:
     from app.pubmed import PubMedClient
@@ -167,6 +170,9 @@ class StudyReader(Protocol):
 @dataclass(frozen=True)
 class SrmaAgent:
     study_reader: StudyReader
+    llm: "LLMClient | None" = None
+    invoke_model: Callable[[str, str, int], str] | None = None
+    seed_namespace: str = "srma"
 
     def run(
         self,
@@ -174,6 +180,7 @@ class SrmaAgent:
         run_id: str,
         branch: BranchName,
         claim_id: str,
+        claim_text: str = "",
         year: int,
     ) -> GuidelineClaim:
         studies = self.study_reader.list_studies(
@@ -182,7 +189,43 @@ class SrmaAgent:
             claim_id=claim_id,
             up_to_year=year,
         )
-        return synthesize_guideline_claim(claim_id=claim_id, year=year, studies=studies)
+        review = self._review(
+            claim_id=claim_id,
+            claim_text=claim_text,
+            year=year,
+            studies=studies,
+        )
+        return synthesize_guideline_claim(
+            claim_id=claim_id,
+            year=year,
+            studies=studies,
+            review=review,
+        )
+
+    def _review(
+        self,
+        *,
+        claim_id: str,
+        claim_text: str,
+        year: int,
+        studies: list[Study],
+    ) -> SrmaReview:
+        if not studies or self.invoke_model is None:
+            return SrmaReview(summary="SRMA appraisal unavailable; deterministic weighting only.")
+        prompt = _srma_prompt(
+            claim_id=claim_id,
+            claim_text=claim_text,
+            year=year,
+            studies=studies,
+        )
+        seed = int(
+            hashlib.sha256(
+                f"{self.seed_namespace}:{claim_id}:{year}:{len(studies)}".encode("utf-8")
+            ).hexdigest()[:12],
+            16,
+        )
+        response = self.invoke_model(f"srma/{claim_id}/year-{year}", prompt, seed)
+        return parse_srma_review(response, study_ids=[study.id for study in studies])
 
 
 def _select_record(records: list[PubMedRecord], *, claim_id: str, year: int) -> PubMedRecord | None:
@@ -330,3 +373,42 @@ def _study_hash(study: Study) -> str:
     payload.pop("output_hash", None)
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _srma_prompt(
+    *,
+    claim_id: str,
+    claim_text: str,
+    year: int,
+    studies: list[Study],
+) -> str:
+    rows = []
+    for study in studies:
+        rows.append(
+            {
+                "study_id": study.id,
+                "direction": study.direction,
+                "effect_point": study.effect_point,
+                "effect_ci": study.effect_ci,
+                "n": study.n,
+                "quality": study.quality,
+                "provenance": study.provenance,
+                "numeric": study.numeric,
+                "failure_mode": study.failure_mode,
+                "claimed_scope": study.claimed_scope.model_dump(mode="json"),
+                "source_scope": study.source_scope.model_dump(mode="json"),
+                "rationale": study.rationale[:400],
+            }
+        )
+    payload = json.dumps(rows, ensure_ascii=True, sort_keys=True)
+    return (
+        "You are appraising a Tier-4 SR/MA corpus for one claim. "
+        "Do not re-query external sources. Use only the study list below. "
+        "Return JSON only with keys: "
+        '"study_appraisals" (array of {"study_id","weight_multiplier","concern"}), '
+        '"certainty_adjustment" (number from -0.18 to 0.18), '
+        '"summary" (short string). '
+        "Weight up stronger grounded studies, weight down ungrounded or over-reaching studies, "
+        "and adjust certainty for consistency, directness, and scope support. "
+        f"claim_id={claim_id} year={year} claim={claim_text!r} studies={payload}"
+    )

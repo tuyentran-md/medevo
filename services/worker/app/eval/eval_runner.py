@@ -26,6 +26,11 @@ def verify_bundle_seal(bundle: dict[str, Any]) -> bool:
         return False
     payload = dict(bundle)
     payload.pop("bundle_seal", None)
+    calls = payload.get("provenance_log", {}).get("calls")
+    if isinstance(calls, list):
+        for item in calls:
+            if isinstance(item, dict):
+                item.pop("timestamp", None)
     actual = hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
     return actual == expected
 

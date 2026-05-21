@@ -19,17 +19,25 @@ SEPSIS = (
     "Escalate to ICU support if shock persists despite fluids and vasoactive therapy."
 )
 
+# Matches the default ground-truth fixture (data/ground_truth/hrt_uspstf.json),
+# so the entrypoint faithfulness check is coherent (input ↔ ground-truth aligned).
+HRT = (
+    "Postmenopausal hormone therapy should not be used for chronic disease prevention. "
+    "Hormone therapy does not provide a net cardiovascular prevention benefit in postmenopausal women. "
+    "Potential harms, including stroke and thromboembolic events, outweigh prevention benefits for routine chronic-disease use."
+)
+
 
 def _g(claim_id: str, year: int, *, direction: str, level: str) -> GuidelineClaim:
     return GuidelineClaim(claim_id=claim_id, year=year, direction=direction, level=level)
 
 
-def _request(horizons: list[int] | None = None) -> RunRequestModel:
+def _request(horizons: list[int] | None = None, *, input_text: str = SEPSIS) -> RunRequestModel:
     return RunRequestModel(
         title="c0-test",
         input_mode="guideline",
         input_source="paste",
-        input_text=SEPSIS,
+        input_text=input_text,
         backend="ollama",
         horizons=horizons or list(range(1, 31)),
     )
@@ -107,12 +115,23 @@ def test_c0_has_no_self_drift() -> None:
 
 
 # --- Ground-truth fixture loader (NOT hardcoded) --------------------------- #
-def test_default_ground_truth_fixture_is_unverified_placeholder() -> None:
+def test_default_ground_truth_fixture_is_verified_and_on_disk() -> None:
+    # The default HRT fixture was verified from the USPSTF primary source 2026-05-21.
     gt = load_ground_truth()
-    assert gt.is_verified is False
-    assert gt.status.upper().startswith("UNVERIFIED")
-    # The default fixture lives on disk, not baked into code.
+    assert gt.is_verified is True
+    assert not gt.status.upper().startswith("UNVERIFIED")
+    # Still lives on disk, not baked into code.
     assert DEFAULT_GROUND_TRUTH.exists()
+
+
+def test_unverified_status_marks_fixture_not_verified(tmp_path) -> None:
+    # The is_verified gate still keys off an "UNVERIFIED" status prefix.
+    fixture = tmp_path / "unverified_gt.json"
+    fixture.write_text(
+        json.dumps({"_status": "UNVERIFIED — placeholder", "topic": "t", "trajectory": {}}),
+        encoding="utf-8",
+    )
+    assert load_ground_truth(fixture).is_verified is False
 
 
 def test_ground_truth_loaded_from_fixture_not_hardcoded(tmp_path) -> None:
@@ -145,8 +164,9 @@ def test_ground_truth_loaded_from_fixture_not_hardcoded(tmp_path) -> None:
 
 # --- Top-level entrypoint -------------------------------------------------- #
 def test_evaluate_entrypoint_runs_offline_and_is_structured() -> None:
-    request = _request()
-    report = evaluate(request=request, input_text=SEPSIS, failure_rate=0.4, iterations=200, seed=7)
+    # Mirror the real eval config: a few absolute retro eras, not 30 relative ones.
+    request = _request(horizons=[2000, 2010, 2020], input_text=HRT)
+    report = evaluate(request=request, input_text=HRT, failure_rate=0.4, iterations=200, seed=7)
 
     # Phase A faithfulness holds on the clean C0 (mechanism, not a USPSTF claim).
     assert report["phase_a"]["pass_bars"]["seed_identical"] is True
@@ -165,8 +185,8 @@ def test_evaluate_entrypoint_runs_offline_and_is_structured() -> None:
     # §6 replay counts per era.
     assert report["replay_counts"]
     assert report["verdict"] in {"PASS", "FAIL"}
-    # Ground truth never asserted verified from the placeholder fixture.
-    assert report["ground_truth_verified"] is False
+    # Default HRT ground truth is now verified from the USPSTF primary source.
+    assert report["ground_truth_verified"] is True
 
 
 def test_evaluate_entrypoint_is_deterministic() -> None:

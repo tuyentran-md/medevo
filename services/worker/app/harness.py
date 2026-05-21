@@ -220,8 +220,8 @@ def replay_counts(
         "studies": {
             branch: {
                 "count": len(branch_studies),
-                "real": sum(1 for study in branch_studies if study.provenance == "GROUNDED"),
-                "synthetic": sum(
+                "grounded": sum(1 for study in branch_studies if study.provenance == "GROUNDED"),
+                "ungrounded": sum(
                     1 for study in branch_studies if study.provenance == "UNGROUNDED"
                 ),
             }

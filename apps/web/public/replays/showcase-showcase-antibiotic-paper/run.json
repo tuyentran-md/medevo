@@ -1,0 +1,28 @@
+{
+  "run": {
+    "id": "showcase-showcase-antibiotic-paper",
+    "status": "completed",
+    "created_at": "2026-05-18T12:00:13.512Z",
+    "input_digest": "2d36c04d5ffe94ea4aa54f6ecde4eb9dd1a3c57158da1fc9bd1d56fab56f135f",
+    "title": "Conclusion: In hospitalized children with complicated intra-abdominal infection,",
+    "backend_config": {
+      "backend": "ollama",
+      "model": "gemma3:12b",
+      "base_url": "",
+      "using_fallback": false
+    },
+    "branch_config": {
+      "free": "GTB only",
+      "constrained": "GTB + CIVER + BRIM"
+    }
+  },
+  "years": [
+    10,
+    20,
+    30
+  ],
+  "input_mode": "guideline",
+  "input_source": "showcase",
+  "error": null,
+  "showcase": true
+}

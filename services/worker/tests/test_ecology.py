@@ -72,9 +72,9 @@ def test_lineage_records_are_present_and_coherent() -> None:
         client=DeterministicFakeClient(),
     )
 
-    # v3: no harness-authored contamination -> Tier-1 makes no contaminator LLM
-    # calls; the emergent-failure draw is deterministic (no model call).
-    assert summary["llm_call_count"] == 0
+    # Tier-4 now performs LLM appraisal over the accumulated Tier-3 corpus while
+    # keeping numeric pooling deterministic, so the run must show model calls.
+    assert summary["llm_call_count"] > 0
     assert bundle.lineage
     assert bundle.guideline_timeline["free"]
     assert bundle.population_stats["30"]["pair_count"] == 3
@@ -82,7 +82,7 @@ def test_lineage_records_are_present_and_coherent() -> None:
     constrained_records = [record for record in bundle.lineage if record.branch == "constrained"]
     assert free_records
     assert constrained_records
-    assert any(record.synthetic_carriers for record in free_records)
+    assert any(record.ungrounded_carriers for record in free_records)
     assert any(record.surviving_real for record in constrained_records)
 
 

@@ -36,9 +36,15 @@ class LLMClient(Protocol):
 
 
 class OllamaClient:
-    """Real local-model client. Reproducible via per-call seed + low temp."""
+    """Local-model client (Ollama). Reproducible via per-call seed + low temp.
 
-    scientific = True
+    NO-LOCAL rule (SPEC v3 §9): local open-weight models are too weak to do
+    real research-agent work — they underperform even free OpenRouter models —
+    so a local run is ILLUSTRATIVE only and is never stamped scientific. Scored
+    runs must use a cloud flagship via OpenAICompatClient.
+    """
+
+    scientific = False
     degradation_reason = None
 
     def __init__(self, base_url: str, model: str) -> None:

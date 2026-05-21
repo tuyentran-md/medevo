@@ -5,7 +5,12 @@ import { motion } from "framer-motion";
 import { ArrowRight, FlaskConical, LoaderCircle, LockKeyhole, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { createRun, fetchShowcase, type ShowcaseItem } from "@/lib/worker";
+import {
+  createRun,
+  fetchShowcase,
+  isStaticReplayMode,
+  type ShowcaseItem,
+} from "@/lib/worker";
 
 const backendOptions = [
   { value: "ollama", label: "Local default (Ollama)" },
@@ -52,7 +57,8 @@ export function HomeShell() {
   }, []);
 
   const canSubmit =
-    sourceMode === "paste" ? inputText.trim().length > 24 : Boolean(selectedFile);
+    !isStaticReplayMode &&
+    (sourceMode === "paste" ? inputText.trim().length > 24 : Boolean(selectedFile));
 
   function handleSubmit() {
     if (!canSubmit) {
@@ -119,7 +125,7 @@ export function HomeShell() {
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
                 "Tier-1 studies stay agentic.",
-                "Tier-4 SR/MA stays deterministic.",
+                "Tier-4 SR/MA uses LLM appraisal with deterministic pooling.",
                 "Paid APIs remain opt-in, never the build default.",
               ].map((item) => (
                 <div
@@ -168,12 +174,18 @@ export function HomeShell() {
             </div>
 
             <div className="mt-5 grid gap-4">
+              {isStaticReplayMode ? (
+                <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/80 px-4 py-4 text-sm leading-6 text-[var(--muted)]">
+                  Static replay mode is enabled. This build reads sealed bundle JSON only and does not submit new runs.
+                </div>
+              ) : null}
               <label className="grid gap-2">
                 <span className="text-sm font-medium text-[var(--foreground)]">Title</span>
                 <input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder="Optional run label"
+                  disabled={isStaticReplayMode}
                   className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none ring-0 transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                 />
               </label>
@@ -186,6 +198,7 @@ export function HomeShell() {
                     onChange={(event) =>
                       setInputMode(event.target.value as "guideline" | "paper")
                     }
+                    disabled={isStaticReplayMode}
                     className="w-full rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   >
                     <option value="guideline">Guideline</option>
@@ -200,6 +213,7 @@ export function HomeShell() {
                     onChange={(event) =>
                       setBackend(event.target.value as (typeof backendOptions)[number]["value"])
                     }
+                    disabled={isStaticReplayMode}
                     className="w-full rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   >
                     {backendOptions.map((option) => (
@@ -219,6 +233,7 @@ export function HomeShell() {
                     onChange={(event) => setInputText(event.target.value)}
                     placeholder="Paste a clinical guideline excerpt or a paper conclusion."
                     rows={8}
+                    disabled={isStaticReplayMode}
                     className="rounded-[1.6rem] border border-[var(--border)] bg-white/80 px-4 py-4 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   />
                 </label>
@@ -233,6 +248,7 @@ export function HomeShell() {
                     onChange={(event) =>
                       setSelectedFile(event.target.files?.[0] ?? null)
                     }
+                    disabled={isStaticReplayMode}
                   />
                   <span className="text-sm text-[var(--muted)]">
                     {selectedFile ? selectedFile.name : "No file selected yet."}
@@ -247,6 +263,7 @@ export function HomeShell() {
                     value={model}
                     onChange={(event) => setModel(event.target.value)}
                     placeholder={backend === "ollama" ? "gemma3:12b" : "Optional"}
+                    disabled={isStaticReplayMode}
                     className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   />
                 </label>
@@ -261,6 +278,7 @@ export function HomeShell() {
                         ? "http://127.0.0.1:11434"
                         : "Optional endpoint"
                     }
+                    disabled={isStaticReplayMode}
                     className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   />
                 </label>
@@ -277,6 +295,7 @@ export function HomeShell() {
                     onChange={(event) => setApiKey(event.target.value)}
                     type="password"
                     placeholder="Key is used only for this run and not persisted."
+                    disabled={isStaticReplayMode}
                     className="rounded-2xl border border-[var(--border)] bg-white/80 px-4 py-3 outline-none transition focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--ring)]"
                   />
                 </label>
@@ -303,7 +322,7 @@ export function HomeShell() {
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-6 py-4 text-sm font-semibold text-white transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Launch simulation
+              {isStaticReplayMode ? "Static replay build" : "Launch simulation"}
             </button>
           </div>
         </motion.div>
@@ -319,8 +338,7 @@ export function HomeShell() {
               </h2>
             </div>
             <p className="max-w-xl text-sm leading-7 text-[var(--muted)]">
-              Showcase runs are precomputed so the public demo stays fast. Custom inputs are
-              queued asynchronously and respect worker rate limits.
+              Showcase runs are precomputed so the public demo stays fast. In static mode the site reads sealed replay bundles only; in worker mode custom inputs queue asynchronously.
             </p>
           </div>
 

@@ -66,7 +66,7 @@ def test_constrained_preserves_real_lineage_free_never_blocks() -> None:
         for claim in snapshot.claims
     )
     assert any(record.surviving_real for record in bundle.lineage if record.branch == "constrained")
-    assert any(record.synthetic_carriers for record in bundle.lineage if record.branch == "free")
+    assert any(record.ungrounded_carriers for record in bundle.lineage if record.branch == "free")
     assert any(
         warrant.branch == "constrained" and warrant.status == "ISSUED" and warrant.issued
         for warrant in bundle.warrants
@@ -120,11 +120,11 @@ def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_determin
 
     # Emergent failure actually fired: free Tier-3 DB carries ungrounded studies.
     final = bundle.db_growth[str(request.horizons[-1])]["studies"]
-    assert final["free"]["synthetic"] > 0, "expected emergent ungrounded studies in free"
+    assert final["free"]["ungrounded"] > 0, "expected emergent ungrounded studies in free"
     # Constrained refuses every ungrounded study (gate blind to provenance label).
-    assert final["constrained"]["synthetic"] == 0
+    assert final["constrained"]["ungrounded"] == 0
     # Free is a strict superset: it inherits the grounded ones too.
-    assert final["free"]["real"] == final["constrained"]["real"]
+    assert final["free"]["grounded"] == final["constrained"]["grounded"]
     assert final["free"]["count"] > final["constrained"]["count"]
 
     # No harness-authored contamination: the v2 injection audit event is gone.

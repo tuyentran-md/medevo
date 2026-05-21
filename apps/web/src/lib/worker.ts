@@ -92,7 +92,7 @@ export interface ArtifactResponse {
       branch: "free" | "constrained";
       surviving_real: string[];
       lost_real: string[];
-      synthetic_carriers: string[];
+      ungrounded_carriers: string[];
       verdict_before: "SUPPORTS" | "REFUTES" | "NEUTRAL";
       verdict_after: "SUPPORTS" | "REFUTES" | "NEUTRAL";
     }>;
@@ -145,8 +145,12 @@ export interface ArtifactResponse {
   };
 }
 
-export const workerUrl =
-  process.env.NEXT_PUBLIC_MEDEVO_WORKER_URL ?? "http://127.0.0.1:8000";
+export const isStaticReplayMode =
+  process.env.NEXT_PUBLIC_MEDEVO_STATIC_REPLAY === "1";
+
+export const workerUrl = isStaticReplayMode
+  ? null
+  : (process.env.NEXT_PUBLIC_MEDEVO_WORKER_URL ?? "http://127.0.0.1:8000");
 
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -165,11 +169,15 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export async function fetchShowcase(): Promise<ShowcaseItem[]> {
-  const response = await fetch(`${workerUrl}/showcase`, { cache: "no-store" });
+  const target = isStaticReplayMode ? "/replays/index.json" : `${workerUrl}/showcase`;
+  const response = await fetch(target, { cache: "no-store" });
   return parseJson<ShowcaseItem[]>(response);
 }
 
 export async function createRun(formData: FormData): Promise<{ id: string }> {
+  if (isStaticReplayMode) {
+    throw new Error("Static replay mode is read-only.");
+  }
   const response = await fetch(`${workerUrl}/runs`, {
     method: "POST",
     body: formData,
@@ -178,13 +186,27 @@ export async function createRun(formData: FormData): Promise<{ id: string }> {
 }
 
 export async function fetchRun(runId: string): Promise<RunSummaryResponse> {
-  const response = await fetch(`${workerUrl}/runs/${runId}`, { cache: "no-store" });
+  const target = isStaticReplayMode
+    ? `/replays/${runId}/run.json`
+    : `${workerUrl}/runs/${runId}`;
+  const response = await fetch(target, { cache: "no-store" });
   return parseJson<RunSummaryResponse>(response);
 }
 
 export async function fetchArtifacts(runId: string): Promise<ArtifactResponse> {
-  const response = await fetch(`${workerUrl}/runs/${runId}/artifacts`, {
-    cache: "no-store",
-  });
-  return parseJson<ArtifactResponse>(response);
+  if (!isStaticReplayMode) {
+    const response = await fetch(`${workerUrl}/runs/${runId}/artifacts`, {
+      cache: "no-store",
+    });
+    return parseJson<ArtifactResponse>(response);
+  }
+  const [bundleResponse, metaResponse] = await Promise.all([
+    fetch(`/replays/${runId}/bundle.json`, { cache: "no-store" }),
+    fetch(`/replays/${runId}/meta.json`, { cache: "no-store" }),
+  ]);
+  return {
+    run_id: runId,
+    bundle: await parseJson<ArtifactResponse["bundle"]>(bundleResponse),
+    meta: await parseJson<ArtifactResponse["meta"]>(metaResponse),
+  };
 }

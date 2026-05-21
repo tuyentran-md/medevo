@@ -118,6 +118,6 @@ def test_replay_counts_exposes_study_and_guideline_population_stats() -> None:
         },
     )
 
-    assert counts["studies"]["free"]["synthetic"] == 1
-    assert counts["studies"]["constrained"]["real"] == 1
+    assert counts["studies"]["free"]["ungrounded"] == 1
+    assert counts["studies"]["constrained"]["grounded"] == 1
     assert counts["guidelines"]["free"]["claim_count"] == 1

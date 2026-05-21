@@ -36,6 +36,10 @@ def _ensure_column(conn: sqlite3.Connection, table: str, column: str, spec: str)
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
 
 
+def _json_text(payload: object) -> str:
+    return json.dumps(payload, separators=(",", ":"))
+
+
 def init_db() -> None:
     with closing(get_conn()) as conn:
         conn.executescript(
@@ -80,6 +84,7 @@ def init_db() -> None:
                 cited_ids_json TEXT NOT NULL,
                 resolved_real_json TEXT NOT NULL DEFAULT '[]',
                 resolved_locators_json TEXT NOT NULL DEFAULT '[]',
+                claimed_scope_json TEXT NOT NULL DEFAULT '{}',
                 output_hash TEXT,
                 rationale TEXT NOT NULL,
                 PRIMARY KEY (run_id, unit_id)
@@ -99,7 +104,7 @@ def init_db() -> None:
                 branch TEXT NOT NULL,
                 surviving_real_json TEXT NOT NULL,
                 lost_real_json TEXT NOT NULL,
-                synthetic_carriers_json TEXT NOT NULL,
+                ungrounded_carriers_json TEXT NOT NULL,
                 verdict_before TEXT NOT NULL,
                 verdict_after TEXT NOT NULL,
                 PRIMARY KEY (run_id, claim_id, year, branch)
@@ -152,6 +157,9 @@ def init_db() -> None:
                 provenance TEXT NOT NULL,
                 pmids_json TEXT NOT NULL,
                 numeric INTEGER NOT NULL,
+                claimed_scope_json TEXT NOT NULL DEFAULT '{}',
+                source_scope_json TEXT NOT NULL DEFAULT '{}',
+                failure_mode TEXT NOT NULL DEFAULT 'none',
                 rationale TEXT NOT NULL,
                 output_hash TEXT,
                 warrant_id TEXT,
@@ -168,7 +176,7 @@ def init_db() -> None:
                 pooled_effect REAL,
                 certainty REAL NOT NULL DEFAULT 0,
                 study_count INTEGER NOT NULL DEFAULT 0,
-                synthetic_fraction REAL NOT NULL DEFAULT 0,
+                ungrounded_fraction REAL NOT NULL DEFAULT 0,
                 heterogeneity REAL NOT NULL DEFAULT 0,
                 PRIMARY KEY (run_id, branch, claim_id, year)
             );
@@ -180,6 +188,12 @@ def init_db() -> None:
         _ensure_column(conn, "guideline_timeline", "pooled_effect", "REAL")
         _ensure_column(conn, "guideline_timeline", "certainty", "REAL NOT NULL DEFAULT 0")
         _ensure_column(conn, "guideline_timeline", "study_count", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(
+            conn,
+            "guideline_timeline",
+            "ungrounded_fraction",
+            "REAL NOT NULL DEFAULT 0",
+        )
         _ensure_column(
             conn,
             "guideline_timeline",
@@ -199,7 +213,43 @@ def init_db() -> None:
             "resolved_locators_json",
             "TEXT NOT NULL DEFAULT '[]'",
         )
+        _ensure_column(
+            conn,
+            "evidence_units",
+            "claimed_scope_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        )
         _ensure_column(conn, "evidence_units", "output_hash", "TEXT")
+        _ensure_column(
+            conn,
+            "lineage_records",
+            "ungrounded_carriers_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        )
+        _ensure_column(
+            conn,
+            "lineage_records",
+            "synthetic_carriers_json",
+            "TEXT NOT NULL DEFAULT '[]'",
+        )
+        _ensure_column(
+            conn,
+            "study_db",
+            "claimed_scope_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        )
+        _ensure_column(
+            conn,
+            "study_db",
+            "source_scope_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        )
+        _ensure_column(
+            conn,
+            "study_db",
+            "failure_mode",
+            "TEXT NOT NULL DEFAULT 'none'",
+        )
         conn.commit()
 
 
@@ -232,8 +282,9 @@ def insert_tier3_study(
             INSERT OR REPLACE INTO study_db (
                 run_id, branch, study_id, claim_id, year, direction, effect_point,
                 ci_low, ci_high, n, quality, provenance, pmids_json, numeric,
-                rationale, output_hash, warrant_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                claimed_scope_json, source_scope_json, failure_mode, rationale,
+                output_hash, warrant_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id,
@@ -250,6 +301,9 @@ def insert_tier3_study(
                 study.provenance,
                 json.dumps(study.pmids),
                 int(study.numeric),
+                _json_text(study.claimed_scope.model_dump(mode="json")),
+                _json_text(study.source_scope.model_dump(mode="json")),
+                study.failure_mode,
                 study.rationale,
                 study.output_hash,
                 warrant.id if warrant is not None else None,
@@ -298,6 +352,9 @@ def list_tier3_studies(
                 provenance=row["provenance"],
                 pmids=json.loads(row["pmids_json"] or "[]"),
                 numeric=bool(row["numeric"]),
+                claimed_scope=json.loads(row["claimed_scope_json"] or "{}"),
+                source_scope=json.loads(row["source_scope_json"] or "{}"),
+                failure_mode=row["failure_mode"] or "none",
                 rationale=row["rationale"],
                 output_hash=row["output_hash"],
             )
@@ -316,7 +373,7 @@ def insert_guideline_claims(
             """
             INSERT OR REPLACE INTO guideline_timeline (
                 run_id, branch, claim_id, year, direction, level, pooled_effect,
-                certainty, study_count, synthetic_fraction, heterogeneity
+                certainty, study_count, ungrounded_fraction, heterogeneity
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
@@ -330,7 +387,7 @@ def insert_guideline_claims(
                     claim.pooled_effect,
                     claim.certainty,
                     claim.study_count,
-                    claim.synthetic_fraction,
+                    claim.ungrounded_fraction,
                     claim.heterogeneity,
                 )
                 for claim in claims
@@ -497,6 +554,7 @@ def insert_ecology_records(
             json.dumps(unit.cited_ids),
             json.dumps(unit.resolved_real_ids),
             json.dumps(unit.resolved_locators),
+            _json_text(unit.claimed_scope.model_dump(mode="json")),
             unit.output_hash,
             unit.rationale,
         )
@@ -515,7 +573,7 @@ def insert_ecology_records(
             record.branch,
             json.dumps(record.surviving_real),
             json.dumps(record.lost_real),
-            json.dumps(record.synthetic_carriers),
+            json.dumps(record.ungrounded_carriers),
             record.verdict_before,
             record.verdict_after,
         )
@@ -570,8 +628,8 @@ def insert_ecology_records(
             INSERT OR REPLACE INTO evidence_units (
                 run_id, unit_id, claim_id, year, branch, producer, provenance,
                 direction, cited_ids_json, resolved_real_json,
-                resolved_locators_json, output_hash, rationale
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                resolved_locators_json, claimed_scope_json, output_hash, rationale
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             evidence_rows,
         )
@@ -587,7 +645,7 @@ def insert_ecology_records(
             """
             INSERT OR REPLACE INTO lineage_records (
                 run_id, claim_id, year, branch, surviving_real_json,
-                lost_real_json, synthetic_carriers_json, verdict_before,
+                lost_real_json, ungrounded_carriers_json, verdict_before,
                 verdict_after
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,

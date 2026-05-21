@@ -9,7 +9,13 @@ from typing import Any
 import requests
 from pypdf import PdfReader
 
-from app.config import DEFAULT_OLLAMA_BASE_URL, DEFAULT_OLLAMA_MODEL
+from app.config import (
+    DEFAULT_OLLAMA_BASE_URL,
+    DEFAULT_OLLAMA_MODEL,
+    DEFAULT_PUBMED_API_KEY,
+    DEFAULT_PUBMED_EMAIL,
+    DEFAULT_PUBMED_MIN_INTERVAL_SECONDS,
+)
 from app.ecology import (
     DEFAULT_FAILURE_RATE,
     ClaimSeed,
@@ -88,6 +94,17 @@ def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
         using_fallback=using_fallback,
     )
 
+
+def build_pubmed_client(*, deterministic: bool) -> PubMedClient | DeterministicPubMedClient:
+    if deterministic:
+        return DeterministicPubMedClient()
+    return PubMedClient(
+        email=DEFAULT_PUBMED_EMAIL,
+        api_key=DEFAULT_PUBMED_API_KEY,
+        min_interval_seconds=DEFAULT_PUBMED_MIN_INTERVAL_SECONDS,
+    )
+
+
 def _sentence_chunks(text: str) -> list[str]:
     parts = re.split(r"(?:\n+|(?<=[.!?])\s+)", text)
     cleaned = []
@@ -126,6 +143,10 @@ def simulate_run(
     study_sink: dict[str, list] | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
     backend = resolve_backend(request)
+    if client is None and os.environ.get("PYTEST_CURRENT_TEST"):
+        backend.using_fallback = True
+        backend.base_url = None
+        backend.model = "deterministic-fallback"
     llm = client or make_client(
         using_fallback=backend.using_fallback,
         base_url=backend.base_url,
@@ -134,12 +155,11 @@ def simulate_run(
         api_key=request.api_key,
     )
     if pubmed_client is None:
-        pubmed_client = (
-            DeterministicPubMedClient()
-            if client is not None and not client.scientific
-            else DeterministicPubMedClient()
-            if client is None and backend.using_fallback
-            else PubMedClient()
+        use_deterministic_pubmed = (
+            client is not None and not client.scientific
+        ) or (client is None and backend.using_fallback)
+        pubmed_client = build_pubmed_client(
+            deterministic=use_deterministic_pubmed
         )
 
     claims = extract_claims(input_text, request.input_mode)

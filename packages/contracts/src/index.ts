@@ -15,8 +15,8 @@ export type RecommendationLevel =
   | "no-recommendation"
   | "conditional-against"
   | "strong-against";
-export type EvidenceProducer = "investigator" | "contaminator";
-export type EvidenceProvenance = "REAL" | "SYNTHETIC";
+export type EvidenceProducer = "investigator";
+export type EvidenceProvenance = "GROUNDED" | "UNGROUNDED";
 
 export interface RunRequest {
   title?: string;
@@ -29,6 +29,13 @@ export interface RunRequest {
   api_key?: string;
   base_url?: string;
   horizons?: number[];
+}
+
+export interface EvidenceScope {
+  population_low: number;
+  population_high: number;
+  year_start: number;
+  year_end: number;
 }
 
 export interface ClaimNode {
@@ -115,6 +122,7 @@ export interface EvidenceUnit {
   rationale: string;
   resolved_real_ids?: string[];
   resolved_locators?: string[];
+  claimed_scope?: EvidenceScope;
   output_hash?: string | null;
 }
 
@@ -129,7 +137,7 @@ export interface LineageRecord {
   branch: BranchName;
   surviving_real: string[];
   lost_real: string[];
-  synthetic_carriers: string[];
+  ungrounded_carriers: string[];
   verdict_before: ClaimDirection;
   verdict_after: ClaimDirection;
 }
@@ -142,7 +150,7 @@ export interface GuidelineClaim {
   pooled_effect?: number | null;
   certainty: number;
   study_count: number;
-  synthetic_fraction: number;
+  ungrounded_fraction: number;
   heterogeneity: number;
 }
 
@@ -163,8 +171,8 @@ export interface ReplayCounts {
     BranchName,
     {
       count: number;
-      real: number;
-      synthetic: number;
+      grounded: number;
+      ungrounded: number;
     }
   >;
   guidelines: Record<

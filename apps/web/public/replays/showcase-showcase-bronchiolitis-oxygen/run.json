@@ -1,0 +1,28 @@
+{
+  "run": {
+    "id": "showcase-showcase-bronchiolitis-oxygen",
+    "status": "completed",
+    "created_at": "2026-05-18T11:53:16.084Z",
+    "input_digest": "830958543d603d0b7ea7ebcee14ac2160740f0c2cf6e6f8c5e51d4b1c2bd2e66",
+    "title": "Infants with bronchiolitis should receive supportive care with hydration and nas",
+    "backend_config": {
+      "backend": "ollama",
+      "model": "gemma3:12b",
+      "base_url": "",
+      "using_fallback": false
+    },
+    "branch_config": {
+      "free": "GTB only",
+      "constrained": "GTB + CIVER + BRIM"
+    }
+  },
+  "years": [
+    10,
+    20,
+    30
+  ],
+  "input_mode": "guideline",
+  "input_source": "showcase",
+  "error": null,
+  "showcase": true
+}

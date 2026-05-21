@@ -212,7 +212,7 @@ class GuidelineClaim(BaseModel):
     pooled_effect: float | None = None
     certainty: float = 0.0
     study_count: int = 0
-    synthetic_fraction: float = 0.0
+    ungrounded_fraction: float = 0.0
     heterogeneity: float = 0.0
 
 
@@ -227,7 +227,7 @@ class LineageRecord(BaseModel):
     branch: BranchName
     surviving_real: list[str]
     lost_real: list[str]
-    synthetic_carriers: list[str]
+    ungrounded_carriers: list[str]
     verdict_before: ClaimDirection
     verdict_after: ClaimDirection
 

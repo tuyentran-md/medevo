@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:static": "node ./scripts/stage-replays.mjs && NEXT_PUBLIC_MEDEVO_STATIC_REPLAY=1 next build",
+    "stage:replays": "node ./scripts/stage-replays.mjs",
     "start": "next start",
     "lint": "eslint ."
   },

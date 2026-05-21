@@ -14,6 +14,7 @@ from app.config import YEARS
 from app.db import insert_ecology_records, insert_guideline_claims, insert_tier3_study
 from app.harness import branch_gap, replay_counts
 from app.llm import LLMClient
+from app.microdata import MicrodataAgent, supports_claim as microdata_supports_claim
 from app.models import (
     ArtifactBundle,
     AuditEvent,
@@ -55,7 +56,7 @@ RELEASE_THRESHOLD = 0.60
 # slips the gate (the gate is imperfect, not tautological — FNR can be > 0).
 # Declared here as the single source for the predicate (audit §8.2: no magic
 # literal buried in logic). Paired with agents.SCOPE_INFLATION_MIN/MAX.
-SCOPE_TOLERANCE_YEARS = 3
+SCOPE_TOLERANCE_YEARS = 2
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
 _DIRECTION_VALUE = {"SUPPORTS": 1.0, "NEUTRAL": 0.0, "REFUTES": -1.0}
@@ -140,15 +141,15 @@ def _digest_key(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _is_synthetic_citation_id(cited_id: str) -> bool:
+def _is_ungrounded_citation_id(cited_id: str) -> bool:
     return cited_id.startswith("S-") or "-syn-" in cited_id
 
 
-def _carries_synthetic_substrate(unit: EvidenceUnit) -> bool:
+def _carries_ungrounded_substrate(unit: EvidenceUnit) -> bool:
     return (
         unit.provenance == "UNGROUNDED"
         or not unit.resolved_real_ids
-        or any(_is_synthetic_citation_id(cited_id) for cited_id in unit.cited_ids)
+        or any(_is_ungrounded_citation_id(cited_id) for cited_id in unit.cited_ids)
     )
 
 
@@ -208,6 +209,11 @@ def _unit_output_hash(unit: EvidenceUnit) -> str:
 def _bundle_payload(bundle: ArtifactBundle) -> dict[str, Any]:
     payload = bundle.model_dump()
     payload.pop("bundle_seal", None)
+    calls = payload.get("provenance_log", {}).get("calls")
+    if isinstance(calls, list):
+        for item in calls:
+            if isinstance(item, dict):
+                item.pop("timestamp", None)
     return payload
 
 
@@ -252,10 +258,17 @@ def _invoke_model(
 def _research_study_for_year(
     *,
     research_agent: ResearchAgent,
+    microdata_agent: MicrodataAgent,
     claim: ClaimSeed,
     year: int,
     telemetry: CallTelemetry,
 ) -> tuple[Study, list[PubMedRecord]]:
+    if _use_microdata_group(claim=claim, year=year):
+        return microdata_agent.run(
+            claim_id=claim.claim_id,
+            claim_text=claim.text,
+            simulated_year=year,
+        )
     try:
         return research_agent.run(
             claim_id=claim.claim_id,
@@ -279,6 +292,16 @@ def _research_study_for_year(
         )
         study.output_hash = _study_output_hash(study)
         return study, []
+
+
+def _use_microdata_group(*, claim: ClaimSeed, year: int) -> bool:
+    if not microdata_supports_claim(claim.text):
+        return False
+    bucket = int(
+        hashlib.sha256(f"microdata-slot:{claim.claim_id}:{year}".encode("utf-8")).hexdigest()[:8],
+        16,
+    )
+    return bucket % 2 == 0
 
 
 def record_transition(
@@ -497,10 +520,10 @@ def _lineage_record(
         }
     )
     lost_real = sorted(prior_state.surviving_real.difference(surviving_real))
-    synthetic_carriers = [
+    ungrounded_carriers = [
         unit.id
         for unit in surviving_units
-        if _carries_synthetic_substrate(unit)
+        if _carries_ungrounded_substrate(unit)
     ]
     return LineageRecord(
         claim_id=claim_id,
@@ -508,7 +531,7 @@ def _lineage_record(
         branch=branch,
         surviving_real=surviving_real,
         lost_real=lost_real,
-        synthetic_carriers=synthetic_carriers,
+        ungrounded_carriers=ungrounded_carriers,
         verdict_before=verdict_before,
         verdict_after=verdict_after,
     )
@@ -583,7 +606,7 @@ def _study_to_evidence_unit(
         direction=study.direction,
         rationale=study.rationale,
         resolved_real_ids=resolved,
-        resolved_locators=[f"PMID:{pmid}" for pmid in resolved],
+        resolved_locators=[_source_locator(source_id) for source_id in resolved],
         claimed_scope=study.claimed_scope.model_copy(deep=True),
         output_hash=study.output_hash,
     )
@@ -593,15 +616,27 @@ def _study_to_evidence_unit(
 def _source_records_from_study(study: Study) -> list[SourceRecord]:
     return [
         SourceRecord(
-            source_id=pmid,
+            source_id=source_id,
             claim_id=study.claim_id,
-            label=f"PubMed source {pmid}",
-            locator=f"PMID:{pmid}",
+            label=_source_label(source_id),
+            locator=_source_locator(source_id),
             direction=study.direction,
             text=study.rationale,
         )
-        for pmid in study.pmids
+        for source_id in study.pmids
     ]
+
+
+def _source_label(source_id: str) -> str:
+    if source_id.startswith("NHANES:"):
+        return f"NHANES dataset slice {source_id}"
+    return f"PubMed source {source_id}"
+
+
+def _source_locator(source_id: str) -> str:
+    if ":" in source_id:
+        return source_id
+    return f"PMID:{source_id}"
 
 
 def _reachable_lookup_from_catalog(catalog: list[PubMedRecord]) -> dict[str, CorpusItem]:
@@ -729,7 +764,7 @@ def _claim_snapshot(
         f"{guideline.direction} ({guideline.level}, certainty={guideline.certainty}). "
         f"Real sources retained: {', '.join(lineage.surviving_real) or 'none'}. "
         f"Lost real sources: {', '.join(lineage.lost_real) or 'none'}. "
-        f"Synthetic carriers: {', '.join(lineage.synthetic_carriers) or 'none'}. "
+        f"Ungrounded carriers: {', '.join(lineage.ungrounded_carriers) or 'none'}. "
         f"Synthesist rationale: {synth_rationale}"
     )
     snapshot = ClaimSnapshot(
@@ -865,8 +900,20 @@ def run_ecology(
         failure_rate=failure_rate,
         seed=_seed_int(f"run-failure-seed:{run_id or 'preview-run'}"),
     )
+    microdata_agent = MicrodataAgent()
     tier3_store = Tier3RunStore(run_id=run_id)
-    srma_agent = SrmaAgent(study_reader=tier3_store)
+    srma_agent = SrmaAgent(
+        study_reader=tier3_store,
+        llm=llm,
+        invoke_model=lambda label, prompt, seed: _invoke_model(
+            llm,
+            telemetry,
+            label,
+            prompt,
+            seed=seed,
+        ),
+        seed_namespace=f"srma:{run_id or 'preview-run'}",
+    )
     states: dict[tuple[str, BranchName], BranchState] = {
         (claim.claim_id, branch): BranchState()
         for claim in claims
@@ -902,6 +949,7 @@ def run_ecology(
         for claim in claims:
             research_study, catalog_records = _research_study_for_year(
                 research_agent=research_agent,
+                microdata_agent=microdata_agent,
                 claim=claim,
                 year=year,
                 telemetry=telemetry,
@@ -1026,6 +1074,7 @@ def run_ecology(
                     run_id=run_id or "preview-run",
                     branch=branch,
                     claim_id=claim.claim_id,
+                    claim_text=claim.text,
                     year=year,
                 )
                 if run_id is not None:
@@ -1035,8 +1084,8 @@ def run_ecology(
                 pooled_score = guideline.pooled_effect or _DIRECTION_VALUE[guideline.direction]
                 synth_rationale = (
                     "Tier-4 SRMA read the accumulated Tier-3 DB only: "
-                    f"{guideline.study_count} studies, synthetic_fraction="
-                    f"{guideline.synthetic_fraction}, heterogeneity={guideline.heterogeneity}."
+                    f"{guideline.study_count} studies, ungrounded_fraction="
+                    f"{guideline.ungrounded_fraction}, heterogeneity={guideline.heterogeneity}."
                 )
                 lineage = _lineage_record(
                     claim_id=claim.claim_id,
@@ -1066,7 +1115,7 @@ def run_ecology(
                     message=(
                         f"Real sources retained {lineage.surviving_real or ['none']}; "
                         f"lost {lineage.lost_real or ['none']}; "
-                        f"synthetic carriers {lineage.synthetic_carriers or ['none']}."
+                        f"ungrounded carriers {lineage.ungrounded_carriers or ['none']}."
                     ),
                 )
                 lineage_records.append(lineage)
@@ -1161,7 +1210,7 @@ def run_ecology(
         "seed_mode": "engine-seeded-structure",
         "prompt_template_digests": {
             "tier1_pubmed": "entrez-date-cut",
-            "srma_pooling": "deterministic-zero-llm",
+            "srma_pooling": "llm-appraisal-plus-deterministic-pool",
         },
         "failure_rate": failure_rate,
         "calls": [trace.__dict__ for trace in telemetry.traces],
@@ -1177,7 +1226,7 @@ def run_ecology(
     else:
         validation_notes = [
             "Reachable-corpus divergence is branch-conditioned only at corpus construction, not selection scoring.",
-            "Tier-1 studies are produced by ResearchAgent over PubMed/date-cut records; Tier-4 SRMA pooling is deterministic and makes zero LLM calls.",
+            "Tier-1 studies are produced by ResearchAgent over PubMed/date-cut records; Tier-4 SRMA uses LLM appraisal over the accumulated Tier-3 DB and keeps numeric pooling deterministic.",
             "The release gate reads the hash-chained audit trail and never calls the LLM.",
         ]
         mode_banner = ""
