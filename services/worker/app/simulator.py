@@ -4,6 +4,7 @@ import hashlib
 import io
 import os
 import re
+import shutil
 from typing import Any
 
 import requests
@@ -24,6 +25,7 @@ from app.ecology import (
     run_ecology,
 )
 from app.llm import (
+    DEFAULT_CLAUDE_CLI_MODEL,
     LLMClient,
     make_client,
 )
@@ -66,6 +68,16 @@ def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
             model=request.model or DEFAULT_OLLAMA_MODEL,
             base_url=None,
             using_fallback=True,
+        )
+
+    if request.backend == "claude-cli":
+        # Uses the local `claude` CLI (Claude subscription) as the model. No
+        # base_url / api_key needed; falls back only if the CLI is absent.
+        return BackendConfigModel(
+            backend="claude-cli",
+            model=request.model or DEFAULT_CLAUDE_CLI_MODEL,
+            base_url=None,
+            using_fallback=shutil.which("claude") is None,
         )
 
     model = request.model or DEFAULT_OLLAMA_MODEL

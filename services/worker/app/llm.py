@@ -13,6 +13,8 @@ from __future__ import annotations
 import hashlib
 import random
 import re
+import shutil
+import subprocess
 import time
 from dataclasses import dataclass
 from typing import Protocol
@@ -199,6 +201,41 @@ class LiveOrFallbackClient:
         return self._fake.describe() if self._degraded else self._live.describe()
 
 
+DEFAULT_CLAUDE_CLI_MODEL = "claude-sonnet-4-5"
+
+
+class ClaudeCLIClient:
+    """Routes generation through the local `claude` CLI (`claude -p`), spending the
+    user's Claude subscription as the model. A frontier model (e.g. Sonnet), so it
+    is scientific and exempt from the NO-LOCAL rule. Each call shells out once and
+    reads the prompt on stdin. Not seed-reproducible (the CLI is non-deterministic);
+    the engine seeds structure and residual model variance is reported over runs.
+    """
+
+    scientific = True
+    degradation_reason = None
+
+    def __init__(self, model: str | None = None, *, timeout: float = 240.0) -> None:
+        self._model = model or DEFAULT_CLAUDE_CLI_MODEL
+        self._bin = shutil.which("claude") or "claude"
+        self._timeout = timeout
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        proc = subprocess.run(
+            [self._bin, "-p", "--model", self._model],
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=self._timeout,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(f"claude CLI exited {proc.returncode}: {proc.stderr.strip()[:200]}")
+        return proc.stdout.strip()
+
+    def describe(self) -> ModelDescriptor:
+        return ModelDescriptor(name=self._model, digest="claude-cli")
+
+
 def make_client(
     *,
     using_fallback: bool,
@@ -207,6 +244,10 @@ def make_client(
     backend: str = "ollama",
     api_key: str | None = None,
 ) -> LLMClient:
+    if backend == "claude-cli":
+        if using_fallback:
+            return DeterministicFakeClient()
+        return LiveOrFallbackClient(ClaudeCLIClient(model=model), DeterministicFakeClient())
     if using_fallback or not base_url:
         return DeterministicFakeClient()
     if backend == "ollama":

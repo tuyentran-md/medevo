@@ -118,10 +118,17 @@ instrument, not clinical decision support.
 cd services/worker && python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-export OPENROUTER_API_KEY=...
 python -m scripts.evaluate --topic hrt \
   --backend openai-compatible --base-url https://openrouter.ai/api/v1 \
-  --model deepseek/deepseek-v4 --horizons 2000,2010,2020
+  --model deepseek/deepseek-v4 --api-key-env OPENROUTER_API_KEY \
+  --horizons 2000,2010,2020
+```
+
+Or spend a Claude subscription as the model (no API key — uses the local `claude` CLI):
+
+```bash
+python -m scripts.evaluate --topic hrt --backend claude-cli \
+  --model claude-sonnet-4-5 --horizons 2000,2010,2020
 ```
 
 Static replay site: `npm run build:static --prefix apps/web`.
