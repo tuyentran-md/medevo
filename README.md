@@ -4,76 +4,113 @@
 
 ![How MedEvo tests whether a provenance gate keeps a guideline on course as AI agents do the science: the free arm drifts, the gated arm tracks the real reversal.](docs/reversal.svg)
 
-MedEvo is a simulated scientific ecology. AI agents do real research over real
-data; their work accumulates into the corpus a guideline is synthesized from; and
-we watch whether the guideline **drifts** — and whether a pre-execution
-provenance gate (**CIVER**) holds it on the trajectory the real evidence
-supports.
+MedEvo is a **simulated scientific ecology**. AI agents do real research over real
+data and literature; their work accumulates into the corpus a guideline is
+synthesized from; and we watch whether the guideline **drifts** — and whether a
+pre-execution provenance gate (**CIVER**) holds it on the trajectory the real
+evidence supports.
 
 ---
 
 ## The problem
 
 Evidence-based medicine assumes the literature is a faithful record of what was
-actually studied. But AI now writes, summarizes, and synthesizes biomedical
-evidence at scale. When poorly-grounded or fabricated findings launder through
-systematic reviews into authoritative recommendations, a guideline can shift in
-**direction** or **strength** — and no one sees the moment it happens.
+actually studied. AI now writes, summarizes, and synthesizes that literature at
+scale. When poorly-grounded findings launder through systematic reviews into
+authoritative recommendations, a guideline can shift in **direction** or
+**strength** — silently. MedEvo makes that moment visible, and tests a defense.
 
-MedEvo makes that moment visible, and tests one defense against it.
+## The pipeline — stage by stage
 
-## The demonstration
+```mermaid
+flowchart TD
+    S1["① INPUT — a guideline becomes atomic claims<br/>(each: direction + strength)"]
+    S2["② ADVANCE to simulated era T<br/>PubMed / data date-cut to year T"]
+    S3["③ TIER 1 · research agents produce studies<br/>Group A on real data · Group B on real literature"]
+    S4{"④ TIER 2 · CIVER gate<br/>provenance · scope · chain"}
+    S6["⑤ TIER 3 · accumulating corpus<br/>free = everything · constrained = warranted only"]
+    S7["⑥ TIER 4 · SR/MA synthesis → guideline<br/>(direction + GRADE-style strength)"]
+    S8["⑦ COMPARE free vs constrained vs C0<br/>+ sealed replay"]
+    S1 --> S2 --> S3 --> S4
+    S4 -->|warrant issued| S6
+    S4 -.->|refused — free keeps it anyway| S6
+    S6 --> S7
+    S7 -->|feeds back as prior · advance era| S2
+    S7 --> S8
+```
 
-We replay a **real historical reversal**: hormone therapy (HRT) for chronic-disease
-prevention. Before 2002 it was recommended to *prevent* heart disease; the WHI
-trials reversed that, and the USPSTF has recommended *against* it (grade D) ever
-since. A trustworthy instrument should re-live that flip from the literature of
-each era — and the gate should keep the guideline on course while an ungated arm
-drifts (the figure above).
+We replay a **real historical reversal** to validate the instrument: hormone
+therapy (HRT) for chronic-disease prevention — recommended *for* prevention
+before 2002, reversed by the WHI trials, USPSTF grade D *against* ever since
+(the figure at the top). A faithful ecology should re-live that flip from each
+era's literature; the gate should hold the guideline on course while an ungated
+arm drifts.
+
+## The simulated researchers (Tier 1)
+
+Agents do research the way people do — and **fail the way fallible researchers
+do.** That failure, not an injected fake, is the contamination.
+
+```mermaid
+flowchart TD
+    Q["a claim to investigate, at era T"]
+    Q --> GA["GROUP A · empirical"]
+    Q --> GB["GROUP B · evidence synthesis"]
+    GA --> GA1["design analysis → load a real NHANES slice<br/>→ run statistics in a sandbox → interpret"]
+    GB --> GB1["search PubMed ≤ T → appraise the real papers"]
+    GA1 --> OK["✅ GROUNDED study<br/>resolvable provenance, scope-bounded"]
+    GB1 --> OK
+    GA1 --> BAD["⚠️ FAILURE — can't ground it / over-reaches scope<br/>→ UNGROUNDED study (emergent, not injected)"]
+    GB1 --> BAD
+    OK --> G([to the CIVER gate])
+    BAD --> G
+```
+
+The failure *rate* is anchored to a measured quantity (how often LLMs produce
+structurally-valid but unfaithful claims), never a tuned dial.
+
+## The synthesis model (Tier 4 · SR/MA)
+
+Synthesis agents read **only** the accumulated corpus — never re-querying the
+world — exactly as a real guideline panel works from the published record.
 
 ```mermaid
 flowchart LR
-    G["📋 Guideline claims<br/>direction + strength"] --> A1["Group A · analyze<br/>REAL data (NHANES)"]
-    G --> A2["Group B · appraise<br/>REAL literature (PubMed)"]
-    A1 --> S["studies + provenance chain"]
-    A2 --> S
-    S --> GATE{"🛡️ CIVER gate<br/>provenance · scope · chain"}
-    GATE -->|"no gate"| FREE["FREE corpus<br/>grounded + ungrounded"]
-    GATE -->|"warrant required"| CON["CONSTRAINED corpus<br/>grounded only"]
-    FREE --> SR["SR/MA synthesis"]
-    CON --> SR
-    SR --> OUT["📈 guideline per era<br/><b>free drifts · constrained holds</b>"]
+    DB["Tier-3 corpus<br/>(this branch only)"] --> AP["appraise each study<br/>quality · sample size · risk of bias"]
+    AP --> PL["pool the effect<br/>weighted · heterogeneity"]
+    PL --> CE["GRADE-style certainty"]
+    CE --> OUT["guideline claim<br/>direction + strength level"]
 ```
 
-Agents are deliberately fallible — **their failures are the phenomenon, not a
-script.** A weak agent over-reaches or cites evidence that doesn't resolve; that
-ungrounded work is the contamination, emerging on its own at a rate anchored to a
-measured quantity, never injected by us. The gate judges only provenance and
-scope — never a "this one is fake" label — so the contrast it produces is real,
-and it can fail.
+## How drift emerges — and how the gate answers it
 
-The headline number is the leakage- and competence-cancelled gap between the two
-arms, with confidence intervals on both axes, benchmarked against the real USPSTF
+```mermaid
+flowchart TD
+    subgraph FREE["🔴 FREE arm — no gate"]
+      direction TB
+      F1["ungrounded studies accumulate in the corpus"] --> F2["the pooled estimate shifts"] --> F3["the guideline drifts off the real trajectory"]
+    end
+    subgraph CON["🟢 CONSTRAINED arm — CIVER"]
+      direction TB
+      C1["ungrounded work is refused at the gate"] --> C2["the inherited corpus stays grounded"] --> C3["the guideline holds course"]
+    end
+```
+
+The gate judges only provenance, scope, and chain integrity — never a
+"this one is fake" label — so it catches fabrication and over-reach but not an
+honest analysis that is simply wrong (that drifts both arms equally and cancels).
+The headline is the leakage- and competence-cancelled **gap** between the arms,
+with confidence intervals on both axes, benchmarked against the real USPSTF
 trajectory and checked against volume-matched and random-gate controls. MedEvo's
 claim is **auditable corruption-resistance** — never "AI that writes more correct
-guidelines." It is a research instrument, not clinical decision support.
-
-## How it works
-
-| Tier | Role |
-|---|---|
-| **1 · Research agents** | 50/50: Group A runs real statistics on raw datasets (NHANES) in a sandbox; Group B appraises real PubMed literature date-cut to each era. |
-| **2 · CIVER gate** | A study enters the inheritable corpus only if its evidence resolves and its claim does not over-reach its scope. |
-| **3 · Accumulating DB** | Branch-partitioned — constrained holds warranted studies only; free holds everything. This is what the next era inherits. |
-| **4 · SR/MA synthesis** | LLM agents read **only** the accumulated corpus and emit each era's guideline: direction + a GRADE-style strength. |
+guidelines."
 
 ## Status
 
 The v3 engine is built and tested end-to-end; the HRT demonstration is wired
 (real NHANES + PubMed, USPSTF ground truth verified from the primary source);
-a scored verdict on a frontier model is the next step. Local open-weight models
-are too weak for agent research and run as *illustrative* only — scored runs use
-a frontier model.
+a scored verdict on a frontier model is the next step. This is a research
+instrument, not clinical decision support.
 
 ## Run
 
