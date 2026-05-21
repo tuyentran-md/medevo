@@ -38,7 +38,7 @@ then
   exit 0
 fi
 
-echo "starting CVD evaluate on ${sha} at $(date -Is)"
+echo "starting CVD evaluate on ${sha} at $(date '+%Y-%m-%dT%H:%M:%S%z')"
 echo "log: ${log_path}"
 MEDEVO_LLM_CACHE="${MEDEVO_LLM_CACHE:-1}" \
   ./.venv/bin/python -m scripts.evaluate \
@@ -47,5 +47,5 @@ MEDEVO_LLM_CACHE="${MEDEVO_LLM_CACHE:-1}" \
   --max-calls 500 \
   >"${log_path}" 2>&1
 status=$?
-echo "finished status=${status} at $(date -Is)"
+echo "finished status=${status} at $(date '+%Y-%m-%dT%H:%M:%S%z')"
 exit "${status}"
