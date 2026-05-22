@@ -49,6 +49,7 @@ def evaluate_shadow_civer(
         "source_branch": source_branch,
         "study_count": len(studies),
         "verdict_counts": _verdict_counts(verdicts),
+        "calibration_matrix": _calibration_matrix(verdicts),
         "endpoint_1_natural_drift": drift,
         "endpoint_2_warrant_enrichment": _warrant_enrichment(studies, verdicts),
         "endpoint_3_guideline_drift_reduction": {
@@ -211,6 +212,33 @@ def _verdict_counts(verdicts: Sequence[dict[str, Any]]) -> dict[str, int]:
     passed = sum(1 for row in verdicts if row["passed"])
     failed = len(verdicts) - passed
     return {"passed": passed, "failed": failed, "total": len(verdicts)}
+
+
+def _calibration_matrix(verdicts: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    tp = tn = fp = fn = 0
+    for row in verdicts:
+        grounded = row["true_provenance_for_calibration"] == "GROUNDED"
+        passed = bool(row["passed"])
+        if grounded and passed:
+            tp += 1
+        elif grounded and not passed:
+            fp += 1
+        elif not grounded and passed:
+            fn += 1
+        else:
+            tn += 1
+    grounded_total = tp + fp
+    ungrounded_total = tn + fn
+    return {
+        "true_positive": tp,
+        "true_negative": tn,
+        "false_positive": fp,
+        "false_negative": fn,
+        "grounded_total": grounded_total,
+        "ungrounded_total": ungrounded_total,
+        "fpr": round(fp / grounded_total, 4) if grounded_total else 0.0,
+        "fnr": round(fn / ungrounded_total, 4) if ungrounded_total else 0.0,
+    }
 
 
 def _warrant_enrichment(

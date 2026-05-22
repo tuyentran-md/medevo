@@ -667,7 +667,9 @@ def admit_evidence_unit(
         reasons.append("Traceable question-method-evidence-analysis-claim chain present.")
     else:
         reasons.append("Claim graph missing one or more required constitutional nodes.")
-    if cited_resolve and resolvable:
+    if not unit.cited_ids:
+        reasons.append("No cited evidence unit was supplied for Article I resolvability.")
+    elif cited_resolve and resolvable:
         reasons.append("Every cited evidence unit resolves to a catalog source or valid prior warrant.")
     else:
         reasons.append("One or more cited evidence units failed Article I resolvability.")
