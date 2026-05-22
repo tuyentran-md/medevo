@@ -14,7 +14,7 @@ import requests
 
 from app.agents import parse_research_emission
 from app.config import DATA_DIR
-from app.models import ClaimDirection, EvidenceScope, PubMedRecord, Study
+from app.models import ClaimDirection, EvidenceScope, PubMedRecord, ResearchPlan, Study
 
 if TYPE_CHECKING:
     from app.llm import LLMClient
@@ -370,6 +370,18 @@ class MicrodataAgent:
             source_scope=source_scope.model_copy(deep=True),
             failure_mode=failure_mode,  # type: ignore[arg-type]
         )
+        study.plan_id = f"{claim_id}-plan-{simulated_year}-nhanes"
+        study.research_plan = ResearchPlan(
+            plan_id=study.plan_id,
+            claim_id=claim_id,
+            year=simulated_year,
+            question=claim_text,
+            method="Analyze NHANES 2005-2006 cohort slice using a predeclared association model.",
+            committed_pmids=[source_id],
+            claimed_scope=claimed_scope.model_copy(deep=True),
+            rationale="Group-A microdata plan binds the dataset slice before interpretation.",
+            parse_ok=True,
+        )
         study.output_hash = _study_hash(study)
         return study, [record]
 
@@ -499,6 +511,18 @@ def _unsupported_study(
             year_end=simulated_year,
         ),
         failure_mode="unresolvable",
+    )
+    study.plan_id = f"{claim_id}-plan-{simulated_year}-nhanes"
+    study.research_plan = ResearchPlan(
+        plan_id=study.plan_id,
+        claim_id=claim_id,
+        year=simulated_year,
+        question=claim_text,
+        method="",
+        committed_pmids=[],
+        claimed_scope=study.claimed_scope.model_copy(deep=True),
+        rationale=reason,
+        parse_ok=False,
     )
     study.output_hash = _study_hash(study)
     return study

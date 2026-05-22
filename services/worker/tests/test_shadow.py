@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models import ArtifactBundle, ClaimGraph, ClaimNode, EvidenceScope, Study
+from app.models import ArtifactBundle, ClaimGraph, ClaimNode, EvidenceScope, ResearchPlan, Study
 from app.shadow import evaluate_shadow_civer
 
 
@@ -28,7 +28,19 @@ def _study(
     source_scope: EvidenceScope | None = None,
     provenance: str = "GROUNDED",
     failure_mode: str = "none",
+    plan: ResearchPlan | None = None,
 ) -> Study:
+    plan = plan or ResearchPlan(
+        plan_id=f"{study_id}-plan",
+        claim_id="claim-1",
+        year=2024,
+        question="Smoking increases coronary heart disease risk.",
+        method="Appraise committed clinical evidence before drawing the claim.",
+        committed_pmids=list(pmids),
+        claimed_scope=claimed_scope or EvidenceScope(year_start=2024, year_end=2024),
+        rationale="Fixture plan.",
+        parse_ok=True,
+    )
     return Study(
         id=study_id,
         claim_id="claim-1",
@@ -43,10 +55,12 @@ def _study(
         claimed_scope=claimed_scope or EvidenceScope(year_start=2024, year_end=2024),
         source_scope=source_scope or EvidenceScope(year_start=2024, year_end=2024),
         failure_mode=failure_mode,  # type: ignore[arg-type]
+        plan_id=plan.plan_id,
+        research_plan=plan,
     )
 
 
-def test_shadow_civer_filters_same_natural_corpus_without_active_branch() -> None:
+def test_shadow_civer_brim_filters_same_natural_corpus_without_active_branch() -> None:
     scoped = _study("good", pmids=["1"], catalog_pmids=["1"])
     no_cite = _study(
         "bad",
@@ -72,18 +86,30 @@ def test_shadow_civer_filters_same_natural_corpus_without_active_branch() -> Non
 
     assert report["study_count"] == 2
     assert report["verdict_counts"] == {"passed": 1, "failed": 1, "total": 2}
-    assert report["endpoint_2_warrant_enrichment"]["passed"]["ungrounded_rate"] == 0.0
-    assert report["endpoint_2_warrant_enrichment"]["failed"]["ungrounded_rate"] == 1.0
+    assert report["endpoint_2_process_validation"]["passed"]["ungrounded_rate"] == 0.0
+    assert report["endpoint_2_process_validation"]["failed"]["ungrounded_rate"] == 1.0
+    assert report["endpoint_2_process_validation"]["process_counts"]["civer_failed"] == 1
     assert "claim-1" in report["all_guideline_latest"]
     assert "claim-1" in report["warranted_guideline_latest"]
 
 
-def test_shadow_civer_uses_catalog_resolvability_not_provenance_label() -> None:
-    labelled_grounded_but_unresolved = _study(
-        "unresolved",
-        pmids=["999"],
-        catalog_pmids=[],
+def test_shadow_civer_brim_uses_process_trace_not_provenance_label() -> None:
+    labelled_grounded_but_invalid_plan = _study(
+        "invalid-plan",
+        pmids=["1"],
+        catalog_pmids=["1"],
         provenance="GROUNDED",
+        plan=ResearchPlan(
+            plan_id="invalid-plan-plan",
+            claim_id="claim-1",
+            year=2024,
+            question="Smoking increases coronary heart disease risk.",
+            method="",
+            committed_pmids=["1"],
+            claimed_scope=EvidenceScope(year_start=2024, year_end=2024),
+            rationale="Missing method means invalid PIR.",
+            parse_ok=False,
+        ),
     )
     bundle = ArtifactBundle(
         input_text="",
@@ -92,7 +118,7 @@ def test_shadow_civer_uses_catalog_resolvability_not_provenance_label() -> None:
         branch_diff={},
         anchors=[],
         validation_notes=[],
-        corpus_studies={"free": [labelled_grounded_but_unresolved]},
+        corpus_studies={"free": [labelled_grounded_but_invalid_plan]},
     )
 
     report = evaluate_shadow_civer(
@@ -102,3 +128,5 @@ def test_shadow_civer_uses_catalog_resolvability_not_provenance_label() -> None:
 
     assert report["verdict_counts"]["passed"] == 0
     assert report["study_verdicts"][0]["true_provenance_for_calibration"] == "GROUNDED"
+    assert report["study_verdicts"][0]["plan_recorded"] is True
+    assert report["study_verdicts"][0]["civer_passed"] is False

@@ -168,7 +168,7 @@ class ResearchPlan(BaseModel):
     The agent commits, ahead of seeing any result, to: the question, the method,
     the specific evidence sources it WILL use (``committed_pmids`` — real PMIDs /
     dataset-slice ids), and the scope it claims it will support. The pre-execution
-    CIVER gate (``app.synthesis.admit_research_plan``) admits the plan to execute
+    CIVER gate (``app.ecology.admit_research_plan``) admits the plan to execute
     ONLY if the method is coherent with the question, every committed source
     resolves in the retrieved catalog, and the scope is bounded. A refused plan is
     never executed; no study enters the constrained corpus.
@@ -233,10 +233,13 @@ class Study(BaseModel):
     claimed_scope: EvidenceScope = Field(default_factory=EvidenceScope)
     source_scope: EvidenceScope = Field(default_factory=EvidenceScope)
     failure_mode: Literal["none", "unresolvable", "scope-overreach"] = "none"
-    # Set on the constrained arm: the id of the pre-registered ResearchPlan this
-    # study executed against (Article II deviation is measured plan→study). Empty
-    # on the free arm (no pre-registration; one merged call).
+    # Id of the pre-registered ResearchPlan this study executed against (Article
+    # II deviation is measured plan→study). May be empty only on legacy fixtures.
     plan_id: str = ""
+    # Process trace used by shadow/active CIVER+BRIM. Free/natural arms may run
+    # without enforcing the gate, but they still keep the plan so the same law can
+    # be applied post hoc to the research process, not merely to final citations.
+    research_plan: ResearchPlan | None = None
     output_hash: str | None = None
 
 
@@ -314,7 +317,7 @@ class CalibrationMatrix(BaseModel):
     """Gate calibration scored against TRUE provenance (SPEC §7c).
 
     True provenance is known to the harness ONLY for scoring and is NEVER passed
-    to ``admit_evidence_unit`` or corpus selection (gate blindness, §8.3). FN =
+    to process validation or corpus selection (gate blindness, §8.3). FN =
     admitted-but-ungrounded; FP = refused-but-grounded. Scored on the constrained
     branch only (the free branch runs no gate).
     """

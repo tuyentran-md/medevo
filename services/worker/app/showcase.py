@@ -10,7 +10,7 @@ SHOWCASES: list[ShowcaseRecord] = [
         description=(
             "Demo-only guideline excerpt tracking how recommendations on menopausal "
             "hormone therapy for chronic-disease prevention drift across eras when the "
-            "evidence base is left ungated, versus held by the provenance gate."
+            "evidence base is left ungated, versus held by the CIVER/BRIM process gate."
         ),
         input_mode="guideline",
         input_text=(

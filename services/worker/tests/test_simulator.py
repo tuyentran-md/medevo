@@ -14,6 +14,14 @@ class RefutingUniverseClient(DeterministicFakeClient):
     degradation_reason = None
 
     def generate(self, prompt: str, *, seed: int) -> str:
+        if "PRE-REGISTER a research PLAN" in prompt:
+            return (
+                "QUESTION: Does routine antibiotic treatment improve acute viral bronchiolitis outcomes?\n"
+                "METHOD: Appraise the committed randomized trial and compare admissions.\n"
+                "SCOPE: pop=0-120 years=1900-2025\n"
+                "PMIDS: 111\n"
+                "RATIONALE: commit to the refuting bronchiolitis trial before execution."
+            )
         if "DIRECTION: SUPPORTS | REFUTES | NEUTRAL" in prompt:
             return (
                 "DIRECTION: REFUTES\n"
@@ -151,13 +159,9 @@ def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_determin
     # unresolvable cite. Across many studies/era one within-tolerance slip is the
     # intended falsifiable behavior, not a leak the test should forbid.
     assert final["constrained"]["ungrounded"] < final["free"]["ungrounded"]
-    # v4 pre-execution split: free and constrained no longer share emitted studies
-    # (free = one merged call; constrained = DESIGN -> pre-execution gate -> EXECUTE).
-    # The old strict-equality on grounded was a shared-study artifact of the v3
-    # merged path. Now constrained can LOSE grounded studies whose DESIGN was
-    # refused pre-execution — that IS the gate's value, not a leak. The surviving
-    # invariant: constrained never has MORE grounded than free, and free's total
-    # corpus is strictly larger (it keeps refused/ungrounded studies too).
+    # Free/natural records process traces but does not enforce them. Constrained
+    # can lose grounded studies whose process is refused before release; that is
+    # the gate's mechanism, not a leak.
     assert final["constrained"]["grounded"] <= final["free"]["grounded"]
     assert final["free"]["count"] > final["constrained"]["count"]
 

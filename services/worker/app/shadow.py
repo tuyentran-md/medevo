@@ -4,8 +4,9 @@ from statistics import fmean
 from typing import Any, Sequence
 
 from app.c0 import GroundTruth, load_ground_truth
-from app.ecology import ClaimSeed, CorpusItem, RELEASE_THRESHOLD, admit_evidence_unit
-from app.models import ArtifactBundle, ClaimGraph, EvidenceUnit, GuidelineClaim, Study
+from app.ecology import RELEASE_THRESHOLD
+from app.models import ArtifactBundle, ClaimGraph, GuidelineClaim, Study
+from app.process_gate import assess_research_process
 from app.synthesis import synthesize_guideline_claim
 
 
@@ -25,11 +26,13 @@ def evaluate_shadow_civer(
     ground_truth_path: str | None = None,
     source_branch: str = "free",
 ) -> dict[str, Any]:
-    """Evaluate CIVER as a post-hoc filter over natural agent output.
+    """Evaluate CIVER+BRIM as a post-hoc process validator.
 
     This is the non-circular lane: agents emit studies once, nothing is blocked
-    during generation, and CIVER is applied afterward to split the same natural
-    corpus into all-output vs warranted-output corpora.
+    during generation, and the stored research process trace is replayed through
+    the same CIVER pre-execution gate + BRIM release score. It judges whether a
+    study's research process was valid, not whether the final citation list looks
+    tidy or whether the conclusion matches truth.
     """
     studies = list((bundle.corpus_studies or {}).get(source_branch, []))
     graphs = {graph.claim_id: graph for graph in bundle.claim_graphs}
@@ -45,13 +48,14 @@ def evaluate_shadow_civer(
     drift = _natural_drift(all_guidelines, truth)
 
     return {
-        "mode": "shadow-civer",
+        "mode": "shadow-civer-brim",
         "source_branch": source_branch,
         "study_count": len(studies),
         "verdict_counts": _verdict_counts(verdicts),
         "calibration_matrix": _calibration_matrix(verdicts),
         "endpoint_1_natural_drift": drift,
-        "endpoint_2_warrant_enrichment": _warrant_enrichment(studies, verdicts),
+        "endpoint_2_process_validation": _process_validation_summary(studies, verdicts),
+        "endpoint_2_warrant_enrichment": _process_validation_summary(studies, verdicts),
         "endpoint_3_guideline_drift_reduction": {
             "all_to_truth": all_distance,
             "warranted_to_truth": warranted_distance,
@@ -68,55 +72,27 @@ def evaluate_shadow_civer(
 
 def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]:
     graph = graph or ClaimGraph(claim_id=study.claim_id, claim_text="", nodes=[], edges=[])
-    unit = EvidenceUnit(
-        id=study.id,
-        claim_id=study.claim_id,
-        year=study.year,
-        branch="constrained",
-        producer="investigator",
-        cited_ids=list(study.pmids),
-        provenance=study.provenance,
-        direction=study.direction,
-        rationale=study.rationale,
-        resolved_real_ids=[pmid for pmid in study.pmids if pmid in set(study.catalog_pmids)],
-        claimed_scope=study.claimed_scope.model_copy(deep=True),
-        output_hash=study.output_hash,
-    )
-    reachable = {
-        pmid: CorpusItem(
-            item_id=pmid,
-            kind="real",
-            text=study.rationale,
-            rationale=study.rationale,
-            direction="NEUTRAL",
-            cited_ids=[pmid],
-            resolved_real_ids=[pmid],
-            resolved_locators=[f"PMID:{pmid}"],
-            scope=study.source_scope.model_copy(deep=True),
-        )
-        for pmid in set(study.catalog_pmids)
-    }
-    claim = ClaimSeed(study.claim_id, graph.claim_text, "moderate")
-    verdict, warrant = admit_evidence_unit(
-        run_id="shadow-civer",
-        claim=claim,
+    assessment = assess_research_process(
+        study=study,
         claim_graph=graph,
-        branch="constrained",
-        year=study.year,
-        unit=unit,
-        reachable_lookup=reachable,
-        warrants_by_output={},
         threshold=RELEASE_THRESHOLD,
     )
     return {
         "study_id": study.id,
         "claim_id": study.claim_id,
         "year": study.year,
-        "passed": verdict.passed and warrant is not None and warrant.integrity_score >= warrant.threshold,
-        "reasons": list(verdict.reasons),
-        "integrity_score": warrant.integrity_score if warrant is not None else 0.0,
+        "passed": assessment.passed,
+        "civer_passed": assessment.civer_passed,
+        "brim_passed": assessment.brim_passed,
+        "reasons": list(assessment.reasons),
+        "execution_deviations": list(assessment.execution_deviations),
+        "integrity_score": assessment.integrity_score,
         "true_provenance_for_calibration": study.provenance,
         "failure_mode_for_calibration": study.failure_mode,
+        "plan_recorded": study.research_plan is not None,
+        "committed_pmids": list(study.research_plan.committed_pmids)
+        if study.research_plan is not None
+        else [],
         "pmids": list(study.pmids),
         "catalog_pmids": list(study.catalog_pmids),
     }
@@ -241,7 +217,7 @@ def _calibration_matrix(verdicts: Sequence[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _warrant_enrichment(
+def _process_validation_summary(
     studies: Sequence[Study], verdicts: Sequence[dict[str, Any]]
 ) -> dict[str, Any]:
     passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
@@ -250,7 +226,17 @@ def _warrant_enrichment(
     return {
         "passed": _study_quality_summary(passed),
         "failed": _study_quality_summary(failed),
-        "interprets_as": "CIVER has filter signal when failed studies have higher ungrounded/overreach/no-cite rates than passed studies",
+        "process_counts": {
+            "civer_failed": sum(1 for row in verdicts if not row["civer_passed"]),
+            "brim_failed": sum(1 for row in verdicts if not row["brim_passed"]),
+            "missing_plan": sum(1 for row in verdicts if not row["plan_recorded"]),
+            "execution_deviated": sum(1 for row in verdicts if row["execution_deviations"]),
+        },
+        "interprets_as": (
+            "Shadow CIVER+BRIM has signal when failed studies have invalid PIR/plans "
+            "or BRIM plan-to-execution deviations, and when warranted-only synthesis "
+            "changes downstream drift."
+        ),
     }
 
 

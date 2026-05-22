@@ -4,8 +4,8 @@ Covers:
 - CONSTRAINED arm runs a separable DESIGN call -> pre-execution CIVER gate
   (Article I, prove integrity BEFORE the process runs) -> EXECUTE call. A refused
   design never executes and no study enters the constrained corpus.
-- FREE arm makes ONE merged research call per study; CONSTRAINED makes TWO
-  (design + execute).
+- FREE/natural arm also records design + execute so shadow CIVER/BRIM can audit
+  the research process; only the constrained arm enforces the gate.
 - The SR/MA is a real multi-step process: SCREEN / RISK-OF-BIAS / SYNTHESIZE are
   each their own LLM call.
 - Article II execution-deviation (citing outside the registered plan) is caught
@@ -171,17 +171,25 @@ def test_overreaching_design_scope_is_refused_before_execution() -> None:
     assert len([p for p in llm.prompts if "EXECUTE the pre-registered plan" in p]) == 0
 
 
-# --- 2. free = 1 merged call, constrained = 2 (design + execute) ------------
+# --- 2. free records process; constrained enforces process ------------------
 
 
-def test_free_one_call_constrained_two_calls() -> None:
-    free_llm = RoutingLLM(design="", execute="")
+def test_free_records_plan_execute_but_does_not_enforce_gate() -> None:
+    free_llm = RoutingLLM(
+        design=(
+            "QUESTION: q\nMETHOD: appraise\n"
+            "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: r."
+        ),
+        execute="DIRECTION: REFUTES\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: r.",
+    )
     free_agent = _agent(free_llm)
-    free_agent.run(claim_id="claim-1", claim_text=CLAIM.text, simulated_year=2020)
-    # The merged free call is neither a DESIGN nor an EXECUTE prompt.
-    assert len(free_llm.prompts) == 1
-    assert "PRE-REGISTER a research PLAN" not in free_llm.prompts[0]
-    assert "EXECUTE the pre-registered plan" not in free_llm.prompts[0]
+    plan, catalog = free_agent.run_design(
+        claim_id="claim-1", claim_text=CLAIM.text, simulated_year=2020
+    )
+    study = free_agent.run_execute(plan=plan, catalog=catalog, claim_text=CLAIM.text)
+    assert study.research_plan is not None
+    assert len([p for p in free_llm.prompts if "PRE-REGISTER a research PLAN" in p]) == 1
+    assert len([p for p in free_llm.prompts if "EXECUTE the pre-registered plan" in p]) == 1
 
     con_llm = RoutingLLM(
         design=(
@@ -321,12 +329,12 @@ def test_design_and_deviation_events_present_end_to_end() -> None:
     assert "design-refused" in event_types
     assert "execution-deviated" in event_types
     assert verify_audit_chain(bundle.audit_trail)
-    # design / execution phase events are constrained-only.
-    assert all(
-        e.branch == "constrained"
-        for e in bundle.audit_trail
-        if e.phase in ("design", "execution")
-    )
+    # design / execution phase events are recorded for both branches; only
+    # constrained refuses at the gate.
+    assert {e.branch for e in bundle.audit_trail if e.phase == "design"} == {
+        "free",
+        "constrained",
+    }
     # A refused design must have a WARN/BLOCK severity and never enters the corpus.
     refused = [e for e in bundle.audit_trail if e.event_type == "design-refused"]
     assert refused and all(e.severity == "block" for e in refused)

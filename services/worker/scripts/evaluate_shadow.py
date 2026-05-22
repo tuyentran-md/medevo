@@ -1,8 +1,8 @@
-"""Run the MedEvo natural-drift + shadow-CIVER evaluation.
+"""Run the MedEvo natural-drift + shadow CIVER/BRIM evaluation.
 
 This lane does not use C0 as a gold standard. It runs one natural ecology pass,
-keeps the all-output free corpus, applies CIVER post hoc, and compares all vs
-warranted corpus against the external truth fixture.
+keeps the all-output corpus, replays CIVER+BRIM over each stored research
+process trace, and compares all vs ECW-compliant corpus against external truth.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from scripts.evaluate import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run MedEvo shadow-CIVER evaluation.")
+    parser = argparse.ArgumentParser(description="Run MedEvo shadow CIVER/BRIM evaluation.")
     parser.add_argument("--topic", choices=("hrt", "sepsis", "cvd"), default="cvd")
     parser.add_argument("--input-file", type=Path)
     parser.add_argument("--backend", default=os.environ.get("MEDEVO_EVAL_BACKEND", "openai-compatible"))

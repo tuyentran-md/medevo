@@ -1,14 +1,14 @@
 # MedEvo
 
-### Is AI quietly rewriting clinical guidelines — and can a provenance gate stop it?
+### Is AI quietly rewriting clinical guidelines — and can a process-integrity gate stop it?
 
-![How MedEvo tests whether a provenance gate keeps a guideline on course as AI agents do the science: the free arm drifts, the gated arm tracks the real reversal.](docs/reversal.svg)
+![How MedEvo tests whether a process-integrity gate keeps a guideline on course as AI agents do the science: the free arm drifts, the gated arm tracks the real reversal.](docs/reversal.svg)
 
 MedEvo is a **simulated scientific ecology**. AI agents do real research over real
 data and literature; their work accumulates into the corpus a guideline is
-synthesized from; and we watch whether the guideline **drifts** — and whether a
-pre-execution provenance gate (**CIVER**) holds it on the trajectory the real
-evidence supports.
+synthesized from; and we watch whether the guideline **drifts** — and whether
+CIVER/BRIM process governance keeps invalid research processes from becoming
+warranted evidence.
 
 ---
 
@@ -27,10 +27,10 @@ flowchart TD
     S1["① INPUT — a guideline becomes atomic claims<br/>(each: direction + strength)"]
     S2["② ADVANCE to simulated era T<br/>PubMed / data date-cut to year T"]
     S3["③ TIER 1 · research agents produce studies<br/>Group A on real data · Group B on real literature"]
-    S4{"④ TIER 2 · CIVER gate<br/>provenance · scope · chain"}
+    S4{"④ TIER 2 · CIVER/BRIM<br/>plan/PIR · monitor · ECW"}
     S6["⑤ TIER 3 · accumulating corpus<br/>free = everything · constrained = warranted only"]
     S7["⑥ TIER 4 · SR/MA synthesis → guideline<br/>(direction + GRADE-style strength)"]
-    S8["⑦ COMPARE free vs constrained vs C0<br/>+ sealed replay"]
+    S8["⑦ COMPARE natural all-output vs ECW-compliant<br/>+ sealed replay"]
     S1 --> S2 --> S3 --> S4
     S4 -->|warrant issued| S6
     S4 -.->|refused — free keeps it anyway| S6

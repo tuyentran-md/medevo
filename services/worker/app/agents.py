@@ -77,8 +77,8 @@ class ResearchAgent:
     and forbids filling gaps from prior/parametric knowledge; if the abstracts
     don't support a conclusion the model must say so. The derived ``provenance``
     label is GROUND-TRUTH used ONLY for scoring (calibration matrix) — it never
-    reaches the gate (``admit_evidence_unit`` re-derives resolvability/scope
-    blind, SPEC §8.3).
+    reaches process validation, which reads the plan/PIR and BRIM deviations
+    blind to harness labels (SPEC §8.3).
 
     ``invoke_model`` routes the call through the run's telemetry-wrapped client so
     a real run shows ~one research call per study attempt; ``llm`` is a fallback
@@ -274,6 +274,7 @@ class ResearchAgent:
             catalog_by_pmid=catalog_by_pmid,
         )
         study.plan_id = plan.plan_id
+        study.research_plan = plan.model_copy(deep=True)
         study.output_hash = _study_hash(study)
         return study
 

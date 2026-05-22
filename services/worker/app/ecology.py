@@ -322,7 +322,7 @@ def _study_is_temporally_consistent(study: "Study", simulated_year: int) -> bool
     meaning the agent used evidence that did not yet exist. Only enforced for
     absolute-year (≥ 1900) retro runs; forward-simulation relative years
     (< 1900) always pass since we can't flag future data in a future scenario.
-    Distinct from the CIVER provenance gate (constrained only).
+    Distinct from CIVER/BRIM process validation.
     """
     if simulated_year < 1900:
         return True  # forward-simulation: no temporal constraint applicable
@@ -342,6 +342,8 @@ class ResearchOutcome:
 
     study: Study | None
     catalog: list[PubMedRecord]
+    plan: ResearchPlan | None = None
+    design_admitted: bool | None = None
     design_refused: bool = False
     design_reasons: list[str] = field(default_factory=list)
     execution_deviated: bool = False
@@ -353,26 +355,87 @@ def _free_research_batch(
     research_agent: ResearchAgent,
     microdata_agent: MicrodataAgent,
     claim: ClaimSeed,
+    claim_graph: ClaimGraph,
     year: int,
     telemetry: CallTelemetry,
 ) -> list[ResearchOutcome]:
-    """FREE arm: each study = ONE merged research call (design+execute+conclude)."""
+    """FREE/natural arm: plan -> execute, but CIVER/BRIM are observational only.
+
+    This keeps a process trace for shadow CIVER/BRIM. The free arm does not block
+    invalid plans; it records whether the plan would have passed and lets the
+    agent execute anyway so the same natural corpus can be post-hoc evaluated.
+    """
     outcomes: list[ResearchOutcome] = []
     for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
         if replicate == 0 and _use_microdata_group(claim=claim, year=year):
             study, catalog = microdata_agent.run(
                 claim_id=claim.claim_id, claim_text=claim.text, simulated_year=year
             )
-            outcomes.append(ResearchOutcome(study=study, catalog=catalog))
+            outcomes.append(
+                ResearchOutcome(
+                    study=study,
+                    catalog=catalog,
+                    plan=study.research_plan,
+                    design_admitted=True,
+                    design_reasons=["Group-A microdata plan observed; no active gate in free branch."],
+                )
+            )
             continue
-        study, catalog = _research_study_for_year(
-            research_agent=research_agent,
-            claim=claim,
-            year=year,
-            telemetry=telemetry,
-            replicate=replicate,
+        try:
+            plan, catalog = research_agent.run_design(
+                claim_id=claim.claim_id,
+                claim_text=claim.text,
+                simulated_year=year,
+                max_pubmed_year=pubmed_cutoff_year(year),
+                replicate=replicate,
+            )
+            admitted, reasons = admit_research_plan(
+                plan=plan,
+                claim_graph=claim_graph,
+                reachable_lookup=_reachable_lookup_from_catalog(catalog),
+            )
+            study = research_agent.run_execute(
+                plan=plan, catalog=catalog, claim_text=claim.text, replicate=replicate
+            )
+        except Exception as exc:
+            if telemetry.degradation_reason is None:
+                telemetry.degradation_reason = (
+                    f"free-process/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
+                )
+            study = Study(
+                id=f"{claim.claim_id}-study-{year}-r{replicate}-process-error",
+                claim_id=claim.claim_id,
+                year=year,
+                direction="NEUTRAL",
+                quality=0.0,
+                provenance="UNGROUNDED",
+                pmids=[],
+                numeric=False,
+                rationale=f"Natural research process failed for cutoff {pubmed_cutoff_year(year)}.",
+            )
+            study.output_hash = _study_output_hash(study)
+            outcomes.append(
+                ResearchOutcome(
+                    study=study,
+                    catalog=[],
+                    plan=None,
+                    design_admitted=False,
+                    design_reasons=[f"Natural research process failed: {type(exc).__name__}: {exc}"],
+                )
+            )
+            continue
+        deviations = _plan_execution_deviations(plan=plan, study=study)
+        outcomes.append(
+            ResearchOutcome(
+                study=study,
+                catalog=catalog,
+                plan=plan,
+                design_admitted=admitted,
+                design_reasons=reasons,
+                execution_deviated=bool(deviations),
+                deviation_note="; ".join(deviations),
+            )
         )
-        outcomes.append(ResearchOutcome(study=study, catalog=catalog))
     return outcomes
 
 
@@ -450,26 +513,30 @@ def _constrained_research_batch(
         # beyond the registered plan. Made visible; the release gate / scope clause
         # may also catch gross over-reach (do not double-revoke here).
         committed = set(plan.committed_pmids)
-        out_of_plan = [pmid for pmid in study.pmids if pmid not in committed]
-        scope_over_plan = study.claimed_scope.exceeds(plan.claimed_scope, tolerance=0)
-        deviated = bool(out_of_plan) or scope_over_plan
-        note = ""
-        if deviated:
-            parts = []
-            if out_of_plan:
-                parts.append(f"cited outside committed plan: {', '.join(out_of_plan)}")
-            if scope_over_plan:
-                parts.append("execution scope exceeds the registered plan scope")
-            note = "; ".join(parts)
+        deviations = _plan_execution_deviations(plan=plan, study=study)
         outcomes.append(
             ResearchOutcome(
                 study=study,
                 catalog=catalog,
-                execution_deviated=deviated,
-                deviation_note=note,
+                plan=plan,
+                design_admitted=True,
+                design_reasons=reasons,
+                execution_deviated=bool(deviations),
+                deviation_note="; ".join(deviations),
             )
         )
     return outcomes
+
+
+def _plan_execution_deviations(*, plan: ResearchPlan, study: Study) -> list[str]:
+    committed = set(plan.committed_pmids)
+    out_of_plan = [pmid for pmid in study.pmids if pmid not in committed]
+    deviations: list[str] = []
+    if out_of_plan:
+        deviations.append(f"cited outside committed plan: {', '.join(out_of_plan)}")
+    if study.claimed_scope.exceeds(plan.claimed_scope, tolerance=0):
+        deviations.append("execution scope exceeds the registered plan scope")
+    return deviations
 
 
 def record_transition(
@@ -535,8 +602,8 @@ def admit_research_plan(
         scope (same Article I scope clause, but applied before execution).
 
     A refused plan never executes; no study enters the constrained corpus. This is
-    the warrant-to-EXECUTE — distinct from the post-execution ``admit_evidence_unit``
-    warrant-to-RELEASE.
+    the warrant-to-EXECUTE. Final release is decided by BRIM/process-integrity
+    scoring over the stored plan/execution trace.
 
     BLINDNESS (SPEC §8.3): this reads ONLY the plan's structure, its committed ids,
     its claimed scope, the claim graph, and the catalog. It accepts NO field that
@@ -1191,7 +1258,7 @@ def run_ecology(
     lineage_records: list[LineageRecord] = []
     # (true_provenance, gate_admitted) pairs for the constrained branch only.
     # true_provenance is read from the study for SCORING ONLY and is never passed
-    # to admit_evidence_unit (gate blindness, SPEC §8.3).
+    # to process validation (gate blindness, SPEC §8.3).
     calibration_observations: list[tuple[str, bool]] = []
     evidence_units: list[EvidenceUnit] = []
     warrants: list[ExecutionWarrant] = []
@@ -1221,10 +1288,10 @@ def run_ecology(
                 warranted_ids: set[str] = set()
                 blocked_this_era = 0
 
-                # Tier-1 is now ASYMMETRIC by arm (the pre-execution gate REQUIRES a
-                # separable design step). FREE = one merged research call per study;
-                # CONSTRAINED = DESIGN call -> pre-execution CIVER gate -> EXECUTE
-                # call, so a refused design never executes and yields no study.
+                # Both arms record plan->execution traces. FREE/natural does not
+                # enforce them (shadow CIVER/BRIM replays them post hoc);
+                # CONSTRAINED enforces CIVER before execution and BRIM before
+                # release, so a refused design never executes and yields no study.
                 # NOTE: per-arm calls CAN be parallelized later (independent per
                 # claim/replicate); not implemented now to keep determinism + the
                 # telemetry call-count contract obvious.
@@ -1233,6 +1300,7 @@ def run_ecology(
                         research_agent=research_agent,
                         microdata_agent=microdata_agent,
                         claim=claim,
+                        claim_graph=graph_lookup[claim.claim_id],
                         year=year,
                         telemetry=telemetry,
                     )
@@ -1335,8 +1403,34 @@ def run_ecology(
                         )
                         blocked_this_era += 1
                         continue
-                    # Article II — execution deviation from the registered plan
-                    # (WARN, constrained only): made visible, does not block.
+                    if outcome.plan is not None:
+                        record_transition(
+                            audit_trail=audit_trail,
+                            audit_counters=audit_counters,
+                            last_hashes=last_hashes,
+                            run_id=run_id or "preview-run",
+                            claim_id=claim.claim_id,
+                            branch=branch,
+                            year=year,
+                            phase="design",
+                            event_type=(
+                                "design-admitted"
+                                if outcome.design_admitted
+                                else "design-observed-invalid"
+                            ),
+                            severity=(
+                                "info"
+                                if outcome.design_admitted or branch == "free"
+                                else "block"
+                            ),
+                            integrity_score_before=1.0,
+                            integrity_score_after=1.0 if outcome.design_admitted else 0.0,
+                            message=" ".join(outcome.design_reasons)
+                            or "Research plan recorded for CIVER/BRIM process validation.",
+                        )
+                    # Article II / BRIM — execution deviation from the registered
+                    # plan. It is observational in free/shadow mode and part of
+                    # the final release score in constrained/active mode.
                     if outcome.execution_deviated:
                         record_transition(
                             audit_trail=audit_trail,
@@ -1379,57 +1473,39 @@ def run_ecology(
                             f"with cutoff {pubmed_cutoff_year(year)}."
                         ),
                     )
-                    verdict, warrant = admit_evidence_unit(
-                        run_id=run_id or "preview-run",
-                        claim=claim,
-                        claim_graph=graph_lookup[claim.claim_id],
-                        branch=branch,
-                        year=year,
-                        unit=investigator,
-                        reachable_lookup=reachable_lookup,
-                        warrants_by_output=warrants_by_output,
-                        threshold=RELEASE_THRESHOLD,
-                    )
-                    if warrant is not None:
+                    if branch == "constrained":
+                        from app.process_gate import issue_process_warrant
+
+                        assessment, warrant = issue_process_warrant(
+                            run_id=run_id or "preview-run",
+                            branch=branch,
+                            year=year,
+                            study=branch_study,
+                            claim_graph=graph_lookup[claim.claim_id],
+                            threshold=RELEASE_THRESHOLD,
+                        )
+                        verdict = CiverVerdict(
+                            node_id=branch_study.id,
+                            passed=assessment.passed,
+                            reasons=assessment.reasons,
+                            certificate_id=warrant.id if assessment.passed else None,
+                        )
                         warrants_by_output[warrant.output_id] = warrant
                         warrants.append(warrant)
-                    if branch == "constrained":
-                        # Score the gate's Article-I verdict against TRUE
-                        # provenance. branch_study.provenance is the harness's
-                        # ground truth, read here ONLY for calibration — the gate
-                        # above received no such field.
+                        # Score the process gate against TRUE provenance for
+                        # calibration only; the gate itself read the PIR/plan and
+                        # BRIM deviations, not this label.
                         calibration_observations.append(
-                            (branch_study.provenance, verdict.passed)
+                            (branch_study.provenance, assessment.passed)
                         )
-                    record_transition(
-                        audit_trail=audit_trail,
-                        audit_counters=audit_counters,
-                        last_hashes=last_hashes,
-                        run_id=run_id or "preview-run",
-                        claim_id=claim.claim_id,
-                        branch=branch,
-                        year=year,
-                        phase="admission",
-                        event_type="article-i-issued" if verdict.passed else "article-i-refused",
-                        severity="info" if verdict.passed else "block",
-                        integrity_score_before=1.0,
-                        integrity_score_after=1.0 if verdict.passed or branch == "free" else 0.0,
-                        message=" ".join(verdict.reasons),
-                    )
-
-                    warrant, released, release_message = _apply_release_gate(
-                        branch=branch,
-                        warrant=warrant,
-                        claim_events=[
-                            event
-                            for event in audit_trail
-                            if event.claim_id == claim.claim_id and event.branch == branch
-                        ],
-                        scientific=llm.scientific,
-                        threshold=RELEASE_THRESHOLD,
-                    )
-                    if warrant is not None:
-                        warrants_by_output[warrant.output_id] = warrant
+                    else:
+                        verdict = CiverVerdict(
+                            node_id=branch_study.id,
+                            passed=True,
+                            reasons=["Free branch: CIVER/BRIM observed post hoc, not enforced."],
+                            certificate_id=None,
+                        )
+                        warrant = None
                     record_transition(
                         audit_trail=audit_trail,
                         audit_counters=audit_counters,
@@ -1439,13 +1515,18 @@ def run_ecology(
                         branch=branch,
                         year=year,
                         phase="release",
-                        event_type="release-issued" if released else "release-revoked",
-                        severity="info" if released else "block",
-                        integrity_score_before=1.0 if verdict.passed or branch == "free" else 0.0,
-                        integrity_score_after=(
-                            warrant.integrity_score if warrant is not None else 1.0
-                        ),
-                        message=release_message,
+                        event_type="process-issued" if verdict.passed else "process-refused",
+                        severity="info" if verdict.passed else "block",
+                        integrity_score_before=1.0,
+                        integrity_score_after=1.0 if verdict.passed or branch == "free" else 0.0,
+                        message=" ".join(verdict.reasons),
+                    )
+
+                    released = branch == "free" or (
+                        warrant is not None
+                        and warrant.status == "ISSUED"
+                        and warrant.issued
+                        and warrant.integrity_score >= warrant.threshold
                     )
                     if branch == "free":
                         if tier3_store.insert(branch=branch, study=branch_study):

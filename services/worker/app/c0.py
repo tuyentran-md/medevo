@@ -1,10 +1,9 @@
-"""Slice C — C0 gold-standard reference, two-phase C0-displacement scoring, controls.
+"""Legacy Slice C — C0 reference diagnostics and C0-displacement scoring.
 
-SPEC v3 §5 §6 §7. The C0 reference run is the *no-contamination counterfactual*
-(failure_rate ~ 0): the trajectory the ecology converges to when the agents never
-emit ungrounded/over-reaching studies. It is the GOLD STANDARD for CIVER value —
-NOT real-world truth. CIVER value is scored as the difference in displacement from
-C0 between the free (no gate) and constrained (CIVER-gated) branches.
+This module is retained for historical diagnostics and regression tests. After
+the 2026-05-22 process-CIVER/BRIM pivot, C0/no-self-drift is no longer treated as
+the scientific gold standard. Current proof uses natural drift plus post-hoc and
+active CIVER/BRIM process validation.
 
 This module reuses the v2-era harness primitives (`bootstrap_ci`, the
 direction/level lattice, `_latest_by_claim`, `replay_counts`) rather than
@@ -235,13 +234,11 @@ def run_c0_reference(
     client: LLMClient | None = None,
     pubmed_client: PubMedClient | DeterministicPubMedClient | None = None,
 ) -> tuple[ArtifactBundle, dict[str, Any]]:
-    """Run the ecology as the C0 no-emergent-contamination counterfactual.
+    """Run the legacy C0 no-emergent-contamination counterfactual.
 
-    The GOLD STANDARD for CIVER value (SPEC §5): same ecology, same seed, but the
-    research agents NEVER over-reach (GroundedOnlyClient pins every research
-    emission to its source scope). NOT real-world truth. The supplied/resolved
-    client is wrapped so the contamination-free property holds by construction
-    rather than via an (now inert) failure-rate knob.
+    Kept as an engineering diagnostic, not a current scientific pass gate. The
+    supplied/resolved client is wrapped so the contamination-free property holds
+    by construction rather than via an inert failure-rate knob.
     """
     from app.simulator import resolve_client, simulate_run  # local import to avoid cycle
 
