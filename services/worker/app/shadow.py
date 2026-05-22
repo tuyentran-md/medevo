@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import random
 from statistics import fmean
 from typing import Any, Sequence
 
 from app.c0 import GroundTruth, load_ground_truth
 from app.ecology import RELEASE_THRESHOLD
 from app.models import ArtifactBundle, ClaimGraph, GuidelineClaim, Study
-from app.process_gate import assess_research_process
+from app.process_gate import assess_output_level_fallback, assess_research_process
 from app.synthesis import synthesize_guideline_claim
 
 
@@ -47,20 +48,59 @@ def evaluate_shadow_civer(
     warranted_distance = _distance_to_truth(warranted_guidelines, latest_truth)
     drift = _natural_drift(all_guidelines, truth)
 
+    # Volume-matched null for E3 (Paper 3 rigor): without this, a smaller
+    # warranted corpus could look closer to truth just by lucky pooling. The
+    # null samples a same-size random subset of the FULL natural corpus and
+    # reports the bootstrap mean distance + 95% CI. CIVER's delta is only
+    # discriminative if it beats this null.
+    warranted_ids_set = passed_ids
+    volume_null = _volume_matched_null_for_e3(
+        studies=studies,
+        warranted_count=len(warranted_ids_set),
+        truth_latest=latest_truth,
+        iterations=500,
+        seed=0,
+    )
+
+    mode_breakdown = {
+        "process": sum(1 for v in verdicts if v.get("analysis_mode") == "process"),
+        "output_fallback": sum(
+            1 for v in verdicts if v.get("analysis_mode") == "output_fallback"
+        ),
+    }
+    fallback_warning = None
+    if mode_breakdown["output_fallback"] > 0:
+        fallback_warning = (
+            "OUTPUT-FALLBACK LANE ACTIVE — one or more studies in this bundle "
+            "lacked a ResearchPlan trace (legacy bundle). Their pass/fail "
+            "verdicts come from output-level scaffolding checks (citation "
+            "resolvability + scope vs source), NOT the process-CIVER claim. "
+            "Treat E2/E3 numbers from output-fallback verdicts as MedEvo "
+            "environment quality, not CIVER mechanism evidence."
+        )
+
     return {
         "mode": "shadow-civer-brim",
         "source_branch": source_branch,
         "study_count": len(studies),
+        "analysis_mode_breakdown": mode_breakdown,
+        "fallback_warning": fallback_warning,
         "verdict_counts": _verdict_counts(verdicts),
         "calibration_matrix": _calibration_matrix(verdicts),
         "endpoint_1_natural_drift": drift,
-        "endpoint_2_process_validation": _process_validation_summary(studies, verdicts),
-        "endpoint_2_warrant_enrichment": _process_validation_summary(studies, verdicts),
+        "endpoint_2_process_validation": _process_validation_summary(studies, verdicts, truth),
+        "endpoint_2_warrant_enrichment": _process_validation_summary(studies, verdicts, truth),
+        "endpoint_2_per_claim": _per_claim_warrant_enrichment(studies, verdicts, truth),
         "endpoint_3_guideline_drift_reduction": {
             "all_to_truth": all_distance,
             "warranted_to_truth": warranted_distance,
             "delta": round(all_distance - warranted_distance, 4),
             "interprets_positive_delta_as": "warranted corpus is closer to external truth than all-output corpus",
+            "volume_matched_null": volume_null,
+            "civer_beats_volume_matched": (
+                volume_null is not None
+                and warranted_distance < volume_null["ci_low"]
+            ),
         },
         "all_guideline_latest": _latest_by_claim(all_guidelines),
         "warranted_guideline_latest": _latest_by_claim(warranted_guidelines),
@@ -72,6 +112,35 @@ def evaluate_shadow_civer(
 
 def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]:
     graph = graph or ClaimGraph(claim_id=study.claim_id, claim_text="", nodes=[], edges=[])
+    if study.research_plan is None:
+        # OUTPUT-FALLBACK LANE (NOT process-CIVER): the bundle predates free-arm
+        # plan recording (e.g. Run 4 on main@525782a). Verdict comes from
+        # output-level scaffolding checks (SPEC v3 §0a) so the analyzer can
+        # still report a useful pass/fail split; the verdict is explicitly
+        # tagged `analysis_mode="output_fallback"` and `civer_passed=False` so
+        # no downstream consumer can mistake it for a CIVER process claim.
+        fb = assess_output_level_fallback(study=study)
+        return {
+            "study_id": study.id,
+            "claim_id": study.claim_id,
+            "year": study.year,
+            "analysis_mode": "output_fallback",
+            "passed": fb.passed,
+            "civer_passed": False,
+            "brim_passed": False,
+            "output_check_passed": fb.passed,
+            "output_cites_resolve": fb.cites_resolve,
+            "output_scope_within_source": fb.scope_within_source,
+            "reasons": list(fb.reasons),
+            "execution_deviations": [],
+            "integrity_score": 1.0 if fb.passed else 0.0,
+            "true_provenance_for_calibration": study.provenance,
+            "failure_mode_for_calibration": study.failure_mode,
+            "plan_recorded": False,
+            "committed_pmids": [],
+            "pmids": list(study.pmids),
+            "catalog_pmids": list(study.catalog_pmids),
+        }
     assessment = assess_research_process(
         study=study,
         claim_graph=graph,
@@ -81,6 +150,7 @@ def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]
         "study_id": study.id,
         "claim_id": study.claim_id,
         "year": study.year,
+        "analysis_mode": "process",
         "passed": assessment.passed,
         "civer_passed": assessment.civer_passed,
         "brim_passed": assessment.brim_passed,
@@ -89,10 +159,8 @@ def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]
         "integrity_score": assessment.integrity_score,
         "true_provenance_for_calibration": study.provenance,
         "failure_mode_for_calibration": study.failure_mode,
-        "plan_recorded": study.research_plan is not None,
-        "committed_pmids": list(study.research_plan.committed_pmids)
-        if study.research_plan is not None
-        else [],
+        "plan_recorded": True,
+        "committed_pmids": list(study.research_plan.committed_pmids),
         "pmids": list(study.pmids),
         "catalog_pmids": list(study.catalog_pmids),
     }
@@ -218,14 +286,17 @@ def _calibration_matrix(verdicts: Sequence[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _process_validation_summary(
-    studies: Sequence[Study], verdicts: Sequence[dict[str, Any]]
+    studies: Sequence[Study],
+    verdicts: Sequence[dict[str, Any]],
+    truth: GroundTruth | None = None,
 ) -> dict[str, Any]:
     passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
     passed = [study for study in studies if study.id in passed_ids]
     failed = [study for study in studies if study.id not in passed_ids]
+    truth_lookup = _truth_direction_lookup(truth)
     return {
-        "passed": _study_quality_summary(passed),
-        "failed": _study_quality_summary(failed),
+        "passed": _study_quality_summary(passed, truth_lookup),
+        "failed": _study_quality_summary(failed, truth_lookup),
         "process_counts": {
             "civer_failed": sum(1 for row in verdicts if not row["civer_passed"]),
             "brim_failed": sum(1 for row in verdicts if not row["brim_passed"]),
@@ -233,14 +304,57 @@ def _process_validation_summary(
             "execution_deviated": sum(1 for row in verdicts if row["execution_deviations"]),
         },
         "interprets_as": (
-            "Shadow CIVER+BRIM has signal when failed studies have invalid PIR/plans "
-            "or BRIM plan-to-execution deviations, and when warranted-only synthesis "
-            "changes downstream drift."
+            "E2/Warrant enrichment has signal when the PASSED cohort has lower "
+            "ungrounded / no-cite / wrong-direction rates than the FAILED cohort. "
+            "scope_overreach_rate paradox alert: a no-cite study cannot over-reach "
+            "scope (no source to over-reach), so a failed cohort dominated by "
+            "no-cite studies will show LOWER scope_overreach_rate than passed — "
+            "interpret scope_overreach jointly with no_cite_rate, not in isolation."
         ),
     }
 
 
-def _study_quality_summary(studies: Sequence[Study]) -> dict[str, Any]:
+def _per_claim_warrant_enrichment(
+    studies: Sequence[Study],
+    verdicts: Sequence[dict[str, Any]],
+    truth: GroundTruth | None = None,
+) -> dict[str, dict[str, Any]]:
+    """SPEC §E2 per-claim breakdown. A single aggregate hides claim-specific
+    discrimination (e.g. CIVER may catch alcohol drift but miss obesity-paradox
+    over-reach). Each claim reports passed/failed cohort metrics so reviewers
+    see which claims the gate works for."""
+    passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
+    truth_lookup = _truth_direction_lookup(truth)
+    by_claim: dict[str, list[Study]] = {}
+    for study in studies:
+        by_claim.setdefault(study.claim_id, []).append(study)
+    out: dict[str, dict[str, Any]] = {}
+    for claim_id, claim_studies in sorted(by_claim.items()):
+        passed = [s for s in claim_studies if s.id in passed_ids]
+        failed = [s for s in claim_studies if s.id not in passed_ids]
+        out[claim_id] = {
+            "passed": _study_quality_summary(passed, truth_lookup),
+            "failed": _study_quality_summary(failed, truth_lookup),
+        }
+    return out
+
+
+def _truth_direction_lookup(truth: GroundTruth | None) -> dict[tuple[str, int], str]:
+    """(claim_id, year) -> truth direction. Used to score study direction against
+    the labelled trajectory for the per-cohort wrong-direction-rate metric."""
+    if truth is None:
+        return {}
+    out: dict[tuple[str, int], str] = {}
+    for claim_id, series in truth.trajectory.items():
+        for point in series:
+            out[(claim_id, point.year)] = point.direction
+    return out
+
+
+def _study_quality_summary(
+    studies: Sequence[Study],
+    truth_lookup: dict[tuple[str, int], str] | None = None,
+) -> dict[str, Any]:
     total = len(studies)
     if not total:
         return {
@@ -248,8 +362,19 @@ def _study_quality_summary(studies: Sequence[Study]) -> dict[str, Any]:
             "ungrounded_rate": 0.0,
             "scope_overreach_rate": 0.0,
             "no_cite_rate": 0.0,
+            "wrong_direction_vs_truth_rate": 0.0,
             "mean_quality": 0.0,
         }
+    truth_lookup = truth_lookup or {}
+    wrong_dir = 0
+    scored = 0
+    for study in studies:
+        truth_dir = truth_lookup.get((study.claim_id, study.year))
+        if truth_dir is None:
+            continue
+        scored += 1
+        if study.direction != truth_dir:
+            wrong_dir += 1
     return {
         "count": total,
         "ungrounded_rate": round(
@@ -259,5 +384,59 @@ def _study_quality_summary(studies: Sequence[Study]) -> dict[str, Any]:
             sum(1 for study in studies if study.failure_mode == "scope-overreach") / total, 4
         ),
         "no_cite_rate": round(sum(1 for study in studies if not study.pmids) / total, 4),
+        "wrong_direction_vs_truth_rate": (
+            round(wrong_dir / scored, 4) if scored else 0.0
+        ),
         "mean_quality": round(fmean(study.quality for study in studies), 4),
+    }
+
+
+def _volume_matched_null_for_e3(
+    *,
+    studies: Sequence[Study],
+    warranted_count: int,
+    truth_latest: dict[str, GuidelineClaim],
+    iterations: int,
+    seed: int,
+) -> dict[str, Any] | None:
+    """E3 volume-matched null distribution.
+
+    Without this, "warranted corpus closer to truth" could be smaller-pool luck.
+    The null samples ``warranted_count`` studies uniformly from the full natural
+    corpus, re-synthesizes the guideline trajectory from that subsample, and
+    measures distance to the latest truth. Returns the bootstrap distribution's
+    mean + 95% CI of distance. CIVER is discriminative only when warranted's
+    distance is strictly below the null's lower CI bound.
+    """
+    if warranted_count <= 0 or warranted_count >= len(studies):
+        return None
+    rng = random.Random(seed)
+    distances: list[float] = []
+    studies_list = list(studies)
+    for _ in range(max(iterations, 1)):
+        sample_ids = set()
+        # Sampling without replacement, matched to warranted count.
+        indices = list(range(len(studies_list)))
+        rng.shuffle(indices)
+        for idx in indices[:warranted_count]:
+            sample_ids.add(studies_list[idx].id)
+        sampled = [s for s in studies_list if s.id in sample_ids]
+        guidelines = _resynthesize(sampled)
+        distances.append(_distance_to_truth(guidelines, truth_latest))
+    distances.sort()
+    n = len(distances)
+    low_idx = int(0.025 * (n - 1))
+    high_idx = int(0.975 * (n - 1))
+    return {
+        "iterations": iterations,
+        "sample_size": warranted_count,
+        "mean": round(fmean(distances), 4),
+        "ci_low": round(distances[low_idx], 4),
+        "ci_high": round(distances[high_idx], 4),
+        "interpretation": (
+            "Random subsamples of size=warranted_count drawn from the full "
+            "natural corpus. CIVER's warranted_to_truth must fall strictly "
+            "below ci_low to claim selection (not smaller-pool luck) is the "
+            "mechanism."
+        ),
     }

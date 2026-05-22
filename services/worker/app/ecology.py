@@ -47,12 +47,12 @@ ANCHORS = [
     "Every year-10/20/30 panel is rendered as one draw from a distribution, never a forecast.",
 ]
 
-CLAIM_LIMIT = 4
+CLAIM_LIMIT = 30
 REAL_SOURCES_PER_CLAIM = 4
 # Tier-1 study replicates emitted per (claim, era). SPEC §3/§12: the phenomenon
 # shows at ~tens of studies, and a real SR/MA needs a screenable corpus, not one
-# study per claim. With CLAIM_LIMIT=4 claims and len(YEARS)=3 eras, k=2 yields
-# up to 4 x 3 x 2 = 24 studies per arm across the run; shorter inputs still emit
+# study per claim. With CLAIM_LIMIT=30 claims and len(YEARS)=3 eras, k=2 yields
+# up to 30 x 3 x 2 = 180 studies per arm across the run; shorter inputs still emit
 # fewer claims. Declared as one named constant, never a magic literal in the loop.
 STUDIES_PER_CLAIM_PER_ERA = 2
 # DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
@@ -65,6 +65,13 @@ RELEASE_THRESHOLD = 0.60
 # Declared here as the single source for the predicate (audit §8.2: no magic
 # literal buried in logic). Paired with agents.SCOPE_INFLATION_MIN/MAX.
 SCOPE_TOLERANCE_YEARS = 2
+# Repair-loop budget (SPEC Endpoint 4 — refuse+repair, not kill-only). After a
+# pre-execution refusal, the constrained agent gets this many revise attempts
+# within the SAME retrieved catalog (no re-retrieval — cost + determinism). A
+# successful revise emits a `design-repaired` audit event; exhausting all
+# attempts emits `design-abstain-persistent`. Free arm is observational and
+# does not enter this loop.
+MAX_PLAN_REVISIONS = 2
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
 # NHANES 2005-2006 data ends in 2006; do not use for simulated years before that.
@@ -334,10 +341,15 @@ class ResearchOutcome:
     """One Tier-1 attempt's result for a SINGLE branch.
 
     ``study`` is None ONLY for a constrained attempt whose DESIGN was refused by the
-    pre-execution gate — that attempt never executed, so no Study exists. ``catalog``
-    is the source universe the gate resolves cites against. ``design_refused`` /
+    pre-execution gate and could not be repaired within ``MAX_PLAN_REVISIONS`` —
+    that attempt never executed, so no Study exists. ``catalog`` is the source
+    universe the gate resolves cites against. ``design_refused`` /
     ``design_reasons`` carry the pre-execution audit detail; ``execution_deviated``
     / ``deviation_note`` carry the Article-II plan→execution deviation (WARN).
+    ``revision_attempts`` counts how many revise calls were issued (0 = initial
+    plan admitted); ``revision_history`` records the per-attempt admit verdict +
+    reasons so post-hoc analysis can separate friction-cost from kill-cost.
+    ``persistent_abstain`` is True only when all revisions exhausted without admit.
     """
 
     study: Study | None
@@ -348,6 +360,9 @@ class ResearchOutcome:
     design_reasons: list[str] = field(default_factory=list)
     execution_deviated: bool = False
     deviation_note: str = ""
+    revision_attempts: int = 0
+    revision_history: list[dict] = field(default_factory=list)
+    persistent_abstain: bool = False
 
 
 def _free_research_batch(
@@ -448,14 +463,17 @@ def _constrained_research_batch(
     year: int,
     telemetry: CallTelemetry,
 ) -> list[ResearchOutcome]:
-    """CONSTRAINED arm: DESIGN call → pre-execution CIVER gate → EXECUTE call.
+    """CONSTRAINED arm: DESIGN → pre-execution CIVER gate → (REVISE×N) → EXECUTE.
 
     The asymmetry is intentional (the gate REQUIRES a separable design step): the
-    agent pre-registers a plan, the gate admits/refuses it BEFORE any execution,
-    and only an admitted plan is executed. A refused design yields no study (it
-    never ran). Microdata (Group A) is effectively pre-registered already — the
-    dataset-slice id is the committed source and the analyzed cohort is the scope —
-    so it stays a single call on both arms (design/execute split there would be
+    agent pre-registers a plan, the gate admits/refuses it BEFORE any execution.
+    Refused plans enter a REPAIR loop (Endpoint 4 — refuse+repair, not kill-only):
+    the agent gets the structured refusal reasons and revises within the same
+    catalog. After ``MAX_PLAN_REVISIONS`` exhausted refusals the attempt
+    persistently abstains; a successful early revise emits ``design-repaired``.
+    Microdata (Group A) is effectively pre-registered already — the dataset-slice
+    id is the committed source and the analyzed cohort is the scope — so it
+    stays a single call on both arms (design/execute split there would be
     gold-plating).
     """
     outcomes: list[ResearchOutcome] = []
@@ -485,6 +503,7 @@ def _constrained_research_batch(
                     catalog=[],
                     design_refused=True,
                     design_reasons=[f"DESIGN retrieval failed: {type(exc).__name__}: {exc}"],
+                    persistent_abstain=True,
                 )
             )
             continue
@@ -493,14 +512,63 @@ def _constrained_research_batch(
         admitted, reasons = admit_research_plan(
             plan=plan, claim_graph=claim_graph, reachable_lookup=reachable_lookup
         )
+        revision_history: list[dict] = [
+            {
+                "attempt": 0,
+                "plan_id": plan.plan_id,
+                "admitted": admitted,
+                "reasons": list(reasons),
+            }
+        ]
+        revision_attempts = 0
+        while not admitted and revision_attempts < MAX_PLAN_REVISIONS:
+            revision_attempts += 1
+            try:
+                plan = research_agent.run_revise(
+                    prior_plan=plan,
+                    refusal_reasons=reasons,
+                    catalog=catalog,
+                    claim_text=claim.text,
+                    revision=revision_attempts,
+                )
+            except Exception as exc:
+                if telemetry.degradation_reason is None:
+                    telemetry.degradation_reason = (
+                        f"revise/{claim.claim_id}/year-{year}/rev{revision_attempts}: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                revision_history.append(
+                    {
+                        "attempt": revision_attempts,
+                        "plan_id": "",
+                        "admitted": False,
+                        "reasons": [f"REVISE call failed: {type(exc).__name__}: {exc}"],
+                    }
+                )
+                break
+            admitted, reasons = admit_research_plan(
+                plan=plan, claim_graph=claim_graph, reachable_lookup=reachable_lookup
+            )
+            revision_history.append(
+                {
+                    "attempt": revision_attempts,
+                    "plan_id": plan.plan_id,
+                    "admitted": admitted,
+                    "reasons": list(reasons),
+                }
+            )
+
         if not admitted:
-            # Plan refused PRE-EXECUTION: the agent does NOT execute; no study.
+            # All revisions exhausted: persistent abstain. No execution, no study.
             outcomes.append(
                 ResearchOutcome(
                     study=None,
                     catalog=catalog,
                     design_refused=True,
                     design_reasons=reasons,
+                    revision_attempts=revision_attempts,
+                    revision_history=revision_history,
+                    persistent_abstain=True,
                 )
             )
             continue
@@ -512,7 +580,6 @@ def _constrained_research_batch(
         # execute step cited a PMID outside the committed set, or widened the scope
         # beyond the registered plan. Made visible; the release gate / scope clause
         # may also catch gross over-reach (do not double-revoke here).
-        committed = set(plan.committed_pmids)
         deviations = _plan_execution_deviations(plan=plan, study=study)
         outcomes.append(
             ResearchOutcome(
@@ -523,20 +590,26 @@ def _constrained_research_batch(
                 design_reasons=reasons,
                 execution_deviated=bool(deviations),
                 deviation_note="; ".join(deviations),
+                revision_attempts=revision_attempts,
+                revision_history=revision_history,
+                persistent_abstain=False,
             )
         )
     return outcomes
 
 
 def _plan_execution_deviations(*, plan: ResearchPlan, study: Study) -> list[str]:
-    committed = set(plan.committed_pmids)
-    out_of_plan = [pmid for pmid in study.pmids if pmid not in committed]
-    deviations: list[str] = []
-    if out_of_plan:
-        deviations.append(f"cited outside committed plan: {', '.join(out_of_plan)}")
-    if study.claimed_scope.exceeds(plan.claimed_scope, tolerance=0):
-        deviations.append("execution scope exceeds the registered plan scope")
-    return deviations
+    """Audit-trail-friendly string view of post-execution violations.
+
+    Delegates to the unified ``process_gate.execution_deviations`` (which now
+    returns severity-tagged ``ProcessViolation`` entries including patent
+    SpC-02) so the audit message reflects every active BRIM + Tier-3 rule
+    without duplicating code. Import is local to avoid a circular module
+    dependency with process_gate.
+    """
+    from app.process_gate import execution_deviations as _exec_dev
+
+    return [violation.message for violation in _exec_dev(plan=plan, study=study)]
 
 
 def record_transition(
@@ -587,28 +660,33 @@ def admit_research_plan(
     plan: "ResearchPlan",
     claim_graph: ClaimGraph,
     reachable_lookup: dict[str, CorpusItem],
-) -> tuple[bool, list[str]]:
+) -> "PlanAdmissionResult":
     """PRE-EXECUTION CIVER gate (CONSTITUTION Article I) on a constrained-arm
-    DESIGN plan, BEFORE the agent executes. Returns (admitted, reasons).
+    DESIGN plan, BEFORE the agent executes.
 
-    Admits the plan to execute ONLY if all hold:
-      * the claim graph carries the required Q→M→E→A→C nodes (method design is
-        present and coherent with the question);
-      * the plan emitted a parseable method (an incoherent / missing design fails);
-      * the plan COMMITS to at least one source, and every committed source
-        RESOLVES in the retrieved catalog (no fabricated commitment);
-      * the committed scope is bounded (non-degenerate population/timeframe band);
-      * the committed scope does not exceed the committed sources' authoritative
-        scope (same Article I scope clause, but applied before execution).
+    Returns a PlanAdmissionResult (iterable as ``(admitted, reasons)`` for
+    backward-compat with old callers). The result also carries per-severity
+    BLOCK/WARN lists so post-execution scoring (process_gate) can apply patent
+    GC-01 WARN-accumulation escalation.
 
-    A refused plan never executes; no study enters the constrained corpus. This is
-    the warrant-to-EXECUTE. Final release is decided by BRIM/process-integrity
-    scoring over the stored plan/execution trace.
+    Admits the plan to execute ONLY if every BLOCK-level constitutional rule
+    holds (no BLOCK violation present):
+      * SC-01..05 / GC-02 — Q→M→E→A→C node chain present;
+      * Method design parseable + coherent;
+      * Article I — every committed source resolves in the catalog;
+      * SpC-01 / SpC-03 — committed scope within source scope and bounded;
+      * IC-01 (patent §IC-01) — every ANALYSIS node has an ANALYZES edge to
+        an EVIDENCE node (no claim built on a half-connected analysis);
+      * GC-02 — there is a full QUESTION→…→CLAIM path through the graph.
 
-    BLINDNESS (SPEC §8.3): this reads ONLY the plan's structure, its committed ids,
-    its claimed scope, the claim graph, and the catalog. It accepts NO field that
-    reveals ground-truth provenance/failure_mode — there is none to read yet
-    (results do not exist pre-execution), and the signature must never grow one.
+    WARN-level patent rules (do not block individually; counted toward GC-01
+    in the post-execution release-gate score):
+      * IC-03 — multiple CLAIM nodes share an ANALYSIS parent (structural
+        prerequisite of multi-claim scope conflict).
+
+    BLINDNESS (SPEC §8.3): this reads ONLY the plan's structure, its committed
+    ids, its claimed scope, the claim graph, and the catalog. It accepts NO
+    field that reveals ground-truth provenance/failure_mode.
     """
     required_nodes = {"QUESTION", "METHOD", "EVIDENCE", "ANALYSIS", "CLAIM"}
     graph_complete = required_nodes.issubset({node.node_type for node in claim_graph.nodes})
@@ -629,41 +707,199 @@ def admit_research_plan(
         and not scope.exceeds(item.scope, tolerance=SCOPE_TOLERANCE_YEARS)
         for item in committed_items
     )
+    # Patent IC-01 BLOCK + GC-02: every ANALYSIS node must have at least one
+    # ANALYZES edge to an EVIDENCE node, AND there must exist a full path
+    # QUESTION → … → CLAIM in the graph. Either failing = incomplete analysis
+    # link from CLAIM to underlying evidence.
+    ic01_ok, ic01_reason = _ic01_analysis_links_to_evidence(claim_graph)
+    gc02_ok, gc02_reason = _gc02_full_chain_path_exists(claim_graph)
+
+    # Patent IC-03 WARN: multiple CLAIM nodes sharing an ANALYSIS parent (via
+    # SUPPORTS edges) is the structural prerequisite for multi-claim scope
+    # conflict. Population/scope mismatch is a Tier-3 follow-up; this rule
+    # surfaces the structural risk regardless.
+    ic03_warn_reason = _ic03_multi_claim_scope_conflict(claim_graph)
 
     reasons: list[str] = []
-    reasons.append(
-        "Question→Method→Evidence→Analysis→Claim design chain present."
-        if graph_complete
-        else "Design is missing one or more required constitutional nodes."
+    blocks: list[str] = []
+    warns: list[str] = []
+
+    def _record(passed: bool, ok_msg: str, fail_msg: str, *, severity: str = "block") -> None:
+        if passed:
+            reasons.append(ok_msg)
+            return
+        reasons.append(fail_msg)
+        if severity == "block":
+            blocks.append(fail_msg)
+        else:
+            warns.append(fail_msg)
+
+    _record(
+        graph_complete,
+        "Question→Method→Evidence→Analysis→Claim design chain present.",
+        "Design is missing one or more required constitutional nodes.",
     )
-    reasons.append(
-        "Method design is coherent with the question."
-        if method_coherent
-        else "Method design is incoherent or unparseable (no executable plan)."
+    _record(
+        method_coherent,
+        "Method design is coherent with the question.",
+        "Method design is incoherent or unparseable (no executable plan).",
     )
-    reasons.append(
-        "Every committed source resolves in the retrieved catalog."
-        if committed_resolve
-        else "One or more committed sources do not resolve in the catalog (Article I pre-execution)."
+    _record(
+        committed_resolve,
+        "Every committed source resolves in the retrieved catalog.",
+        "One or more committed sources do not resolve in the catalog (Article I pre-execution).",
     )
-    reasons.append(
-        "Committed scope is bounded."
-        if scope_bounded
-        else "Committed scope is unbounded or degenerate."
+    _record(
+        scope_bounded,
+        "Committed scope is bounded.",
+        "Committed scope is unbounded or degenerate.",
     )
-    reasons.append(
-        "Committed scope is within the committed source evidence."
-        if scope_within_committed_sources
-        else "Committed scope exceeds the committed source evidence (Article I pre-execution scope clause)."
+    _record(
+        scope_within_committed_sources,
+        "Committed scope is within the committed source evidence.",
+        "Committed scope exceeds the committed source evidence (Article I pre-execution scope clause).",
     )
+    _record(
+        ic01_ok,
+        "Patent IC-01: every ANALYSIS node links to EVIDENCE via ANALYZES.",
+        f"Patent IC-01 BLOCK: {ic01_reason}",
+    )
+    _record(
+        gc02_ok,
+        "Patent GC-02: graph carries a full QUESTION→…→CLAIM path.",
+        f"Patent GC-02 BLOCK: {gc02_reason}",
+    )
+    if ic03_warn_reason:
+        warns.append(ic03_warn_reason)
+        reasons.append(f"Patent IC-03 WARN: {ic03_warn_reason}")
+
     admitted = (
         graph_complete
         and method_coherent
         and committed_resolve
         and scope_bounded
         and scope_within_committed_sources
+        and ic01_ok
+        and gc02_ok
     )
-    return admitted, reasons
+    return PlanAdmissionResult(
+        admitted=admitted,
+        reasons=reasons,
+        blocks=blocks,
+        warns=warns,
+    )
+
+
+@dataclass(frozen=True)
+class PlanAdmissionResult:
+    """Structured CIVER pre-execution gate result.
+
+    Iterable as ``(admitted, reasons)`` for backward-compat with existing
+    callers that unpack a tuple. Carries per-severity BLOCK/WARN lists so
+    process_gate can apply patent GC-01 (WARN accumulation BLOCK) during the
+    post-execution release score, and so audit-trail messages can render the
+    correct severity per rule.
+    """
+
+    admitted: bool
+    reasons: list[str]
+    blocks: list[str]
+    warns: list[str]
+
+    def __iter__(self):
+        yield self.admitted
+        yield self.reasons
+
+
+def _ic01_analysis_links_to_evidence(claim_graph: ClaimGraph) -> tuple[bool, str]:
+    """Patent IC-01 BLOCK: every ANALYSIS node must be linked to EVIDENCE via
+    an ANALYZES edge. Direction-agnostic (process-flow EVIDENCE→ANALYSIS and
+    analyzer-perspective ANALYSIS→EVIDENCE both count): a CLAIM resting on an
+    ANALYSIS that has NO ANALYZES connection to any EVIDENCE is structurally
+    incomplete and the patent rule blocks it."""
+    analysis_ids = {n.id for n in claim_graph.nodes if n.node_type == "ANALYSIS"}
+    evidence_ids = {n.id for n in claim_graph.nodes if n.node_type == "EVIDENCE"}
+    if not analysis_ids or not evidence_ids:
+        # Tier-1 chain check catches the missing-node case; IC-01 only fires
+        # when both kinds exist but the link is absent.
+        return True, ""
+    orphans: list[str] = []
+    for analysis_id in sorted(analysis_ids):
+        has_evidence_link = any(
+            edge.edge_type == "ANALYZES"
+            and (
+                (edge.source == analysis_id and edge.target in evidence_ids)
+                or (edge.target == analysis_id and edge.source in evidence_ids)
+            )
+            for edge in claim_graph.edges
+        )
+        if not has_evidence_link:
+            orphans.append(analysis_id)
+    if orphans:
+        return False, (
+            "ANALYSIS node(s) missing ANALYZES edge to EVIDENCE: "
+            + ", ".join(orphans)
+        )
+    return True, ""
+
+
+def _gc02_full_chain_path_exists(claim_graph: ClaimGraph) -> tuple[bool, str]:
+    """Patent GC-02 BLOCK: the graph must carry a reachable directed path
+    from at least one QUESTION to at least one CLAIM through the constitutional
+    edge types. Catches a graph that lists all required node types but never
+    actually wires them together."""
+    type_by_id = {n.id: n.node_type for n in claim_graph.nodes}
+    adjacency: dict[str, set[str]] = {n.id: set() for n in claim_graph.nodes}
+    for edge in claim_graph.edges:
+        if edge.source in adjacency and edge.target in adjacency:
+            adjacency[edge.source].add(edge.target)
+    question_ids = [nid for nid, t in type_by_id.items() if t == "QUESTION"]
+    claim_ids = {nid for nid, t in type_by_id.items() if t == "CLAIM"}
+    if not question_ids or not claim_ids:
+        return True, ""  # Tier-1 chain rule catches missing nodes.
+    for start in question_ids:
+        seen: set[str] = set()
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            if node in seen:
+                continue
+            seen.add(node)
+            if node in claim_ids:
+                return True, ""
+            stack.extend(adjacency.get(node, set()))
+    return False, "no directed path QUESTION→…→CLAIM in the graph"
+
+
+def _ic03_multi_claim_scope_conflict(claim_graph: ClaimGraph) -> str:
+    """Patent IC-03 WARN: multiple CLAIM nodes sharing an ANALYSIS parent
+    (via SUPPORTS edges) is the structural prerequisite for multi-claim
+    population/scope conflict. The semantic population/scope mismatch sits in
+    Tier 3 (SpC) once per-node scope attributes exist; this rule surfaces the
+    structural risk irrespective of whether scope tags are present.
+    """
+    claim_ids = [n.id for n in claim_graph.nodes if n.node_type == "CLAIM"]
+    if len(claim_ids) < 2:
+        return ""
+    # SUPPORTS edges point ANALYSIS → CLAIM (per ClaimEdge type union).
+    analysis_to_claims: dict[str, set[str]] = {}
+    for edge in claim_graph.edges:
+        if edge.edge_type != "SUPPORTS":
+            continue
+        if edge.target in claim_ids:
+            analysis_to_claims.setdefault(edge.source, set()).add(edge.target)
+    shared = [
+        f"{analysis_id}→{{{', '.join(sorted(claims))}}}"
+        for analysis_id, claims in sorted(analysis_to_claims.items())
+        if len(claims) >= 2
+    ]
+    if not shared:
+        return ""
+    return (
+        "multiple CLAIM nodes share an ANALYSIS parent (SUPPORTS): "
+        + "; ".join(shared)
+        + " — multi-claim scope conflict structurally possible"
+    )
 
 
 def admit_evidence_unit(
@@ -787,6 +1023,7 @@ def _clean_integrity_score(events: list[AuditEvent], scientific: bool) -> float:
         if event.severity == "block" and event.event_type not in (
             "article-i-refused",
             "design-refused",
+            "design-abstain-persistent",
             "guideline-refused",
         ):
             penalties += 0.8
@@ -1350,9 +1587,10 @@ def run_ecology(
                 # Tier-1 -> Tier-2 (CIVER) -> Tier-3 admission, per replicate study.
                 for outcome in outcomes:
                     if outcome.study is None:
-                        # Constrained DESIGN was refused PRE-EXECUTION (Article I):
-                        # the agent never executed; log a design-refused audit event
-                        # and admit no study to the constrained corpus.
+                        # Constrained DESIGN persistently refused even after the
+                        # repair loop (SPEC Endpoint 4): MAX_PLAN_REVISIONS revise
+                        # attempts exhausted without admit. The agent never
+                        # executed; no study enters the constrained corpus.
                         record_transition(
                             audit_trail=audit_trail,
                             audit_counters=audit_counters,
@@ -1362,12 +1600,15 @@ def run_ecology(
                             branch=branch,
                             year=year,
                             phase="design",
-                            event_type="design-refused",
+                            event_type="design-abstain-persistent",
                             severity="block",
                             integrity_score_before=1.0,
                             integrity_score_after=0.0,
-                            message="Pre-execution gate refused the design: "
-                            + " ".join(outcome.design_reasons),
+                            message=(
+                                f"Pre-execution gate persistently refused after "
+                                f"{outcome.revision_attempts} revise attempt(s). "
+                                f"Final reasons: {' '.join(outcome.design_reasons)}"
+                            ),
                         )
                         blocked_this_era += 1
                         continue
@@ -1404,6 +1645,37 @@ def run_ecology(
                         blocked_this_era += 1
                         continue
                     if outcome.plan is not None:
+                        # Design event type distinguishes friction-cost from
+                        # kill-cost (SPEC §7d, Endpoint 4): a repaired plan is
+                        # an `info`-severity success of the refuse+repair loop,
+                        # not a silent admit. Free arm never enters the loop.
+                        if (
+                            outcome.design_admitted
+                            and outcome.revision_attempts > 0
+                            and branch == "constrained"
+                        ):
+                            design_event_type = "design-repaired"
+                            design_severity = "info"
+                            design_message = (
+                                f"Pre-execution gate admitted plan after "
+                                f"{outcome.revision_attempts} revise attempt(s). "
+                                f"Final reasons: {' '.join(outcome.design_reasons)}"
+                            )
+                        elif outcome.design_admitted:
+                            design_event_type = "design-admitted"
+                            design_severity = "info"
+                            design_message = (
+                                " ".join(outcome.design_reasons)
+                                or "Research plan recorded for CIVER/BRIM process validation."
+                            )
+                        else:
+                            # Free-arm observed-invalid design (recorded, not blocked).
+                            design_event_type = "design-observed-invalid"
+                            design_severity = "info" if branch == "free" else "block"
+                            design_message = (
+                                " ".join(outcome.design_reasons)
+                                or "Research plan recorded for CIVER/BRIM process validation."
+                            )
                         record_transition(
                             audit_trail=audit_trail,
                             audit_counters=audit_counters,
@@ -1413,20 +1685,11 @@ def run_ecology(
                             branch=branch,
                             year=year,
                             phase="design",
-                            event_type=(
-                                "design-admitted"
-                                if outcome.design_admitted
-                                else "design-observed-invalid"
-                            ),
-                            severity=(
-                                "info"
-                                if outcome.design_admitted or branch == "free"
-                                else "block"
-                            ),
+                            event_type=design_event_type,
+                            severity=design_severity,
                             integrity_score_before=1.0,
                             integrity_score_after=1.0 if outcome.design_admitted else 0.0,
-                            message=" ".join(outcome.design_reasons)
-                            or "Research plan recorded for CIVER/BRIM process validation.",
+                            message=design_message,
                         )
                     # Article II / BRIM — execution deviation from the registered
                     # plan. It is observational in free/shadow mode and part of
@@ -1782,6 +2045,21 @@ def run_ecology(
             audit_events=audit_trail,
         )
 
+    # SPEC §7d Endpoint 4: aggregate repair-loop counts so post-hoc analysis can
+    # report friction-cost vs kill-cost without re-walking the audit trail.
+    repair_counters = {
+        "design_admitted_first_try": sum(
+            1 for event in audit_trail if event.event_type == "design-admitted"
+        ),
+        "design_repaired": sum(
+            1 for event in audit_trail if event.event_type == "design-repaired"
+        ),
+        "design_abstain_persistent": sum(
+            1 for event in audit_trail if event.event_type == "design-abstain-persistent"
+        ),
+        "max_plan_revisions": MAX_PLAN_REVISIONS,
+    }
+
     summary = {
         "claim_count": len(claims),
         "years": years,
@@ -1799,6 +2077,7 @@ def run_ecology(
         "bundle_seal": bundle.bundle_seal,
         "provenance_log": provenance_log,
         "failure_rate": failure_rate,
+        "repair_counters": repair_counters,
         "calibration_matrix": bundle.calibration_matrix.model_dump()
         if bundle.calibration_matrix
         else None,

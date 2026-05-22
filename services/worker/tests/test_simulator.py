@@ -159,11 +159,18 @@ def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_determin
     # unresolvable cite. Across many studies/era one within-tolerance slip is the
     # intended falsifiable behavior, not a leak the test should forbid.
     assert final["constrained"]["ungrounded"] < final["free"]["ungrounded"]
-    # Free/natural records process traces but does not enforce them. Constrained
-    # can lose grounded studies whose process is refused before release; that is
-    # the gate's mechanism, not a leak.
-    assert final["constrained"]["grounded"] <= final["free"]["grounded"]
-    assert final["free"]["count"] > final["constrained"]["count"]
+    # SPEC Endpoint 4 — refuse+repair, not kill-only: a refused plan revises
+    # within the same catalog and re-enters CIVER. With the deterministic fake,
+    # most initial bogus commits get repaired to a resolvable pmid, so the
+    # constrained corpus may CONVERT what would have been free-arm ungrounded
+    # studies into grounded ones. The kill-only invariants (constrained.count <
+    # free.count AND constrained.grounded <= free.grounded) no longer hold; the
+    # invariants that DO hold post-repair are: (i) constrained has strictly
+    # fewer ungrounded studies than free (gate still catches whatever the repair
+    # round can't fix, e.g. execute-step scope over-reach), and (ii) constrained
+    # never exceeds free in TOTAL count (repair adds no new attempts beyond the
+    # per-cell budget, and persistent-abstain paths still drop counts).
+    assert final["constrained"]["count"] <= final["free"]["count"]
 
     # No harness-authored contamination: the v2 injection audit event is gone.
     assert all(

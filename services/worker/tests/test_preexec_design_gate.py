@@ -326,15 +326,322 @@ def test_design_and_deviation_events_present_end_to_end() -> None:
         failure_rate=0.45,
     )
     event_types = {e.event_type for e in bundle.audit_trail}
-    assert "design-refused" in event_types
+    # After the SPEC Endpoint 4 repair loop landed, the final constrained-arm
+    # design outcomes are `design-repaired` (repair succeeded) or
+    # `design-abstain-persistent` (all MAX_PLAN_REVISIONS exhausted). The legacy
+    # `design-refused` event type is no longer emitted as a final outcome.
+    assert "design-repaired" in event_types
     assert "execution-deviated" in event_types
     assert verify_audit_chain(bundle.audit_trail)
     # design / execution phase events are recorded for both branches; only
-    # constrained refuses at the gate.
+    # constrained enters the repair loop / abstains.
     assert {e.branch for e in bundle.audit_trail if e.phase == "design"} == {
         "free",
         "constrained",
     }
-    # A refused design must have a WARN/BLOCK severity and never enters the corpus.
-    refused = [e for e in bundle.audit_trail if e.event_type == "design-refused"]
-    assert refused and all(e.severity == "block" for e in refused)
+    # A `design-repaired` event records a constrained-arm success of refuse+repair.
+    repaired = [e for e in bundle.audit_trail if e.event_type == "design-repaired"]
+    assert repaired and all(e.severity == "info" and e.branch == "constrained" for e in repaired)
+    # A persistent abstain (if any) must be a constrained-arm block-severity event.
+    abstain = [e for e in bundle.audit_trail if e.event_type == "design-abstain-persistent"]
+    assert all(e.severity == "block" and e.branch == "constrained" for e in abstain)
+
+
+# --- 7. SPEC Endpoint 4: refuse + repair loop -------------------------------
+
+
+def test_repair_loop_admits_revised_plan_after_initial_refusal() -> None:
+    """Constrained-arm repair loop (SPEC Endpoint 4): initial design commits a
+    fabricated PMID → CIVER refuses → agent revises to commit a resolvable PMID
+    → CIVER admits. Verifies the loop runs, that the revised plan executes, and
+    that no kill-only abstain happens when repair is possible."""
+    from app.agents import _attempt_seed  # noqa: F401  (sanity-check import works)
+
+    class RepairRoutingLLM:
+        scientific = True
+        degradation_reason = None
+
+        def __init__(self) -> None:
+            self.prompts: list[str] = []
+
+        def generate(self, prompt: str, *, seed: int) -> str:
+            self.prompts.append(prompt)
+            if "PRE-REGISTER a research PLAN" in prompt:
+                # Bogus initial commit -> refused by pre-execution gate.
+                return (
+                    "QUESTION: q\nMETHOD: appraise sources\n"
+                    "SCOPE: pop=40-60 years=2015-2018\n"
+                    "PMIDS: PMID-FAKE-1\nRATIONALE: bogus."
+                )
+            if "REVISE the REFUSED research PLAN" in prompt:
+                # Repair: commit the real source at source scope -> admitted.
+                return (
+                    "QUESTION: q\nMETHOD: appraise the committed source\n"
+                    "SCOPE: pop=40-60 years=2015-2018\n"
+                    "PMIDS: 111\nRATIONALE: revised to commit resolvable 111."
+                )
+            return "DIRECTION: REFUTES\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: x."
+
+        def describe(self) -> ModelDescriptor:
+            return ModelDescriptor(name="repair-routing", digest="test")
+
+    llm = RepairRoutingLLM()
+    agent = ResearchAgent(pubmed=ScopedPubMed(), llm=llm, retmax=5)
+    plan, catalog = agent.run_design(
+        claim_id="claim-1", claim_text=CLAIM.text, simulated_year=2020
+    )
+    reachable = _reachable_lookup_from_catalog(catalog)
+    admitted, reasons = admit_research_plan(
+        plan=plan, claim_graph=build_claim_graph(CLAIM), reachable_lookup=reachable
+    )
+    assert admitted is False
+    revised = agent.run_revise(
+        prior_plan=plan,
+        refusal_reasons=reasons,
+        catalog=catalog,
+        claim_text=CLAIM.text,
+        revision=1,
+    )
+    admitted2, _ = admit_research_plan(
+        plan=revised, claim_graph=build_claim_graph(CLAIM), reachable_lookup=reachable
+    )
+    assert admitted2 is True
+    assert revised.plan_id.endswith("-rev1")
+    assert revised.committed_pmids == ["111"]
+    assert len([p for p in llm.prompts if "REVISE the REFUSED research PLAN" in p]) == 1
+
+
+def test_patent_ic01_blocks_when_analysis_lacks_evidence_edge() -> None:
+    """Patent IC-01 BLOCK: ANALYSIS node present but missing ANALYZES edge to
+    EVIDENCE node. Graph has every required node type so Tier-1 chain rule
+    passes, but the analysis link is incomplete — IC-01 must catch it."""
+    from app.models import ClaimEdge, ClaimGraph as ClaimGraphModel, ClaimNode
+
+    broken_graph = ClaimGraphModel(
+        claim_id="claim-1",
+        claim_text=CLAIM.text,
+        nodes=[
+            ClaimNode(id="q", label="q", node_type="QUESTION", timestamp=1),
+            ClaimNode(id="m", label="m", node_type="METHOD", timestamp=2),
+            ClaimNode(id="e", label="e", node_type="EVIDENCE", timestamp=3),
+            ClaimNode(id="a", label="a", node_type="ANALYSIS", timestamp=4),
+            ClaimNode(id="c", label="c", node_type="CLAIM", timestamp=5),
+        ],
+        edges=[
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="m", target="e", edge_type="PRODUCES"),
+            # MISSING: any ANALYZES edge between e and a
+            ClaimEdge(source="a", target="c", edge_type="SUPPORTS"),
+        ],
+    )
+    plan = parse_research_plan(
+        "QUESTION: q\nMETHOD: appraise sources\n"
+        "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok.",
+        plan_id="p", claim_id="claim-1", year=2020, claim_text=CLAIM.text,
+    )
+    catalog_lookup = {"111": object()}  # type: ignore[dict-item]
+    result = admit_research_plan(
+        plan=plan, claim_graph=broken_graph, reachable_lookup=catalog_lookup,
+    )
+    admitted, reasons = result
+    assert admitted is False
+    assert any("Patent IC-01" in r for r in reasons)
+    assert any("IC-01" in b for b in result.blocks)
+
+
+def test_patent_gc02_blocks_when_no_question_to_claim_path() -> None:
+    """Patent GC-02 BLOCK: graph lists every required node type but the edges
+    do not form any directed path from QUESTION to CLAIM."""
+    from app.models import ClaimEdge, ClaimGraph as ClaimGraphModel, ClaimNode
+
+    disconnected = ClaimGraphModel(
+        claim_id="claim-1",
+        claim_text=CLAIM.text,
+        nodes=[
+            ClaimNode(id="q", label="q", node_type="QUESTION", timestamp=1),
+            ClaimNode(id="m", label="m", node_type="METHOD", timestamp=2),
+            ClaimNode(id="e", label="e", node_type="EVIDENCE", timestamp=3),
+            ClaimNode(id="a", label="a", node_type="ANALYSIS", timestamp=4),
+            ClaimNode(id="c", label="c", node_type="CLAIM", timestamp=5),
+        ],
+        edges=[
+            # Edges exist but form two disconnected sub-graphs: {q,m} and {e,a,c}
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="e", target="a", edge_type="ANALYZES"),
+            ClaimEdge(source="a", target="c", edge_type="SUPPORTS"),
+        ],
+    )
+    plan = parse_research_plan(
+        "QUESTION: q\nMETHOD: appraise sources\n"
+        "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok.",
+        plan_id="p", claim_id="claim-1", year=2020, claim_text=CLAIM.text,
+    )
+    result = admit_research_plan(
+        plan=plan, claim_graph=disconnected, reachable_lookup={"111": object()},  # type: ignore[dict-item]
+    )
+    assert result.admitted is False
+    assert any("GC-02" in b for b in result.blocks)
+
+
+def test_patent_ic03_warns_when_multiple_claims_share_analysis_parent() -> None:
+    """Patent IC-03 WARN: two CLAIM nodes both linked from the same ANALYSIS
+    via SUPPORTS edges — structural prerequisite of multi-claim scope conflict.
+    Does NOT block on its own; contributes to GC-01 WARN accumulation."""
+    from app.models import ClaimEdge, ClaimGraph as ClaimGraphModel, ClaimNode
+
+    shared_analysis = ClaimGraphModel(
+        claim_id="claim-1",
+        claim_text=CLAIM.text,
+        nodes=[
+            ClaimNode(id="q", label="q", node_type="QUESTION", timestamp=1),
+            ClaimNode(id="m", label="m", node_type="METHOD", timestamp=2),
+            ClaimNode(id="e", label="e", node_type="EVIDENCE", timestamp=3),
+            ClaimNode(id="a", label="a", node_type="ANALYSIS", timestamp=4),
+            ClaimNode(id="c1", label="c1", node_type="CLAIM", timestamp=5),
+            ClaimNode(id="c2", label="c2", node_type="CLAIM", timestamp=5),
+        ],
+        edges=[
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="m", target="e", edge_type="PRODUCES"),
+            ClaimEdge(source="e", target="a", edge_type="ANALYZES"),
+            ClaimEdge(source="a", target="c1", edge_type="SUPPORTS"),
+            ClaimEdge(source="a", target="c2", edge_type="SUPPORTS"),
+        ],
+    )
+    plan = parse_research_plan(
+        "QUESTION: q\nMETHOD: appraise sources\n"
+        "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok.",
+        plan_id="p", claim_id="claim-1", year=2020, claim_text=CLAIM.text,
+    )
+    # Use real CorpusItem so the SpC-01 scope-vs-source check passes (IC-03 is
+    # the only intended violation in this fixture).
+    from app.ecology import CorpusItem as CI
+    real_lookup = {
+        "111": CI(
+            item_id="111", kind="real", text="x", rationale="x",
+            direction="NEUTRAL", cited_ids=["111"], resolved_real_ids=["111"],
+            resolved_locators=["PMID:111"],
+            scope=EvidenceScope(
+                population_low=40, population_high=60,
+                year_start=2015, year_end=2018,
+            ),
+        )
+    }
+    result = admit_research_plan(
+        plan=plan, claim_graph=shared_analysis, reachable_lookup=real_lookup,
+    )
+    # Still admitted (WARN does not block alone), but warn list carries IC-03.
+    assert result.admitted is True
+    assert any("share an ANALYSIS parent" in w for w in result.warns)
+    assert any("IC-03" in r for r in result.reasons)
+
+
+def test_patent_spc02_warns_on_small_n_generalizing_claim_and_gc01_escalates() -> None:
+    """Patent SpC-02 WARN fires when claim generalizes (wide scope) but study
+    sample size is below threshold. Patent GC-01 escalates to BLOCK when total
+    WARN count >= WARN_ACCUMULATION_BLOCK (default 5)."""
+    from app.models import EvidenceScope as ScopeModel, ResearchPlan as Plan
+    from app.process_gate import (
+        WARN_ACCUMULATION_BLOCK,
+        ProcessViolation,
+        assess_research_process,
+        execution_deviations,
+        process_integrity_score,
+    )
+
+    # Build a generalizing claim (wide population + timeframe) with small n.
+    wide_scope = ScopeModel(
+        population_low=0, population_high=80, year_start=1990, year_end=2025
+    )
+    narrow_source = ScopeModel(
+        population_low=0, population_high=80, year_start=1990, year_end=2025
+    )
+    plan = Plan(
+        plan_id="p", claim_id="claim-1", year=2020,
+        question="q", method="appraise",
+        committed_pmids=["111"], claimed_scope=wide_scope,
+    )
+    study = Study(
+        id="s", claim_id="claim-1", year=2020, direction="SUPPORTS",
+        quality=0.9, provenance="GROUNDED", pmids=["111"], catalog_pmids=["111"],
+        numeric=True, n=10, rationale="r",
+        claimed_scope=wide_scope, source_scope=narrow_source,
+        plan_id="p",
+        research_plan=plan,
+    )
+
+    # SpC-02 fires on this single study.
+    violations = execution_deviations(plan=plan, study=study)
+    assert any(v.code == "SpC-02" and v.severity == "warn" for v in violations)
+    assert all(v.severity != "block" for v in violations)
+
+    # Single WARN: score drops 0.1; still above threshold 0.60.
+    score_one_warn = process_integrity_score(civer_passed=True, violations=violations)
+    assert score_one_warn == 0.9
+
+    # GC-01: WARN_ACCUMULATION_BLOCK WARNs → score 0.0 (escalation).
+    many_warns = [
+        ProcessViolation(code="SpC-02", severity="warn", message=f"warn {i}")
+        for i in range(WARN_ACCUMULATION_BLOCK)
+    ]
+    score_gc01 = process_integrity_score(civer_passed=True, violations=many_warns)
+    assert score_gc01 == 0.0
+
+
+def test_repair_loop_persistent_abstain_after_max_revisions() -> None:
+    """If revise also emits a bogus commit, the constrained outcome is a
+    persistent abstain (no study) after MAX_PLAN_REVISIONS attempts. Verifies
+    the audit trail records `design-abstain-persistent` with block severity and
+    that no execution happened."""
+    from app.llm import DeterministicFakeClient
+    from app.models import RunRequestModel
+    from app.simulator import simulate_run
+
+    class AlwaysBogusLLM:
+        scientific = True
+        degradation_reason = None
+
+        def __init__(self) -> None:
+            self.prompts: list[str] = []
+
+        def generate(self, prompt: str, *, seed: int) -> str:
+            self.prompts.append(prompt)
+            if "PRE-REGISTER a research PLAN" in prompt or "REVISE the REFUSED" in prompt:
+                return (
+                    "QUESTION: q\nMETHOD: appraise sources\n"
+                    "SCOPE: pop=40-60 years=2015-2018\n"
+                    "PMIDS: PMID-FAKE-9\nRATIONALE: still bogus."
+                )
+            return "DIRECTION: NEUTRAL\nSCOPE: pop=40-60 years=2015-2018\nPMIDS: none\nRATIONALE: x."
+
+        def describe(self) -> ModelDescriptor:
+            return ModelDescriptor(name="always-bogus", digest="test")
+
+    llm = AlwaysBogusLLM()
+    agent = ResearchAgent(pubmed=ScopedPubMed(), llm=llm, retmax=5)
+    plan, catalog = agent.run_design(
+        claim_id="claim-1", claim_text=CLAIM.text, simulated_year=2020
+    )
+    reachable = _reachable_lookup_from_catalog(catalog)
+    admitted, reasons = admit_research_plan(
+        plan=plan, claim_graph=build_claim_graph(CLAIM), reachable_lookup=reachable
+    )
+    assert admitted is False
+    # Simulate 2 revise rounds; both still bogus -> persistent abstain.
+    for rev in (1, 2):
+        plan = agent.run_revise(
+            prior_plan=plan,
+            refusal_reasons=reasons,
+            catalog=catalog,
+            claim_text=CLAIM.text,
+            revision=rev,
+        )
+        admitted, reasons = admit_research_plan(
+            plan=plan, claim_graph=build_claim_graph(CLAIM), reachable_lookup=reachable
+        )
+        assert admitted is False
+    # Two revise prompts issued; never executed.
+    revise_calls = [p for p in llm.prompts if "REVISE the REFUSED" in p]
+    execute_calls = [p for p in llm.prompts if "EXECUTE the pre-registered plan" in p]
+    assert len(revise_calls) == 2
+    assert len(execute_calls) == 0

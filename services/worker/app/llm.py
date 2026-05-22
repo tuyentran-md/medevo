@@ -250,6 +250,9 @@ class OpenAICompatClient:
                 response.raise_for_status()
                 message = response.json()["choices"][0]["message"]
                 content = str(message.get("content") or "").strip()
+                if not content:
+                    # Some reasoning models (e.g. MIMO) put output in reasoning_content
+                    content = str(message.get("reasoning_content") or "").strip()
                 if content:
                     return content
                 raise ValueError("empty content")
@@ -285,6 +288,14 @@ class DeterministicFakeClient:
         # bogus pmid -> plan refused (emergent design failure, no harness inject).
         if "PRE-REGISTER a research PLAN" in prompt:
             return self._design_plan(prompt, h)
+        # Repair-loop revise call (SPEC Endpoint 4): the agent received refusal
+        # reasons and is revising. Fake agent commits the first resolvable source
+        # at source scope every time (the "honest fix" given the gate's feedback)
+        # so the repair loop demonstrably converts most refusals into
+        # design-repaired outcomes. Persistent-abstain paths are exercised by
+        # routing-LLM unit tests that always emit a bogus plan.
+        if "REVISE the REFUSED research PLAN" in prompt:
+            return self._revise_plan(prompt)
         # Multi-step SRMA: SCREEN / RISK-OF-BIAS / SYNTHESIZE LLM steps return JSON.
         if "SCREEN each study for inclusion" in prompt:
             return self._screen_json(prompt)
@@ -352,6 +363,25 @@ class DeterministicFakeClient:
             f"SCOPE: pop={low}-{high} years={ystart}-{yend}\n"
             f"PMIDS: {committed}\n"
             f"RATIONALE: committing to source {committed} for this question."
+        )
+
+    def _revise_plan(self, prompt: str) -> str:
+        pmid = _first_source_pmid(prompt)
+        if not pmid:
+            return (
+                "QUESTION: appraise the claim\n"
+                "METHOD: narrative appraisal of the supplied abstracts\n"
+                "SCOPE: pop=18-65 years=2000-2025\n"
+                "PMIDS: none\n"
+                "RATIONALE: catalog has no resolvable source; persistent abstain."
+            )
+        low, high, ystart, yend = _first_source_scope(prompt)
+        return (
+            "QUESTION: appraise the claim against the committed evidence\n"
+            "METHOD: structured appraisal of the committed source abstracts\n"
+            f"SCOPE: pop={low}-{high} years={ystart}-{yend}\n"
+            f"PMIDS: {pmid}\n"
+            f"RATIONALE: revised to commit a resolvable source {pmid} at source scope."
         )
 
     def _screen_json(self, prompt: str) -> str:

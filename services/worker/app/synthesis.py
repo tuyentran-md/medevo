@@ -343,15 +343,17 @@ def admit_guideline_output(
             f"emitted level {guideline.level!r} over-reaches the strength the "
             f"warranted evidence supports ({warranted_level!r})"
         )
-    if (
-        guideline.direction != "NEUTRAL"
-        and warranted_direction != "NEUTRAL"
-        and guideline.direction != warranted_direction
-    ):
-        reasons.append(
-            f"emitted direction {guideline.direction!r} is not supported by the "
-            f"warranted corpus (which pools to {warranted_direction!r})"
-        )
+    # NOTE: prior versions added a "direction must match deterministic re-pool"
+    # check here. Dropped 2026-05-22 (Option B): patent Article IV requires only
+    # trace-to-warranted + strength-no-overreach; patent has NO rule mandating
+    # that the emitted direction match a naive equal-weight re-pool. The check
+    # was demonstrably harmful in Run 5 on claim-2 alcohol y2024 — LLM SRMA's
+    # MR-era-weighted REFUTES (correct vs labelled truth) was overruled to
+    # NEUTRAL because the naive re-pool counted 4 pre-MR SUPPORTS studies
+    # against 2 post-MR REFUTES studies. Tier-4 SRMA is intentionally LLM-driven
+    # (SPEC §3); the output gate should not destroy LLM weighting with naive
+    # arithmetic. Refusal lanes that remain: (i) trace-to-warranted (Article IV)
+    # and (ii) strength over-reach (Tier-3 SpC-style on the synthesized claim).
 
     if not reasons:
         return guideline, True, "Guideline traces to warranted evidence within supported strength."

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from app.models import ArtifactBundle, ClaimGraph, ClaimNode, EvidenceScope, ResearchPlan, Study
+from app.models import ArtifactBundle, ClaimEdge, ClaimGraph, ClaimNode, EvidenceScope, ResearchPlan, Study
 from app.shadow import evaluate_shadow_civer
 
 
 def _graph() -> ClaimGraph:
+    # Mirrors simulator.build_claim_graph edge layout so patent IC-01 (ANALYSIS
+    # ↔ EVIDENCE via ANALYZES) and GC-02 (Q→…→C path) are satisfied. Without
+    # these edges the new patent rules would refuse every fixture study.
     return ClaimGraph(
         claim_id="claim-1",
         claim_text="Smoking increases coronary heart disease risk.",
@@ -15,7 +18,12 @@ def _graph() -> ClaimGraph:
             ClaimNode(id="a", label="analysis", node_type="ANALYSIS", timestamp=4),
             ClaimNode(id="c", label="claim", node_type="CLAIM", timestamp=5),
         ],
-        edges=[],
+        edges=[
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="m", target="e", edge_type="PRODUCES"),
+            ClaimEdge(source="e", target="a", edge_type="ANALYZES"),
+            ClaimEdge(source="a", target="c", edge_type="SUPPORTS"),
+        ],
     )
 
 
@@ -130,3 +138,107 @@ def test_shadow_civer_brim_uses_process_trace_not_provenance_label() -> None:
     assert report["study_verdicts"][0]["true_provenance_for_calibration"] == "GROUNDED"
     assert report["study_verdicts"][0]["plan_recorded"] is True
     assert report["study_verdicts"][0]["civer_passed"] is False
+
+
+def test_shadow_output_fallback_when_study_has_no_research_plan() -> None:
+    """Legacy-bundle lane: a free-arm study without a ResearchPlan trace must
+    not silently fail or be silently passed as CIVER. The shadow must (a) use
+    the output-level scaffolding check, (b) tag the verdict with
+    analysis_mode='output_fallback', (c) keep civer_passed=False so the
+    fallback can't be mistaken for a process-CIVER claim, and (d) surface a
+    fallback_warning at the top of the report.
+    """
+    # Build a Study with NO research_plan — mimics Run 4 free-arm merged path.
+    study = _study("legacy", pmids=["1"], catalog_pmids=["1"])
+    legacy = study.model_copy(update={"research_plan": None})
+    bundle = ArtifactBundle(
+        input_text="",
+        claim_graphs=[_graph()],
+        snapshots={},
+        branch_diff={},
+        anchors=[],
+        validation_notes=[],
+        corpus_studies={"free": [legacy]},
+    )
+
+    report = evaluate_shadow_civer(
+        bundle=bundle,
+        ground_truth_path="data/ground_truth/cvd_multidirectional.json",
+    )
+
+    assert report["analysis_mode_breakdown"]["output_fallback"] == 1
+    assert report["analysis_mode_breakdown"]["process"] == 0
+    assert report["fallback_warning"] is not None
+    assert "OUTPUT-FALLBACK" in report["fallback_warning"]
+
+    verdict = report["study_verdicts"][0]
+    assert verdict["analysis_mode"] == "output_fallback"
+    assert verdict["civer_passed"] is False  # Never claim CIVER pass in fallback.
+    assert verdict["brim_passed"] is False
+    assert verdict["plan_recorded"] is False
+    # Output check: cite "1" resolves in catalog ["1"]; scope is default; passes.
+    assert verdict["output_check_passed"] is True
+    assert verdict["passed"] is True
+
+
+def test_shadow_report_has_per_claim_e2_and_volume_matched_e3_null() -> None:
+    """E2/E3 rigor extensions for Paper 2 + Paper 3.
+
+    The aggregate E2 hides claim-specific discrimination — per_claim breakdown
+    must list every claim under shadow audit. E3 needs a volume-matched null
+    distribution so reviewers can rule out smaller-pool luck as the mechanism
+    behind warranted_to_truth < all_to_truth.
+    """
+    scoped = _study("good", pmids=["1"], catalog_pmids=["1"])
+    no_cite = _study(
+        "bad",
+        pmids=[],
+        catalog_pmids=[],
+        provenance="UNGROUNDED",
+        failure_mode="unresolvable",
+    )
+    no_cite2 = _study(
+        "bad2",
+        pmids=[],
+        catalog_pmids=[],
+        provenance="UNGROUNDED",
+        failure_mode="unresolvable",
+    )
+    bundle = ArtifactBundle(
+        input_text="",
+        claim_graphs=[_graph()],
+        snapshots={},
+        branch_diff={},
+        anchors=[],
+        validation_notes=[],
+        corpus_studies={"free": [scoped, no_cite, no_cite2]},
+    )
+
+    report = evaluate_shadow_civer(
+        bundle=bundle,
+        ground_truth_path="data/ground_truth/cvd_multidirectional.json",
+    )
+
+    # Per-claim E2: claim-1 must appear with both passed + failed cohorts.
+    per_claim = report["endpoint_2_per_claim"]
+    assert "claim-1" in per_claim
+    assert per_claim["claim-1"]["passed"]["count"] == 1
+    assert per_claim["claim-1"]["failed"]["count"] == 2
+    # The passed cohort cleaner on no_cite_rate than failed (signal direction).
+    assert per_claim["claim-1"]["passed"]["no_cite_rate"] == 0.0
+    assert per_claim["claim-1"]["failed"]["no_cite_rate"] == 1.0
+
+    # New direction-vs-truth field present on both cohorts (may be 0 if no
+    # truth point at this year, but the key must exist for downstream tooling).
+    assert "wrong_direction_vs_truth_rate" in per_claim["claim-1"]["passed"]
+    assert "wrong_direction_vs_truth_rate" in per_claim["claim-1"]["failed"]
+
+    # E3 volume-matched null: 1 warranted of 3 -> null is a 1-of-3 subsample.
+    e3 = report["endpoint_3_guideline_drift_reduction"]
+    null = e3["volume_matched_null"]
+    assert null is not None
+    assert null["sample_size"] == 1
+    assert 0.0 <= null["ci_low"] <= null["mean"] <= null["ci_high"]
+    assert "civer_beats_volume_matched" in e3
+    # Boolean is well-formed (not None / not a stray type).
+    assert isinstance(e3["civer_beats_volume_matched"], bool)

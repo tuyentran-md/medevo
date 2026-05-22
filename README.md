@@ -107,10 +107,48 @@ guidelines."
 
 ## Status
 
-The v3 engine is built and tested end-to-end; the HRT demonstration is wired
-(real NHANES + PubMed, USPSTF ground truth verified from the primary source);
-a scored verdict on a frontier model is the next step. This is a research
-instrument, not clinical decision support.
+The engine is built end-to-end, 90 tests green, and now has two scored runs
+on its multi-directional CVD instrument and a 30-claim multi-domain battery.
+
+### Run 1 — official baseline, 2026-05-22 (Sonnet 4.6, 4 CVD claims)
+
+`services/worker/data/artifacts/shadow-20260522T072303Z/` · 500 s wall · 163 LLM
+calls (144 cache hits / 19 fresh / 19 writes). Drift signal solid: mean distance
+to truth **0.281**; per-claim drift highest on alcohol cardioprotection (0.625,
+the documented Mendelian-randomization reversal) and the obesity paradox (0.375,
+honest analysis of observational evidence that itself encodes the methodological
+flaw). Study-level CIVER discriminates on 4 / 4 metrics, FPR = 0, FNR = 0.57.
+Guideline-level CIVER delta = 0 (tie) — the strong baseline left no junk for the
+gate to remove, so the premise of Paper 3 was recorded as untestable in this regime.
+
+### Run 2 — 30-claim multi-domain battery, 2026-05-22 (MIMO-v2.5-pro)
+
+Full write-up: [`docs/runs/RUN_2_30CLAIM_MIMO.md`](docs/runs/RUN_2_30CLAIM_MIMO.md).
+
+`services/worker/data/artifacts/shadow-20260522T131131Z/` (raw) + `shadow-20260522T174426Z/`
+(analyzer re-pass after ground-truth re-keying) · 4 h 33 m wall · 1 032 LLM calls
+on Xiaomi MIMO-v2.5-pro (1 T params, OpenAI-compat at
+`token-plan-sgp.xiaomimimo.com/v1`). 30 claims across six medical domains with
+verified primary-source trajectories and eight era-reversals.
+
+| Endpoint | Run 1 (Sonnet 4.6, 4 claims) | Run 2 (MIMO-v2.5-pro, 30 claims) |
+|---|---|---|
+| **E1** drift to truth | 0.281 | **0.346** |
+| **E2** study-level pass rate | 42 / 48 ≈ 87% | 33 / 180 ≈ 18% |
+| **E2** signal (passed vs failed) | 4 / 4 metrics, FPR 0, FNR 0.57 | 4 / 4 metrics, larger margins |
+| **E3** all_to_truth | 0.156 (post-fix) | 0.346 |
+| **E3** warranted_to_truth | 0.156 (tie) | **0.250** |
+| **E3** delta | 0 | **+0.096** |
+| **E3** vs volume-matched null (500 iter) | n/a | **CIVER beats** (warranted 0.250 < ci_low 0.263) |
+
+Run 2 produced the first measurable **guideline-level** CIVER effect. The
+mechanism is now legible: AI-driven drift propagates from studies to guidelines
+*when the baseline model is weak enough* that ungrounded studies dominate the
+corpus, and CIVER catches the propagation by filtering at study level before
+SR/MA inherits the junk. Run 1's reading was correct for its regime; the full
+claim of Paper 3 must be A0-conditional.
+
+This is a research instrument, not clinical decision support.
 
 ## Run
 

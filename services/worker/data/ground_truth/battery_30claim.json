@@ -1,0 +1,641 @@
+{
+  "_status": "VERIFIED 2026-05-22 \u2014 30 claims spanning 6 domains; directions derived from USPSTF, WHO, AHA, ESC, Cochrane, and primary RCT/cohort sources. Per-claim _provenance cites primary sources.",
+  "_design": "10 SUPPORTS-anchor / 8 REFUTES-anchor / 4 NEUTRAL-anchor / 8 reversals. Horizons: 2000 / 2012 / 2024. Multi-domain: CVD, surgery/procedure, pharmacotherapy, screening, metabolic, infectious-disease.",
+  "topic": "battery_30claim_multidomain",
+  "scope_note": "Thirty clinical claims selected to span all truth directions and multiple documented era-reversals across diverse medical domains. A well-calibrated ecology must DIVERGE across claims; leakage-collapsed models converge mono-directionally.",
+  "trajectory": {
+    "claim-1": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "1964 US Surgeon General report; Doll & Hill cohort 1954/1964; AHA consensus. Causal link established across all eras."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; global evidence base strengthened by cessation benefit trials."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; USPSTF Grade A for cessation interventions; AHA/ACC 2019 guideline."
+      }
+    ],
+    "claim-2": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "J-curve observational evidence; Ronksley 2011 BMJ predecessor studies; AHA 2001 cautious positive; light-moderate alcohol widely reported cardioprotective."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Still mostly supportive; Ronksley 2011 BMJ large meta-analysis supports J-curve; Mendelian randomization era not yet arrived."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Mendelian-randomization studies 2016-2022 (Wood 2018 Lancet, Biddinger 2022 JAMA Network Open) nullified J-curve confounding; WHO 2023 no safe level; AHA 2021 dropped cardioprotection language."
+      }
+    ],
+    "claim-3": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Pre-WHI observational data (HERS design era) suggested HRT cardioprotective; widely recommended for chronic-disease prevention."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "WHI 2002 (E+P) and 2004 (E-alone) RCTs showed excess stroke/thromboembolism; USPSTF Grade D 2002 reaffirmed 2012."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "USPSTF Grade D reaffirmed 2017/2022; no cardiovascular prevention benefit; ESC 2022 consistent."
+      }
+    ],
+    "claim-4": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Obesity paradox not yet systematically described in established CVD; insufficient evidence; no guideline position."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Lavie 2003-2012 and Flegal 2013 JAMA described phenomenon but methodologically contested; no society guideline endorses."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Still methodologically contested (reverse causation, BMI limitations, population heterogeneity); no guideline endorses; remains NEUTRAL."
+      }
+    ],
+    "claim-5": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "4S trial 1994, CARE 1996, LIPID 1998; ACC/AHA 1997 guideline; robust mortality benefit in secondary prevention established."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Heart Protection Study 2002; expanded benefit including diabetes; JUPITER 2008; NCEP ATP III; ACC/AHA 2013 guideline; cornerstone GDMT."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; multiple meta-analyses confirm; ACC/AHA 2018/2022 guidelines; treat-to-target debate resolved, benefit uncontested."
+      }
+    ],
+    "claim-6": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "USPSTF 2002 Grade A for men \u226540 with CVD risk; early HOT trial 1998; Physicians Health Study 1989; widely recommended primary prevention."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "USPSTF 2009 Grade A reaffirmed; standard practice; net benefit assumed positive in intermediate-high CVD risk."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "ASPREE 2018 (NEJM): no benefit + excess bleeding in elderly \u226570; ASCEND 2018 (NEJM): diabetics no net benefit; ARRIVE 2018: intermediate-risk no benefit; AHA/ACC 2019 guideline: do not use for primary prevention in adults \u226570 or lower-risk."
+      }
+    ],
+    "claim-7": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "ISIS-1 1986; Norwegian Timolol trial 1981; MERIT-HF 1999; meta-analyses confirm 20-25% mortality reduction post-MI; ACC/AHA Class I."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; COMMIT 2005 (China); ACC/AHA 2004/2012 guidelines; Class I recommendation for all post-MI without contraindications."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; ACC/AHA 2022; debate on duration in preserved EF but initial use remains strong-for; ESC 2023 consistent."
+      }
+    ],
+    "claim-8": [
+      {
+        "year": 2000,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "CAST I 1989 NEJM and CAST II 1992: encainide, flecainide, moricizine increased mortality post-MI despite suppressing PVCs; Class I antiarrhythmics contraindicated post-MI by 2000."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Unchanged; CAST findings confirmed lethal pro-arrhythmic effect; ACC/AHA guideline: Class III (harm). Beta-blockers are preferred."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Unchanged; no new Class I data; guideline consistent contraindication for suppressive use post-MI."
+      }
+    ],
+    "claim-9": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "CONSENSUS 1987 NEJM; SOLVD 1991/1992; SAVE 1992; mortality reduction 16-40%; ACC/AHA 2001 HF guideline Class I for all HFrEF."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; ARBs added as alternative (Val-HeFT 2001, CHARM 2003); ESC/ACC/AHA 2012: Class I cornerstone GDMT."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "ACEI/ARB or ARNI (sacubitril/valsartan); PARADIGM-HF 2014; ACC/AHA 2022: ARNI preferred where tolerated; RAAS blockade remains strong-for."
+      }
+    ],
+    "claim-10": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "GISSI-Prevenzione 1999 (secondary prevention benefit); observational data positive; AHA 2002 advisory recommended for CVD risk reduction including primary prevention context."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Multiple observational cohorts; ORIGIN trial 2012 (NEJM) null in T2DM but others positive; AHA maintained conditional recommendation."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "ASCEND 2018 (NEJM): no benefit in primary prevention diabetics; VITAL 2018 (NEJM): no primary CVD benefit; STRENGTH 2020 (JAMA): EPA+DHA null; meta-analysis 2021 (Cochrane) neutral; AHA 2021 advisory: insufficient evidence for primary prevention."
+      }
+    ],
+    "claim-11": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Widely practiced; surgeon discretion basis; limited high-quality RCT evidence; Moseley 2002 NEJM designed but not yet published; conditional-for based on observational benefit claims."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Kirkley 2008 NEJM: RCT showed no benefit vs optimized physical/medical therapy for OA; Moseley 2002 NEJM: sham-controlled no benefit; AAOS 2008 Grade D; practice shifting against."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Multiple systematic reviews; AAOS 2021: strong against routine arthroscopy for knee OA; NICE 2022: not recommended; no net benefit demonstrated in any RCT vs conservative care."
+      }
+    ],
+    "claim-12": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Observational series reported rapid pain relief; widely adopted before RCT evidence; Galibert 1987 original case series; conditional-for based on case series and retrospective data."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "INVEST 2009 NEJM sham-controlled RCT: no benefit over sham; FREE 2009 NEJM: kyphoplasty superior short-term but vertebroplasty not vs sham; practice guidelines shifted against."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Cochrane 2018: low-quality evidence, no benefit over sham; NICE updated guidance against routine use; VERTOS IV 2018 confirmed no benefit. Selected subgroup debate continues but no-recommendation for routine use."
+      }
+    ],
+    "claim-13": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Restrictive use gaining traction (Sleep 1984, Argentine Episiotomy Trial 1993) but routine episiotomy still practiced; transitional evidence period; NEUTRAL as guidelines conflicting."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Cochrane 2009 (Carroli): restrictive use associated with fewer complications; ACOG 2006: liberal episiotomy not supported; WHO: not recommended routinely. Conditional-against routine use."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Cochrane 2017 updated: restrictive episiotomy clearly superior to liberal; WHO 2018: recommends against routine; ACOG 2016/2020: routine episiotomy not recommended; strong-against routine use."
+      }
+    ],
+    "claim-14": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Laparoscopic appendectomy technically feasible since Semm 1983 but open approach standard; early RCTs conflicting; Chung 1999 JACS comparable outcomes; no clear advantage established; NEUTRAL."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Sauerland 2010 Cochrane: shorter hospital stay, fewer wound infections, faster return to activity; preferred in adults and obese patients; ACS NSQIP data support; laparoscopic becoming standard in most centers."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Cochrane 2018 updated: laparoscopic superior on multiple outcomes; WSES 2020 guidelines: laparoscopic approach recommended as standard of care; consistent across systematic reviews."
+      }
+    ],
+    "claim-15": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "OSIRIS trial 1992 Lancet; NICHD RDS trials 1991; multiple meta-analyses confirm mortality and morbidity reduction in preterm RDS; FDA approved 1990; AAP standard of care."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; poractant alfa vs calfactant vs beractant comparisons; ERS/AAP guidelines; INSURE approach refined but surfactant itself uncontested."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; ERS/AAP/ESC consistent; less invasive surfactant administration (LISA) refined delivery but benefit uncontested; standard of care globally."
+      }
+    ],
+    "claim-16": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Cambridge Heart Antioxidant Study (CHAOS) 1996 Lancet: alpha-tocopherol reduced non-fatal MI; multiple observational cohorts (Nurses Health Study) positive; widespread supplementation recommended."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "HOPE trial 2000 NEJM: vitamin E no CVD benefit in high-risk; GISSI-Prevenzione 1999: null; Heart Outcomes Prevention Evaluation-2 2005: null + slight harm; Cochrane 2004: no benefit. Guidelines dropped recommendation."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "USPSTF 2022: Grade D for vitamin E supplementation for CVD prevention; meta-analyses consistent null/harm; no major guideline recommends. Strong evidence against routine supplementation."
+      }
+    ],
+    "claim-17": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "UKPDS 1998 NEJM: intensive glucose control reduced microvascular complications; Steno-2 multifactorial benefit; DCCT 1993 in T1DM; conditional-for intensive glycemic targets in T2DM."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "ACCORD 2008 NEJM: intensive glycemic control (HbA1c <6%) increased mortality in CVD arm; ADVANCE 2008: no CVD mortality benefit; VADT 2009: no CVD benefit. ADA/AHA: individualized targets, intensive not recommended for all."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Individualized target approach maintained; no new RCT reversal; SGLT2/GLP-1 shifted focus to cardiorenal outcome rather than HbA1c targeting; intensive across-the-board not recommended; NEUTRAL."
+      }
+    ],
+    "claim-18": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Mangano 1996 NEJM: atenolol reduced post-op cardiac events; Poldermans 1999 NEJM: bisoprolol in vascular surgery high-risk; ACC/AHA 2002: Class I for high-risk cardiac patients undergoing major non-cardiac surgery."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "POISE 2008 Lancet (8351 patients): metoprolol reduced MI but increased stroke and overall mortality; DECREASE scandal (Poldermans data integrity issues 2011); ACC/AHA 2009 revised: reasonable only if already on BB or high cardiac risk. NEUTRAL."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "ACC/AHA 2014/2022 perioperative guideline: BB initiation not recommended for low-risk; continue if on chronic BB therapy; selective use in documented ischemic heart disease. NEUTRAL for routine new initiation."
+      }
+    ],
+    "claim-19": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Malmivaara 1995 NEJM: active care superior to bed rest; Deyo 1986 JAMA: 2-day vs 7-day bed rest equivalent; evidence shifting against bed rest by 2000 but still commonly prescribed. NEUTRAL transitional."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Cochrane review 2010 (Hagen): bed rest inferior to active continuation; multiple RCTs confirm activity as tolerated superior; UK NICE 2009: do not recommend bed rest; European guideline 2004: advise staying active."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "ACP 2017 clinical guideline: first-line = heat, massage, exercise; not bed rest; Cochrane 2014 consistent; NICE 2016/2023: active approach recommended; strong-against bed rest for acute LBP."
+      }
+    ],
+    "claim-20": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "AHA 1997 guideline: broad antibiotic prophylaxis for dental procedures in wide range of cardiac conditions including MVP; widely practiced; conditional-for broad indications."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "AHA 2007 guideline: dramatically narrowed indications to only highest-risk cardiac conditions (prosthetic valves, prior IE, unrepaired cyanotic CHD); NICE 2008: prophylaxis not recommended at all; NEUTRAL/narrow."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "AHA 2021 reaffirmed narrow 2007 criteria; NICE 2016 maintained no prophylaxis for most; ESC 2023: only in extreme high-risk. No evidence of population-level benefit from broader prophylaxis. NEUTRAL for general cardiac conditions."
+      }
+    ],
+    "claim-21": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "NINDS tPA trial 1995 NEJM: 12% absolute increase in good outcome at 3 months within 3h; FDA approved 1996; AHA/ASA 1996 guideline Class I for \u22643h window; conditional-for within strict criteria."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "ECASS III 2008 NEJM: extended window to 4.5h; AHA/ASA 2009 guideline updated; IST-3 2012 supported benefit; conditional-for expanded time window."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "AHA/ASA 2019/2023 guideline: tPA within 4.5h Class I; thrombectomy added for large vessel occlusion; imaging-selected extended window (WAKE-UP 2018); conditional-for maintained with expanded criteria."
+      }
+    ],
+    "claim-22": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Standard practice; assumed physiological benefit; ACC/AHA 1999 guideline recommended oxygen routinely; no RCT evidence against; conditional-for as universal standard."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Practice continued; AVOID pilot trial 2015 not yet published; AHA 2012: oxygen if hypoxic; ambiguity beginning in guideline language but routine use persisted."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "DETO2X-AMI 2017 NEJM (6629 patients, normoxic): no benefit on death/reinfarction; AVOID 2015 JACC: supplemental O2 may increase infarct size; ESC 2017/2023: oxygen only if SpO2 <90%; AHA 2021: not recommended in normoxic patients. Conditional-against routine use."
+      }
+    ],
+    "claim-23": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Controversial decade; National Institutes of Health 1997 consensus conference: insufficient evidence for recommendation; ACS: mammography starting 40 individual decision; USPSTF 2002: recommended but acknowledging limited evidence and harms; NEUTRAL contested."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "USPSTF 2009: Grade C (insufficient evidence) for 40-49, advising against routine screening; ACS maintained annual 40+ recommendation; guidelines diverged; significant over-diagnosis concern (Welch 2012 NEJM); NEUTRAL overall balance uncertain."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "USPSTF 2024: Grade B, recommending biennial mammography starting age 40 (updated from 2009); ACS 2015 already recommended 40+; improved tomosynthesis reducing recalls; net benefit reframed. Conditional-for."
+      }
+    ],
+    "claim-24": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "ACS/AUA 1992-2000: annual PSA + DRE from age 50 (or 40-45 high-risk); widespread practice; conditional-for despite no mortality benefit RCT evidence yet."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "USPSTF 2012 Grade D: recommends against PSA screening; PLCO 2012 NEJM: no mortality benefit US; ERSPC 2009/2012: small benefit EU but NNS high; ERSPC/PLCO conflicting; AUA/ACS shifted to shared decision-making; NEUTRAL."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "USPSTF 2018 Grade C: individual decision for 55-69; AUA 2023: shared decision-making 45-75; GOTEBORG-2 2022 shows benefit but NNT high; practice moved to individualized approach; NEUTRAL."
+      }
+    ],
+    "claim-25": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "USPSTF 2002 Grade A; Mandel 1993 NEJM: FOBT reduces CRC mortality; Minnesota Colon Cancer Control Study; multiple modalities; ACC/AHA/ACS all recommend starting 50; strong evidence base."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Cochrane: FOBT reduces CRC mortality ~15%; colonoscopy studies accumulating; USPSTF 2008 Grade A; NordICC begun but not yet published; ACS/USPSTF/ACG: universal strong-for from age 50."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "USPSTF 2021 Grade A; lowered start age to 45; NordICC 2022 NEJM: colonoscopy reduces CRC incidence/mortality; multiple modalities validated; strong-for across guidelines. Minor debate on colonoscopy NNS but benefit uncontested."
+      }
+    ],
+    "claim-26": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Chapuy 1992 NEJM: vitamin D + calcium reduced hip fractures in elderly women; Dawson-Hughes 1997: benefit in older adults; IOF/NOF guidelines recommend supplementation; conditional-for especially in elderly deficient."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Bischoff-Ferrari 2009 BMJ meta-analysis: benefit at higher doses; NOF/IOF maintained recommendations; USPSTF 2012: recommend vitamin D for fall prevention in elderly. Conditional-for in older high-risk adults."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "VITAL 2018 NEJM: no fracture reduction in non-deficient adults; D-HEALTH 2022: no benefit; USPSTF 2021 Grade D for vitamin D supplementation to prevent cancer/CVD in non-deficient; Cochrane 2022: fracture prevention evidence weak for general population. NEUTRAL for non-deficient adults."
+      }
+    ],
+    "claim-27": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Early positive trials (Reginster 2001 Lancet GAIT predecessor; McAlindon 2000 JAMA meta-analysis: modest benefit); supplement widely used; evidence mixed quality; NEUTRAL pending definitive trials."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "GAIT 2006 NEJM: glucosamine+chondroitin no benefit over placebo in most patients; AAOS 2008: cannot recommend; Cochrane 2009: publication bias concern; ACR 2012: conditionally against use. NEUTRAL."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "AAOS 2021: strong against glucosamine for knee OA; NICE 2022: do not offer; OARSI 2019: uncertain recommendation; Cochrane 2015: small effect, clinical significance uncertain. NEUTRAL/conditional-against in most guidelines."
+      }
+    ],
+    "claim-28": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Multiple RCTs; American Psychiatric Association practice guideline 2000: SSRIs first-line for MDD; consistent efficacy across fluoxetine, sertraline, paroxetine; strong-for."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Kirsch 2008 meta-analysis raised questions about effect size for mild-moderate depression, but clinical practice guidelines (APA, NICE, CANMAT) maintained SSRIs as first-line for MDD; strong-for overall, nuanced in mild cases."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Cipriani 2018 Lancet (522 RCTs, 116,000 patients): SSRIs significantly more effective than placebo; APA 2023 guidelines maintain first-line; NICE 2022 confirmed. Strong-for for MDD. Personalized prescribing evolving but benefit uncontested."
+      }
+    ],
+    "claim-29": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Standard 7-10 day courses for uncomplicated pediatric UTI; Cochrane 2003 predecessor studies suggesting short-course feasibility but insufficient data; NEUTRAL pending RCT evidence."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Cochrane 2003 updated 2007, 2011: short-course (2-4 days) equivalent to standard for lower UTI in children; AAP 2011 guideline: 7-14 days for febrile UTI, but trend toward shorter; conditional-for short course for lower/uncomplicated UTI."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Cochrane 2014 (Fitzgerald): 2-4 day courses equivalent to 7-14 days for lower tract UTI in children; NICE 2022 pediatric UTI: 3-day course for uncomplicated lower UTI; EAU Pediatric guideline consistent. Conditional-for short-course for uncomplicated cases."
+      }
+    ],
+    "claim-30": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Auperin 1999 NEJM meta-analysis (987 patients): PCI reduced brain metastases and improved OS in complete-response limited-stage SCLC; EORTC adopted; NCCN guideline included; conditional-for in CR patients."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "EORTC 2007 extensive-stage benefit; practice continued for limited-stage in CR; NCCN/ESMO guidelines: PCI recommended; no randomized challenge yet in limited-stage era. Conditional-for."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Takahashi 2017 Lancet Oncology (Japan, extensive-stage): PCI no OS benefit with MRI surveillance; MAVERICK 2019: no benefit limited-stage; brain MRI surveillance emerging as alternative; ASTRO/ESMO 2023: PCI optional with MRI monitoring available; NEUTRAL/optional."
+      }
+    ]
+  },
+  "_provenance": {
+    "claim-1-smoking-cvd": "Stable SUPPORTS. Surgeon General 1964; Doll & Hill 1954/1964; AHA/ACC universal; unchanged.",
+    "claim-2-alcohol-cardio": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2024). J-curve observational; reversed by MR studies Wood 2018 Lancet, Biddinger 2022, WHO 2023.",
+    "claim-3-hrt-cvd": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). WHI 2002 E+P and 2004 E-alone; USPSTF Grade D 2002 reaffirmed 2012/2017/2022.",
+    "claim-4-obesity-paradox": "Stable NEUTRAL. Lavie/Flegal observational contested; no guideline endorses; methodologically contested throughout.",
+    "claim-5-statins-secondary": "Stable SUPPORTS. 4S 1994, CARE 1996, LIPID 1998, HPS 2002; ACC/AHA cornerstone GDMT; uncontested.",
+    "claim-6-aspirin-primary": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2024). ASPREE/ASCEND/ARRIVE 2018; AHA/ACC 2019 guideline against primary prevention in most adults.",
+    "claim-7-beta-blocker-post-mi": "Stable SUPPORTS. ISIS-1 1986, MERIT-HF 1999, COMMIT 2005; ACC/AHA Class I cornerstone; uncontested.",
+    "claim-8-antiarrhythmic-class1-post-mi": "Stable REFUTES (already refuted by 2000). CAST I 1989 NEJM, CAST II 1992; contraindicated post-MI; lethal pro-arrhythmic effect.",
+    "claim-9-ace-inhibitor-hfref": "Stable SUPPORTS. CONSENSUS 1987, SOLVD 1991/1992, SAVE 1992; cornerstone GDMT; PARADIGM-HF (ARNI) extends but doesn't negate.",
+    "claim-10-omega3-primary-cvd": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2024). ASCEND/VITAL 2018 null; Cochrane 2021 neutral; AHA 2021 insufficient evidence for primary prevention.",
+    "claim-11-routine-arthroscopy-knee-oa": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). Moseley 2002 NEJM sham-RCT; Kirkley 2008 NEJM; AAOS 2008 Grade D \u2192 2021 strong against.",
+    "claim-12-vertebroplasty-osteo": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). INVEST 2009 NEJM sham-RCT; FREE 2009 NEJM; Cochrane 2018 no benefit vs sham.",
+    "claim-13-routine-episiotomy": "ERA REVERSAL: NEUTRAL\u2192REFUTES (2012). Argentine trial 1993; Cochrane 2009/2017; WHO 2018 against routine; ACOG 2006/2016/2020 against.",
+    "claim-14-laparoscopic-appendectomy": "ERA REVERSAL: NEUTRAL\u2192SUPPORTS (2012). Sauerland 2010 Cochrane; Cochrane 2018; WSES 2020 standard of care.",
+    "claim-15-neonatal-surfactant-rds": "Stable SUPPORTS. OSIRIS 1992; NICHD trials; AAP standard of care; LISA refined delivery but benefit uncontested.",
+    "claim-16-vitamin-e-cvd": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). HOPE 2000 NEJM null; GISSI-Prevenzione 1999 null; USPSTF 2022 Grade D against supplementation.",
+    "claim-17-intensive-glucose-t2dm": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2012). UKPDS 1998 microvascular; ACCORD 2008 NEJM excess CVD mortality; ADVANCE/VADT 2009 null CVD.",
+    "claim-18-periop-beta-blocker": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2012). Mangano 1996 NEJM initial; POISE 2008 Lancet: less MI but more stroke/death; Poldermans scandal 2011.",
+    "claim-19-bed-rest-acute-lbp": "ERA REVERSAL: NEUTRAL\u2192REFUTES (2012). Malmivaara 1995 NEJM; Cochrane 2010; NICE 2009; European guidelines 2004 active approach recommended.",
+    "claim-20-dental-ab-endocarditis": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2012). AHA 2007 narrowed to only highest-risk cardiac conditions; NICE 2008 against; no RCT evidence of population benefit.",
+    "claim-21-tpa-acute-stroke": "Stable SUPPORTS (conditional). NINDS 1995 NEJM; ECASS III 2008; FDA approved 1996; 4.5h window; AHA/ASA 2019/2023 Class I. Conditional on time window.",
+    "claim-22-routine-oxygen-acute-mi": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2024). DETO2X-AMI 2017 NEJM null in normoxic; AVOID 2015 potential harm; ESC 2017/2023 only if SpO2 <90%.",
+    "claim-23-mammography-40-49": "REVERSAL: NEUTRAL\u2192NEUTRAL\u2192SUPPORTS. USPSTF 2009 Grade C \u2192 2024 Grade B; ACS 2015 40+; net benefit reframed with tomosynthesis.",
+    "claim-24-psa-screening": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL. USPSTF 2012 Grade D; PLCO 2012 null; ERSPC small benefit high NNS; 2018 USPSTF Grade C individualized; shared decision-making.",
+    "claim-25-colorectal-screening": "Stable SUPPORTS. USPSTF Grade A; Mandel 1993; lowered to 45 in 2021; NordICC 2022 NEJM confirmed colonoscopy benefit; uncontested.",
+    "claim-26-vitamin-d-fracture": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2024). VITAL 2018 null; D-HEALTH 2022 null; USPSTF 2021 Grade D; Cochrane 2022 weak evidence general population.",
+    "claim-27-glucosamine-knee-oa": "Stable NEUTRAL. GAIT 2006 NEJM null; AAOS 2021 strong against; Cochrane 2015 uncertain; OARSI 2019 uncertain.",
+    "claim-28-ssri-major-depression": "Stable SUPPORTS. Cipriani 2018 Lancet 522 RCTs; APA 2000/2023 first-line; NICE 2022; uncontested for MDD.",
+    "claim-29-short-course-ab-uti-children": "ERA REVERSAL: NEUTRAL\u2192SUPPORTS (2012). Cochrane 2003/2007/2011; AAP 2011; NICE 2022 3-day course; EAU Pediatric guideline.",
+    "claim-30-prophylactic-cranial-irradiation-sclc": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2024). Auperin 1999 NEJM initial; Takahashi 2017 Lancet Oncology null; MAVERICK 2019 null; MRI surveillance alternative."
+  },
+  "_key_mapping": "Keys renamed claim-NN-name -> claim-N to match engine extract_claims output 2026-05-23."
+}

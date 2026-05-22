@@ -235,6 +235,53 @@ class ResearchAgent:
         )
         return plan, catalog
 
+    def run_revise(
+        self,
+        *,
+        prior_plan: ResearchPlan,
+        refusal_reasons: list[str],
+        catalog: list[PubMedRecord],
+        claim_text: str,
+        revision: int,
+    ) -> ResearchPlan:
+        """CONSTRAINED-arm REPAIR step — revise a refused plan (SPEC Endpoint 4).
+
+        The pre-execution CIVER gate is refuse+repair, not kill-only: when a plan
+        is refused, the gate returns structured reasons and the agent gets to
+        revise the plan within the same catalog (no re-retrieval, to keep cost +
+        determinism bounded). The revised plan is re-validated by the same gate;
+        a successful repair is recorded as ``design-repaired`` in the audit
+        trail, distinguishing friction-cost (revisions needed) from kill-cost
+        (persistent abstain after MAX_PLAN_REVISIONS).
+
+        Returns a new ResearchPlan with ``plan_id`` suffixed ``-rev<n>`` so the
+        audit trail can reconstruct the revision history.
+        """
+        prompt = _revise_prompt(
+            prior_plan=prior_plan,
+            refusal_reasons=refusal_reasons,
+            catalog=catalog,
+            claim_text=claim_text,
+        )
+        seed = _attempt_seed(
+            namespace=f"revise-{revision}",
+            claim_id=prior_plan.claim_id,
+            year=prior_plan.year,
+            replicate=revision,
+        )
+        raw = self._generate(
+            label=f"revise/{prior_plan.claim_id}/year-{prior_plan.year}/rev{revision}",
+            prompt=prompt,
+            seed=seed,
+        )
+        return parse_research_plan(
+            raw,
+            plan_id=f"{prior_plan.plan_id}-rev{revision}",
+            claim_id=prior_plan.claim_id,
+            year=prior_plan.year,
+            claim_text=claim_text,
+        )
+
     def run_execute(
         self,
         *,
@@ -845,6 +892,8 @@ def _catalog_payload(catalog: list[PubMedRecord]) -> str:
 # and by tests counting per-step calls). Pre-execution = no results yet.
 _DESIGN_SENTINEL = "PRE-REGISTER a research PLAN"
 _EXECUTE_SENTINEL = "EXECUTE the pre-registered plan"
+# Sentinel for the repair-loop revise call (SPEC Endpoint 4 refuse+repair).
+_REVISE_SENTINEL = "REVISE the REFUSED research PLAN"
 
 
 def _design_prompt(
@@ -874,6 +923,56 @@ def _design_prompt(
         "RATIONALE: <why these sources fit the question>\n"
         f"claim_id={claim_id} simulated_year={simulated_year} claim={claim_text!r} "
         f"sources={payload}"
+    )
+
+
+def _revise_prompt(
+    *,
+    prior_plan: ResearchPlan,
+    refusal_reasons: list[str],
+    catalog: list[PubMedRecord],
+    claim_text: str,
+) -> str:
+    payload = _catalog_payload(catalog)
+    prior_blob = json.dumps(
+        {
+            "question": prior_plan.question,
+            "method": prior_plan.method,
+            "committed_pmids": prior_plan.committed_pmids,
+            "claimed_scope": prior_plan.claimed_scope.model_dump(mode="json"),
+            "rationale": prior_plan.rationale,
+        },
+        ensure_ascii=True,
+        sort_keys=True,
+    )
+    reasons_blob = "\n".join(f"- {reason}" for reason in refusal_reasons)
+    # REPAIR (CONSTITUTION Article I — refuse+repair, not kill-only): the agent
+    # gets the structured refusal reasons and must revise the plan to address
+    # them. Cite ONLY pmids from the supplied catalog; tighten scope to within
+    # the source evidence; restate the method if it was unparseable. If the
+    # refusal is unfixable from this catalog, return a minimal plan with no
+    # committed pmids — it will be recorded as a persistent abstain, not a
+    # silent fabrication. Do NOT re-fetch sources; the catalog is fixed for the
+    # repair round (cost + determinism). Do NOT report a direction or effect —
+    # this is still design, not execution.
+    return (
+        "You are a research agent. REVISE the REFUSED research PLAN below. The "
+        "pre-execution integrity gate listed structured reasons; your revision "
+        "must address EACH reason. Cite ONLY pmids from the supplied catalog "
+        "(never invent), tighten scope to within the cited sources, and restate "
+        "the method if it was incoherent. If the refusal cannot be fixed from "
+        "this catalog, submit a NEUTRAL minimal plan with no committed pmids; it "
+        "will be recorded as a persistent abstain.\n"
+        "Respond with EXACTLY these five lines and nothing else:\n"
+        "QUESTION: <one-sentence restatement of the clinical question>\n"
+        "METHOD: <how you will appraise the committed sources>\n"
+        "SCOPE: pop=<low>-<high> years=<start>-<end>\n"
+        "PMIDS: <comma-separated pmids you commit to use, or 'none'>\n"
+        "RATIONALE: <why this revision addresses the refusal>\n"
+        f"prior_plan={prior_blob}\n"
+        f"refusal_reasons:\n{reasons_blob}\n"
+        f"claim_id={prior_plan.claim_id} simulated_year={prior_plan.year} "
+        f"claim={claim_text!r} sources={payload}"
     )
 
 
