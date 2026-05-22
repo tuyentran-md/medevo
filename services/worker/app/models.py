@@ -220,6 +220,10 @@ class Study(BaseModel):
     quality: float
     provenance: EvidenceProvenance
     pmids: list[str] = Field(default_factory=list)
+    # PMIDs/source ids present in the retrieval catalog when this study was
+    # emitted. Shadow CIVER uses this to re-check resolvability post hoc without
+    # reading the harness-only provenance label.
+    catalog_pmids: list[str] = Field(default_factory=list)
     numeric: bool
     rationale: str
     # ``claimed_scope`` = what the agent asserts; ``source_scope`` = authoritative
@@ -367,6 +371,7 @@ class ArtifactBundle(BaseModel):
     lineage: list[LineageRecord] = Field(default_factory=list)
     audit_trail: list[AuditEvent] = Field(default_factory=list)
     warrants: list[ExecutionWarrant] = Field(default_factory=list)
+    corpus_studies: dict[str, list[Study]] = Field(default_factory=dict)
     db_growth: dict[str, Any] = Field(default_factory=dict)
     guideline_timeline: dict[str, list[GuidelineClaim]] = Field(default_factory=dict)
     population_stats: dict[str, Any] = Field(default_factory=dict)

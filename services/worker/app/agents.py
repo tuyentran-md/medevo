@@ -716,6 +716,7 @@ def _study_from_emission(
         ),
         provenance=provenance,
         pmids=list(emission.cited_pmids),
+        catalog_pmids=sorted(catalog_by_pmid),
         numeric=numeric,
         rationale=emission.rationale,
         claimed_scope=claimed_scope,
@@ -741,6 +742,7 @@ def _empty_catalog_study(
         quality=0.2,
         provenance="UNGROUNDED",
         pmids=[],
+        catalog_pmids=[],
         numeric=False,
         rationale=f"No PubMed records were retrieved for '{claim_text}'.",
         claimed_scope=EvidenceScope(

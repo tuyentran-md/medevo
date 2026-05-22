@@ -1303,6 +1303,10 @@ def run_ecology(
                         continue
 
                     branch_study = outcome.study.model_copy(deep=True)
+                    if not branch_study.catalog_pmids:
+                        branch_study.catalog_pmids = sorted(
+                            {record.pmid for record in outcome.catalog}
+                        )
                     # Temporal anti-speculation gate (BOTH arms): block any study
                     # whose data source post-dates the simulated year. This catches
                     # NHANES 2005-2006 data used in a year-2000 simulation and any
@@ -1675,6 +1679,7 @@ def run_ecology(
         lineage=lineage_records,
         audit_trail=audit_trail,
         warrants=warrants,
+        corpus_studies=tier3_store.all_studies(),
         db_growth=db_growth,
         guideline_timeline=guideline_timeline,
         population_stats=population_stats,

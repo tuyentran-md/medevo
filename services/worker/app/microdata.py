@@ -363,6 +363,7 @@ class MicrodataAgent:
             quality=0.66 if cited_slice else 0.2,
             provenance=provenance,
             pmids=list(emission.cited_pmids),
+            catalog_pmids=[source_id],
             numeric=cited_slice,
             rationale=emission.rationale or str(analysis["summary"]),
             claimed_scope=claimed_scope,
@@ -482,6 +483,7 @@ def _unsupported_study(
         quality=0.2,
         provenance="UNGROUNDED",
         pmids=[],
+        catalog_pmids=[],
         numeric=False,
         rationale=f"Group-A NHANES agent could not ground '{claim_text}': {reason}",
         claimed_scope=EvidenceScope(
