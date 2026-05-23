@@ -1,0 +1,85 @@
+{
+  "summary": {
+    "claim_count": 30,
+    "years": [
+      2000,
+      2012,
+      2024
+    ],
+    "scientific": true,
+    "model": "mimo-v2.5-pro",
+    "has_blocked_outputs": true,
+    "population_stats": {
+      "2000": {
+        "pair_count": 30,
+        "direction": {
+          "mean": 0.05,
+          "low": 0,
+          "high": 0.1167
+        },
+        "level": {
+          "mean": 0.0167,
+          "low": 0,
+          "high": 0.0417
+        }
+      },
+      "2012": {
+        "pair_count": 30,
+        "direction": {
+          "mean": 0.0333,
+          "low": 0,
+          "high": 0.0833
+        },
+        "level": {
+          "mean": 0.0167,
+          "low": 0,
+          "high": 0.0417
+        }
+      },
+      "2024": {
+        "pair_count": 30,
+        "direction": {
+          "mean": 0.1,
+          "low": 0.0333,
+          "high": 0.1833
+        },
+        "level": {
+          "mean": 0.05,
+          "low": 0.0167,
+          "high": 0.0917
+        }
+      }
+    },
+    "llm_call_count": 1032,
+    "degradation_reason": null,
+    "run2": {
+      "date": "2026-05-22",
+      "domains": 6,
+      "tokens": "~16M",
+      "free_distance_to_truth": 0.3458,
+      "constrained_distance_to_truth": 0.25,
+      "delta": 0.0958,
+      "volume_matched_null": {
+        "ci_high": 0.3875,
+        "ci_low": 0.2625,
+        "interpretation": "Random subsamples of size=warranted_count drawn from the full natural corpus. CIVER's warranted_to_truth must fall strictly below ci_low to claim selection (not smaller-pool luck) is the mechanism.",
+        "iterations": 500,
+        "mean": 0.3247,
+        "sample_size": 33
+      },
+      "civer_beats_volume_matched": true
+    }
+  },
+  "validation": [
+    "Static replay only: frozen Run 2 artifact, no live LLM calls.",
+    "Early signal: n=1 model and n=1 seed; not clinical decision support.",
+    "Ground-truth trajectories were verified at 2000, 2012, and 2024."
+  ],
+  "description": "Run 2 replay: 30 claims, six domains, MIMO-v2.5-pro, static cached artifact.",
+  "tags": [
+    "scientific",
+    "run-2",
+    "static-replay",
+    "no-live-llm"
+  ]
+}

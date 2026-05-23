@@ -4,9 +4,12 @@ import path from "node:path";
 
 const webRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const repoRoot = path.resolve(webRoot, "..", "..");
+const fixtureDir = path.join(webRoot, "replay-fixtures");
 const sourceDir = process.env.MEDEVO_REPLAY_SOURCE_DIR
   ? path.resolve(process.env.MEDEVO_REPLAY_SOURCE_DIR)
-  : path.join(repoRoot, "services", "worker", "data", "artifacts");
+  : fs.existsSync(fixtureDir)
+    ? fixtureDir
+    : path.join(repoRoot, "services", "worker", "data", "artifacts");
 const outputDir = path.join(webRoot, "public", "replays");
 const includeExtra = new Set(
   String(process.env.MEDEVO_REPLAY_INCLUDE || "")
@@ -23,13 +26,16 @@ function digest(text) {
 }
 
 function deriveTitle(bundle, runId) {
+  if (bundle?.replay_title) {
+    return String(bundle.replay_title);
+  }
   const firstSentence = String(bundle.input_text || "").split(/[.!?\n]/)[0]?.trim();
   return firstSentence && firstSentence.length > 8 ? firstSentence.slice(0, 80) : runId;
 }
 
 const index = [];
 for (const runId of fs.readdirSync(sourceDir)) {
-  if (!runId.startsWith("showcase-") && !includeExtra.has(runId)) {
+  if (!runId.startsWith("showcase-") && !runId.startsWith("run-") && !includeExtra.has(runId)) {
     continue;
   }
   const runDir = path.join(sourceDir, runId);

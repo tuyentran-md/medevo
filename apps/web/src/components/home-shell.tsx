@@ -61,6 +61,14 @@ export function HomeShell() {
     (sourceMode === "paste" ? inputText.trim().length > 24 : Boolean(selectedFile));
 
   function handleSubmit() {
+    if (isStaticReplayMode) {
+      const firstReplay = showcase[0]?.run_id;
+      if (firstReplay) {
+        router.push(`/runs/${firstReplay}`);
+      }
+      return;
+    }
+
     if (!canSubmit) {
       return;
     }
@@ -113,20 +121,21 @@ export function HomeShell() {
             </div>
 
             <h1 className="max-w-2xl font-[family-name:var(--font-display)] text-3xl leading-[1.1] text-[var(--foreground)] sm:text-4xl lg:text-5xl">
-              Watch a clinical guideline drift across an AI-saturated evidence world.
+              Replay a cached evidence-drift simulation.
             </h1>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--muted)]">
-              Run the same input through two futures: one free branch with no gate,
-              one constrained branch behind a provenance gate. Inspect year 10, 20, and 30
-              outputs as a distribution draw, not a forecast.
+              Inspect a sealed Run 2 artifact: 30 clinical claims, six domains,
+              historical horizons 2000 / 2012 / 2024, one FREE branch, and one
+              CIVER/BRIM-gated branch. No live LLM calls are made in this public
+              replay.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
-                "Tier-1 studies stay agentic.",
-                "Tier-4 SR/MA uses LLM appraisal with deterministic pooling.",
-                "Paid APIs remain opt-in, never the build default.",
+                "Static replay only.",
+                "Research instrument, not clinical decision support.",
+                "Early signal: n=1 model, n=1 seed.",
               ].map((item) => (
                 <div
                   key={item}
@@ -141,10 +150,10 @@ export function HomeShell() {
           <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--panel-strong)] p-6 shadow-[0_24px_70px_rgba(17,35,30,0.08)] backdrop-blur lg:p-8">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-[family-name:var(--font-display)] text-3xl">
-                Run your own input
+                Replay cached simulation
               </h2>
               <span className="rounded-full bg-[var(--foreground)] px-3 py-1 text-xs uppercase tracking-[0.22em] text-white">
-                Custom input
+                Read-only
               </span>
             </div>
 
@@ -303,9 +312,13 @@ export function HomeShell() {
             </div>
 
             <div className="mt-6 rounded-[1.6rem] border border-[var(--border)] bg-[rgba(17,35,30,0.03)] p-4 text-sm leading-6 text-[var(--muted)]">
-              <div className="font-semibold text-[var(--foreground)]">Preview of the first slice</div>
+              <div className="font-semibold text-[var(--foreground)]">
+                {isStaticReplayMode ? "Public replay guardrail" : "Preview of the first slice"}
+              </div>
               <div className="mt-2 line-clamp-4">
-                {deferredInput.trim() || "Paste text or upload a file to preview the seeded claim surface."}
+                {isStaticReplayMode
+                  ? "No API keys, no backend worker, no patient data, and no live clinical simulation. The public action is replaying a cached artifact."
+                  : deferredInput.trim() || "Paste text or upload a file to preview the seeded claim surface."}
               </div>
             </div>
 
@@ -317,12 +330,12 @@ export function HomeShell() {
 
             <button
               type="button"
-              disabled={!canSubmit || isPending}
+              disabled={(!isStaticReplayMode && !canSubmit) || isPending}
               onClick={handleSubmit}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--foreground)] px-6 py-4 text-sm font-semibold text-white transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {isStaticReplayMode ? "Static replay build" : "Launch simulation"}
+              {isStaticReplayMode ? "Replay cached simulation" : "Launch simulation"}
             </button>
           </div>
         </motion.div>

@@ -1,201 +1,216 @@
 # MedEvo
 
-### Is AI quietly rewriting clinical guidelines — and can a process-integrity gate stop it?
+**MedEvo** stands for **Medical Evolution**.
 
-![How MedEvo tests whether a process-integrity gate keeps a guideline on course as AI agents do the science: the free arm drifts, the gated arm tracks the real reversal.](docs/reversal.svg)
+It is a research simulator for asking a simple question:
 
-MedEvo is a **simulated scientific ecology**. AI agents do real research over real
-data and literature; their work accumulates into the corpus a guideline is
-synthesized from; and we watch whether the guideline **drifts** — and whether
-CIVER/BRIM process governance keeps invalid research processes from becoming
-warranted evidence.
+> If AI-generated biomedical studies start entering the evidence base, can they change the recommendations that later reviews and guidelines would produce?
 
----
+MedEvo does not write clinical guidelines. It does not give patient-care advice. It is an evaluation tool for studying how evidence pipelines can drift.
 
-## The problem
+![Historical reversal replay: the ungated branch drifts while the process-gated branch tracks the real reversal.](docs/reversal.svg)
 
-Evidence-based medicine assumes the literature is a faithful record of what was
-actually studied. AI now writes, summarizes, and synthesizes that literature at
-scale. When poorly-grounded findings launder through systematic reviews into
-authoritative recommendations, a guideline can shift in **direction** or
-**strength** — silently. MedEvo makes that moment visible, and tests a defense.
+## What MedEvo Does
 
-## The pipeline — stage by stage
+MedEvo simulates the path from a clinical claim to a guideline-like recommendation.
 
-```mermaid
-flowchart TD
-    S1["① INPUT — a guideline becomes atomic claims<br/>(each: direction + strength)"]
-    S2["② ADVANCE to simulated era T<br/>PubMed / data date-cut to year T"]
-    S3["③ TIER 1 · research agents produce studies<br/>Group A on real data · Group B on real literature"]
-    S4{"④ TIER 2 · CIVER/BRIM<br/>plan/PIR · monitor · ECW"}
-    S6["⑤ TIER 3 · accumulating corpus<br/>free = everything · constrained = warranted only"]
-    S7["⑥ TIER 4 · SR/MA synthesis → guideline<br/>(direction + GRADE-style strength)"]
-    S8["⑦ COMPARE natural all-output vs ECW-compliant<br/>+ sealed replay"]
-    S1 --> S2 --> S3 --> S4
-    S4 -->|warrant issued| S6
-    S4 -.->|refused — free keeps it anyway| S6
-    S6 --> S7
-    S7 -->|feeds back as prior · advance era| S2
-    S7 --> S8
-```
+1. Start with a medical claim.
+2. Choose historical time points, such as 2000, 2012, and 2024.
+3. Let AI research agents generate study-like outputs using only evidence available up to each time point.
+4. Let those studies accumulate into an evidence corpus.
+5. Run a systematic-review / meta-analysis style synthesis over that corpus.
+6. Compare the resulting recommendation against the known historical trajectory.
 
-We replay a **real historical reversal** to validate the instrument: hormone
-therapy (HRT) for chronic-disease prevention — recommended *for* prevention
-before 2002, reversed by the WHI trials, USPSTF grade D *against* ever since
-(the figure at the top). A faithful ecology should re-live that flip from each
-era's literature; the gate should hold the guideline on course while an ungated
-arm drifts.
+The key measurement is whether a recommendation moves away from the historical truth trajectory after AI-generated studies accumulate.
 
-## The simulated researchers (Tier 1)
+## Why It Exists
 
-Agents do research the way people do — and **fail the way fallible researchers
-do.** That failure, not an injected fake, is the contamination.
-
-```mermaid
-flowchart TD
-    Q["a claim to investigate, at era T"]
-    Q --> GA["GROUP A · empirical"]
-    Q --> GB["GROUP B · evidence synthesis"]
-    GA --> GA1["design analysis → load a real NHANES slice<br/>→ run statistics in a sandbox → interpret"]
-    GB --> GB1["search PubMed ≤ T → appraise the real papers"]
-    GA1 --> OK["✅ GROUNDED study<br/>resolvable provenance, scope-bounded"]
-    GB1 --> OK
-    GA1 --> BAD["⚠️ FAILURE — can't ground it / over-reaches scope<br/>→ UNGROUNDED study (emergent, not injected)"]
-    GB1 --> BAD
-    OK --> G([to the CIVER gate])
-    BAD --> G
-```
-
-The failure *rate* is anchored to a measured quantity (how often LLMs produce
-structurally-valid but unfaithful claims), never a tuned dial.
-
-## The synthesis model (Tier 4 · SR/MA)
-
-Synthesis agents read **only** the accumulated corpus — never re-querying the
-world — exactly as a real guideline panel works from the published record.
+Clinical medicine does not act on isolated hypotheses. It acts through an evidence pipeline:
 
 ```mermaid
 flowchart LR
-    DB["Tier-3 corpus<br/>(this branch only)"] --> AP["appraise each study<br/>quality · sample size · risk of bias"]
-    AP --> PL["pool the effect<br/>weighted · heterogeneity"]
-    PL --> CE["GRADE-style certainty"]
-    CE --> OUT["guideline claim<br/>direction + strength level"]
+    A["Clinical claim"] --> B["Studies"]
+    B --> C["Evidence corpus"]
+    C --> D["Systematic review / meta-analysis"]
+    D --> E["Guideline-like recommendation"]
 ```
 
-## How drift emerges — and how the gate answers it
+If AI systems can produce large volumes of biomedical research-like text, the important safety question is not only whether each output looks plausible. The downstream question is whether many such outputs, once accumulated, can distort the evidence base that reviews and guidelines depend on.
+
+MedEvo is built to test that downstream failure mode.
+
+## Two Evidence Ecologies
+
+Each simulation runs two branches.
 
 ```mermaid
 flowchart TD
-    subgraph FREE["🔴 FREE arm — no gate"]
-      direction TB
-      F1["ungrounded studies accumulate in the corpus"] --> F2["the pooled estimate shifts"] --> F3["the guideline drifts off the real trajectory"]
-    end
-    subgraph CON["🟢 CONSTRAINED arm — CIVER"]
-      direction TB
-      C1["ungrounded work is refused at the gate"] --> C2["the inherited corpus stays grounded"] --> C3["the guideline holds course"]
-    end
+    A["Medical claim at historical time point"] --> B["AI agents generate study-like outputs"]
+    B --> C["Ungated branch: keep all generated studies"]
+    B --> D["Process-gated branch: keep only studies that pass integrity checks"]
+    C --> E["Review-style synthesis"]
+    D --> F["Review-style synthesis"]
+    E --> G["Compare recommendation with historical truth"]
+    F --> G
 ```
 
-The gate judges only provenance, scope, and chain integrity — never a
-"this one is fake" label — so it catches fabrication and over-reach but not an
-honest analysis that is simply wrong (that drifts both arms equally and cancels).
-The headline is the leakage- and competence-cancelled **gap** between the arms,
-with confidence intervals on both axes, benchmarked against the real USPSTF
-trajectory and checked against volume-matched and random-gate controls. MedEvo's
-claim is **auditable corruption-resistance** — never "AI that writes more correct
-guidelines."
-
-## Status
-
-The engine is built end-to-end, 90 tests green, and now has two scored runs
-on its multi-directional CVD instrument and a 30-claim multi-domain battery.
-
-### Run 1 — official baseline, 2026-05-22 (Sonnet 4.6, 4 CVD claims)
-
-`services/worker/data/artifacts/shadow-20260522T072303Z/` · 500 s wall · 163 LLM
-calls (144 cache hits / 19 fresh / 19 writes). Drift signal solid: mean distance
-to truth **0.281**; per-claim drift highest on alcohol cardioprotection (0.625,
-the documented Mendelian-randomization reversal) and the obesity paradox (0.375,
-honest analysis of observational evidence that itself encodes the methodological
-flaw). Study-level CIVER discriminates on 4 / 4 metrics, FPR = 0, FNR = 0.57.
-Guideline-level CIVER delta = 0 (tie) — the strong baseline left no junk for the
-gate to remove, so the premise of Paper 3 was recorded as untestable in this regime.
-
-### Run 2 — 30-claim multi-domain battery, 2026-05-22 (MIMO-v2.5-pro)
-
-Full write-up: [`docs/runs/RUN_2_30CLAIM_MIMO.md`](docs/runs/RUN_2_30CLAIM_MIMO.md).
-
-`services/worker/data/artifacts/shadow-20260522T131131Z/` (raw) + `shadow-20260522T174426Z/`
-(analyzer re-pass after ground-truth re-keying) · 4 h 33 m wall · 1 032 LLM calls
-on Xiaomi MIMO-v2.5-pro (1 T params, OpenAI-compat at
-`token-plan-sgp.xiaomimimo.com/v1`). 30 claims across six medical domains with
-verified primary-source trajectories and eight era-reversals.
-
-| Endpoint | Run 1 (Sonnet 4.6, 4 claims) | Run 2 (MIMO-v2.5-pro, 30 claims) |
+| Branch | What it keeps | Purpose |
 |---|---|---|
-| **E1** drift to truth | 0.281 | **0.346** |
-| **E2** study-level pass rate | 42 / 48 ≈ 87% | 33 / 180 ≈ 18% |
-| **E2** signal (passed vs failed) | 4 / 4 metrics, FPR 0, FNR 0.57 | 4 / 4 metrics, larger margins |
-| **E3** all_to_truth | 0.156 (post-fix) | 0.346 |
-| **E3** warranted_to_truth | 0.156 (tie) | **0.250** |
-| **E3** delta | 0 | **+0.096** |
-| **E3** vs volume-matched null (500 iter) | n/a | **CIVER beats** (warranted 0.250 < ci_low 0.263) |
+| Ungated | All generated study-like outputs | Simulates an AI-era literature without process filtering |
+| Process-gated | Only outputs that pass integrity checks | Tests whether filtering the research process reduces downstream drift |
 
-Run 2 produced the first measurable **guideline-level** CIVER effect. The
-mechanism is now legible: AI-driven drift propagates from studies to guidelines
-*when the baseline model is weak enough* that ungrounded studies dominate the
-corpus, and CIVER catches the propagation by filtering at study level before
-SR/MA inherits the junk. Run 1's reading was correct for its regime; the full
-claim of Paper 3 must be A0-conditional.
+The gated branch uses two process checks in this repository:
 
-This is a research instrument, not clinical decision support.
+- **CIVER**, the claim-evidence integrity check, tests whether the claim, method, evidence, analysis, and conclusion form a coherent chain.
+- **BRIM**, the plan-execution monitor, tests whether execution stays aligned with the declared plan instead of drifting during the research process.
 
-## Run
+These checks are not truth oracles. They do not say a medical conclusion is correct. They test whether a generated study has a traceable, bounded, and internally coherent research process.
 
-```bash
-cd services/worker && python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+## Historical Reversal Test
 
-python -m scripts.evaluate --topic hrt \
-  --backend openai-compatible --base-url https://openrouter.ai/api/v1 \
-  --model deepseek/deepseek-v4 --api-key-env OPENROUTER_API_KEY \
-  --horizons 2000,2010,2020
+MedEvo uses historical medical reversals as validation targets. A useful simulator should be able to replay known shifts in evidence.
+
+Example: hormone therapy for chronic-disease prevention in postmenopausal women.
+
+- Before 2002, preventive hormone therapy was widely supported or accepted.
+- In 2002, the Women's Health Initiative changed the evidence trajectory.
+- Later guidance recommended against preventive use.
+
+The simulator asks whether each branch can track that reversal when it only sees evidence available at each simulated time point.
+
+## Current Results
+
+The repository currently includes two scored benchmark runs.
+
+### Run 1: 4 cardiovascular claims
+
+Run 1 used Claude Sonnet 4.6 on four cardiovascular claims.
+
+It showed that MedEvo can detect recommendation drift, but the gated and ungated branches ended with the same guideline-level distance from truth. The model was strong enough that too few bad studies entered the corpus for the gate to make a visible difference at the final recommendation level.
+
+### Run 2: 30 claims across 6 medical domains
+
+Run 2 used MIMO-v2.5-pro on 30 claims across cardiovascular medicine, surgery/procedures, pharmacotherapy, screening, metabolic disease, and infectious disease.
+
+Summary:
+
+| Measure | Result |
+|---|---:|
+| Claims | 30 |
+| Medical domains | 6 |
+| Historical horizons | 2000, 2012, 2024 |
+| Model calls | 1,032 |
+| Approximate tokens | 16M |
+| Ungated distance to truth | 0.346 |
+| Gated distance to truth | 0.250 |
+| Improvement | 0.096 |
+
+Lower distance is better. A score of 0 would mean the simulated recommendation exactly matches the historical truth label used by the benchmark.
+
+Run 2 is the first benchmark where the process gate reduced guideline-level drift. It also beat a volume-matched random-filter baseline, meaning the improvement was not explained only by keeping fewer studies.
+
+This is still an early result: one model, one seed, a modest margin, and a high abstention rate in the weaker model.
+
+Full Run 2 report: [`docs/runs/RUN_2_30CLAIM_MIMO.md`](docs/runs/RUN_2_30CLAIM_MIMO.md)  
+Short abstract: [`docs/runs/RUN_2_ABSTRACT.md`](docs/runs/RUN_2_ABSTRACT.md)
+
+## What Is In This Repository
+
+```text
+apps/web/                         Static replay UI
+apps/web/replay-fixtures/         Frozen public replay artifacts
+services/worker/                  Simulation engine and evaluators
+services/worker/data/ground_truth Historical truth trajectories
+docs/runs/                        Benchmark reports
+docs/reversal.svg                 Historical reversal schematic
 ```
 
-Or spend a Claude subscription as the model (no API key — uses the local `claude` CLI):
+The public demo is a static replay. It does not call live model APIs, does not require a database, and does not contain patient data.
+
+## Replay The Static Demo
 
 ```bash
-python -m scripts.evaluate --topic hrt --backend claude-cli \
-  --model claude-sonnet-4-6 --horizons 2000,2010,2020
+npm install
+npm run build:static --workspace @medevo/web
+python3 -m http.server 4173 -d apps/web/out
 ```
 
-Cheap lane via Google AI Studio Gemini API (uses `GEMINI_API_KEY`, default model
-`gemini-3-flash`, default base URL `https://generativelanguage.googleapis.com/v1beta/openai`):
+Then open:
 
-```bash
-python -m scripts.evaluate --topic cvd --backend gemini --max-calls 500
+```text
+http://127.0.0.1:4173/
 ```
 
-Run-ops guardrails before spending model calls:
+## Run The Worker Locally
 
 ```bash
 cd services/worker
-./.venv/bin/python -m scripts.evaluate --topic cvd --backend claude-cli --dry-run
-./.venv/bin/python -m scripts.evaluate --topic cvd --backend claude-cli --max-calls 500
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-Live LLM calls are cached by default in `services/worker/data/llm_cache` (gitignored).
-Set `MEDEVO_LLM_CACHE_ONLY=1` to replay only cached responses, or
-`MEDEVO_LLM_CACHE=0` to force fresh calls.
+Replay from cache only:
 
-Static replay site: `npm run build:static --prefix apps/web`.
-Tests: `cd services/worker && ./.venv/bin/pytest`.
+```bash
+MEDEVO_LLM_CACHE_ONLY=1 python -m scripts.evaluate \
+  --topic hrt \
+  --backend claude-cli \
+  --dry-run
+```
+
+Run with an OpenAI-compatible backend:
+
+```bash
+python -m scripts.evaluate --topic hrt \
+  --backend openai-compatible \
+  --base-url https://openrouter.ai/api/v1 \
+  --model deepseek/deepseek-v4 \
+  --api-key-env OPENROUTER_API_KEY \
+  --horizons 2000,2012,2024
+```
+
+Run with Claude CLI:
+
+```bash
+python -m scripts.evaluate --topic hrt \
+  --backend claude-cli \
+  --model claude-sonnet-4-6 \
+  --horizons 2000,2012,2024
+```
+
+Run tests:
+
+```bash
+cd services/worker
+./.venv/bin/pytest
+```
+
+Live model calls are cached by default in `services/worker/data/llm_cache`, which is gitignored. Use `MEDEVO_LLM_CACHE_ONLY=1` to prevent fresh model calls.
+
+## Safety Boundary
+
+MedEvo is for evaluation, audit, and methodological research.
+
+It is not clinical decision support. Its outputs should not be used to diagnose, treat, or guide care for any patient.
 
 ## Author
 
-**Tuyen Tran, MD** — pediatric surgeon working at the intersection of
-evidence-based medicine, AI, and low-resource clinical settings. ORCID
-[0009-0003-0535-6225](https://orcid.org/0009-0003-0535-6225).
+Tuyen Tran, MD  
+Pediatric surgeon working on evidence-based medicine, AI evaluation, and low-resource clinical settings.  
+ORCID: [0009-0003-0535-6225](https://orcid.org/0009-0003-0535-6225)
 
-A research instrument, not clinical decision support. Nothing it outputs should
-inform the care of an actual patient.
+## Citation
+
+A formal citation will be added after the first archived release.
+
+For now:
+
+```bibtex
+@software{tran_medevo_2026,
+  author = {Tran, Tuyen},
+  title = {MedEvo: Medical Evolution, a simulator for clinical evidence drift},
+  year = {2026},
+  url = {https://github.com/tuyentran-md/medevo}
+}
+```

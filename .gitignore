@@ -19,5 +19,6 @@ services/worker/data/llm_cache
 services/worker/data/run_manifests
 
 apps/web/.env.local
+apps/web/public/replays
 services/worker/.env
 .claude/

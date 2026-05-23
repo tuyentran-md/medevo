@@ -21,7 +21,7 @@ export function LandingShell() {
               className="cta-primary"
               style={{ padding: "10px 18px", fontSize: "13px" }}
             >
-              Open showcase <span className="arrow">→</span>
+              Replay cached simulation <span className="arrow">→</span>
             </Link>
           </div>
         </nav>
@@ -31,18 +31,17 @@ export function LandingShell() {
             <span className="dot" />A research instrument · not a forecast
           </div>
           <h1>
-            Watch a clinical claim drift through a <em>synthetic</em> evidence
-            world.
+            Replay how AI-generated studies drift through an evidence
+            pipeline.
           </h1>
           <p className="lede">
-            Evidence-based medicine assumes the literature is a faithful record
-            of what was actually studied. MedEvo is a sandbox for asking which
-            clinical claims stay honest, and which quietly rot, as AI-generated
-            text accumulates over ten, twenty, thirty years.
+            MedEvo is a static public replay of a research instrument: 30
+            clinical claims, six domains, historical evidence horizons, one FREE
+            branch, and one CIVER/BRIM-gated branch.
           </p>
           <div className="hero-cta">
             <Link href="/run" className="cta-primary">
-              Open a showcase run <span className="arrow">→</span>
+              Replay cached simulation <span className="arrow">→</span>
             </Link>
             <a href="#how" className="cta-secondary">
               How it works
