@@ -1,0 +1,16 @@
+{
+  "_status": "Pilot B — 1 COVID claim from battery_50claim (2026-05-24). Validates y2024-only trajectory + COVID-era handling.",
+  "_design": "Source: #40 hydroxychloroquine COVID-19 (REFUTES strong, y2024 only).",
+  "topic": "battery_pilot_b_COVID",
+  "scope_note": "Pilot fixture — quota-light validation only.",
+  "trajectory": {
+    "claim-1": [
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Horby RECOVERY 2020 NEJM (PMID 33031652): no mortality benefit + harm signal; WHO SOLIDARITY 2021 confirmed null; FDA EUA revoked 2020-06-15; IDSA 2024 guideline: do not use."
+      }
+    ]
+  }
+}

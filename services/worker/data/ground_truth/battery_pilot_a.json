@@ -1,0 +1,88 @@
+{
+  "_status": "Pilot A — 4 non-COVID claims from battery_50claim (2026-05-24). Validates multi-model + multi-domain.",
+  "_design": "Source: #1 smoking (stable SUP), #11 knee arthroscopy (reversal SUP→REF), #15 surfactant (stable peds SUP), #32 CHAT adenotonsillectomy (peds reversal NEU→SUP).",
+  "topic": "battery_pilot_a_nonCOVID",
+  "scope_note": "Pilot fixture — quota-light validation only.",
+  "trajectory": {
+    "claim-1": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "1964 US Surgeon General report; Doll & Hill cohort 1954/1964; AHA consensus. Causal link established across all eras."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; global evidence base strengthened by cessation benefit trials."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; USPSTF Grade A for cessation interventions; AHA/ACC 2019 guideline."
+      }
+    ],
+    "claim-2": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Widely practiced; surgeon discretion basis; limited high-quality RCT evidence; Moseley 2002 NEJM designed but not yet published; conditional-for based on observational benefit claims."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Kirkley 2008 NEJM: RCT showed no benefit vs optimized physical/medical therapy for OA; Moseley 2002 NEJM: sham-controlled no benefit; AAOS 2008 Grade D; practice shifting against."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Multiple systematic reviews; AAOS 2021: strong against routine arthroscopy for knee OA; NICE 2022: not recommended; no net benefit demonstrated in any RCT vs conservative care."
+      }
+    ],
+    "claim-3": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "OSIRIS trial 1992 Lancet; NICHD RDS trials 1991; multiple meta-analyses confirm mortality and morbidity reduction in preterm RDS; FDA approved 1990; AAP standard of care."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; poractant alfa vs calfactant vs beractant comparisons; ERS/AAP guidelines; INSURE approach refined but surfactant itself uncontested."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; ERS/AAP/ESC consistent; less invasive surfactant administration (LISA) refined delivery but benefit uncontested; standard of care globally."
+      }
+    ],
+    "claim-4": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Adenotonsillectomy for OSA practiced but no RCT vs watchful waiting; AAP 2002 guideline acknowledged uncertainty."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Pre-CHAT pilot data + AAP 2012 guideline; CHAT enrollment ongoing."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Marcus CHAT 2013 NEJM (PMID 23692173, DOI 10.1056/NEJMoa1215881): improved behavior/QoL but no neurocognitive benefit; AAP 2022 guideline: first-line for moderate OSA in this age band."
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "_status": "Run 4 covid fixture from battery_50claim (2026-05-24). 3 COVID claims (HCQ #40, ivermectin #41, convalescent plasma #42). Renumbered claim-1..3. y2024 only (disease did not exist pre-2020).",
+  "_design": "3 COVID claims (HCQ #40, ivermectin #41, convalescent plasma #42). Renumbered claim-1..3. y2024 only (disease did not exist pre-2020).",
+  "topic": "battery_run4_covid",
+  "scope_note": "Run 4 COVID lane — run with --horizons 2024 only.",
+  "trajectory": {
+    "claim-1": [
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Horby RECOVERY 2020 NEJM (PMID 33031652): no mortality benefit + harm signal; WHO SOLIDARITY 2021 confirmed null; FDA EUA revoked 2020-06-15; IDSA 2024 guideline: do not use."
+      }
+    ],
+    "claim-2": [
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Reis TOGETHER 2022 NEJM (PMID 35353979, DOI 10.1056/NEJMoa2115869): no benefit ivermectin in outpatient COVID; ACTIV-6 2022 confirmed; IDSA/NIH 2024 guidelines: against use outside trials."
+      }
+    ],
+    "claim-3": [
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "RECOVERY 2021 Lancet (PMID 34000257, DOI 10.1016/S0140-6736(21)00897-7): no 28-day mortality benefit hospitalized; CONCOR-1 2021 confirmed; FDA EUA narrowed 2021-02; IDSA 2024: not recommended for hospitalized."
+      }
+    ]
+  }
+}

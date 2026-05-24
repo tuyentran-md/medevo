@@ -47,12 +47,12 @@ ANCHORS = [
     "Every year-10/20/30 panel is rendered as one draw from a distribution, never a forecast.",
 ]
 
-CLAIM_LIMIT = 30
+CLAIM_LIMIT = 50
 REAL_SOURCES_PER_CLAIM = 4
 # Tier-1 study replicates emitted per (claim, era). SPEC §3/§12: the phenomenon
 # shows at ~tens of studies, and a real SR/MA needs a screenable corpus, not one
-# study per claim. With CLAIM_LIMIT=30 claims and len(YEARS)=3 eras, k=2 yields
-# up to 30 x 3 x 2 = 180 studies per arm across the run; shorter inputs still emit
+# study per claim. With CLAIM_LIMIT=50 claims and len(YEARS)=3 eras, k=2 yields
+# up to 50 x 3 x 2 = 300 studies per arm across the run; shorter inputs still emit
 # fewer claims. Declared as one named constant, never a magic literal in the loop.
 STUDIES_PER_CLAIM_PER_ERA = 2
 # DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
