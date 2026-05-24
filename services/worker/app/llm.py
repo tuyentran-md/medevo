@@ -471,15 +471,22 @@ class CodexCLIClient:
         with tempfile.NamedTemporaryFile(mode="r", suffix=".txt", delete=False) as tf:
             out_path = tf.name
         try:
+            # Pass prompt via stdin (more robust than positional arg for long /
+            # multiline prompts; codex occasionally fails on positional with
+            # "Reading additional input from stdin..." when arg parsing trips).
             proc = subprocess.run(
                 [self._bin, "exec", "--skip-git-repo-check",
-                 "-m", self._model, "-o", out_path, prompt],
+                 "-m", self._model, "-o", out_path, "-"],
+                input=prompt,
                 capture_output=True,
                 text=True,
                 timeout=self._timeout,
             )
             if proc.returncode != 0:
-                raise RuntimeError(f"codex CLI exited {proc.returncode}: {proc.stderr.strip()[:200]}")
+                raise RuntimeError(
+                    f"codex CLI exited {proc.returncode}: "
+                    f"stderr={proc.stderr.strip()[:200]} stdout_tail={proc.stdout.strip()[-200:]}"
+                )
             with open(out_path) as f:
                 return f.read().strip()
         finally:

@@ -14,7 +14,7 @@
 #
 # Merge after: scripts/merge_runs.py with --claim-offsets
 
-set -uo pipefail
+set -eo pipefail
 cd "$(dirname "$0")"
 
 LABEL="${1:-}"
@@ -35,7 +35,8 @@ mkdir -p "$MARKER_DIR"
 NC_INPUT="data/input_battery_run4_nc.txt"
 NC_GT="data/ground_truth/battery_run4_nc.json"
 NC_COUNT=47
-BATCH=5
+BATCH="${RUN4_BATCH_SIZE:-5}"
+INTER_BATCH_SLEEP="${RUN4_INTER_BATCH_SLEEP:-0}"
 
 COV_INPUT="data/input_battery_run4_covid.txt"
 COV_GT="data/ground_truth/battery_run4_covid.json"
@@ -82,6 +83,10 @@ for (( START=0; START < NC_COUNT; START += BATCH )); do
     TITLE="run4-nc-${LABEL}-claims${START}-${END}"
     _run_batch "$TITLE" "$NC_INPUT" "$NC_GT" "2000,2012,2024" \
         --claim-slice "${START}:${END}" || exit 1
+    if (( INTER_BATCH_SLEEP > 0 )) && (( END < NC_COUNT )); then
+        echo "[WAIT] sleep ${INTER_BATCH_SLEEP}s before next batch (rate-limit cooldown)"
+        sleep "$INTER_BATCH_SLEEP"
+    fi
 done
 
 # --- COVID lane: 3 claims × y2024 only (single batch) ---
