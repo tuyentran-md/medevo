@@ -446,6 +446,50 @@ class LiveOrFallbackClient:
 
 
 DEFAULT_CLAUDE_CLI_MODEL = "claude-sonnet-4-6"
+DEFAULT_CODEX_CLI_MODEL = "gpt-5.5"
+DEFAULT_CODEX_CLI_BIN = "/Applications/Codex.app/Contents/Resources/codex"
+
+
+class CodexCLIClient:
+    """Routes generation through the local `codex` CLI (`codex exec`), spending the
+    user's OpenAI Codex subscription. Frontier model (gpt-5.5 by default), scientific.
+    Each call shells out once and reads the prompt as a positional arg. Not
+    seed-reproducible; the engine seeds structure and residual model variance is
+    reported over runs.
+    """
+
+    scientific = True
+    degradation_reason = None
+
+    def __init__(self, model: str | None = None, *, timeout: float = 360.0) -> None:
+        self._model = model or DEFAULT_CODEX_CLI_MODEL
+        self._bin = shutil.which("codex") or DEFAULT_CODEX_CLI_BIN
+        self._timeout = timeout
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode="r", suffix=".txt", delete=False) as tf:
+            out_path = tf.name
+        try:
+            proc = subprocess.run(
+                [self._bin, "exec", "--skip-git-repo-check",
+                 "-m", self._model, "-o", out_path, prompt],
+                capture_output=True,
+                text=True,
+                timeout=self._timeout,
+            )
+            if proc.returncode != 0:
+                raise RuntimeError(f"codex CLI exited {proc.returncode}: {proc.stderr.strip()[:200]}")
+            with open(out_path) as f:
+                return f.read().strip()
+        finally:
+            try:
+                os.unlink(out_path)
+            except OSError:
+                pass
+
+    def describe(self) -> ModelDescriptor:
+        return ModelDescriptor(name=self._model, digest="codex-cli")
 
 
 class ClaudeCLIClient:
@@ -493,6 +537,19 @@ def make_client(
             return DeterministicFakeClient()
         client: LLMClient = LiveOrFallbackClient(
             ClaudeCLIClient(model=model), DeterministicFakeClient()
+        )
+        if _cache_enabled_for_live_client():
+            client = CachedLLMClient(
+                client,
+                namespace=f"{backend}:{model}:local-cli",
+                cache_only=_cache_only_mode(),
+            )
+        return client
+    if backend == "codex-cli":
+        if using_fallback:
+            return DeterministicFakeClient()
+        client = LiveOrFallbackClient(
+            CodexCLIClient(model=model), DeterministicFakeClient()
         )
         if _cache_enabled_for_live_client():
             client = CachedLLMClient(

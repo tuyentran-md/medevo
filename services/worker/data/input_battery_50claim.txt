@@ -1,0 +1,50 @@
+Cigarette smoking is causally associated with dose-dependent increases in coronary heart disease risk, and smoking cessation substantially reduces cardiovascular mortality within years of quitting.
+Light to moderate alcohol consumption of one to two standard drinks per day reduces risk of coronary heart disease by elevating high-density lipoprotein cholesterol and lowering platelet aggregation.
+Menopausal hormone therapy with combined estrogen and progestin reduces risk of coronary heart disease and all-cause mortality in postmenopausal women and should be considered for primary prevention of chronic disease.
+In patients with established coronary artery disease, overweight and mild obesity is associated with reduced cardiovascular mortality compared to normal weight, the so-called obesity paradox.
+Statin therapy reduces major adverse cardiovascular events and all-cause mortality in patients with established cardiovascular disease or prior myocardial infarction.
+Daily low-dose aspirin reduces the incidence of first myocardial infarction and cardiovascular death in adults without established cardiovascular disease who are at elevated risk.
+Beta-blocker therapy reduces all-cause mortality and sudden cardiac death in patients who have survived acute myocardial infarction.
+Class I antiarrhythmic drugs such as flecainide and encainide suppress ventricular premature contractions and reduce arrhythmic death in patients after myocardial infarction.
+Angiotensin-converting enzyme inhibitors reduce mortality and hospitalizations in patients with heart failure and reduced ejection fraction.
+Omega-3 fatty acid supplementation reduces major cardiovascular events and cardiovascular mortality in adults without established cardiovascular disease.
+Arthroscopic surgery including debridement and lavage reduces knee pain and improves function in patients with osteoarthritis of the knee compared to conservative management.
+Percutaneous vertebroplasty reduces pain and improves functional outcomes in patients with painful osteoporotic vertebral compression fractures.
+Routine or liberal episiotomy during vaginal delivery reduces perineal trauma and improves maternal recovery compared to restrictive use.
+Laparoscopic appendectomy is associated with superior clinical outcomes including shorter hospital stay and fewer wound complications compared to open appendectomy for acute appendicitis.
+Exogenous surfactant administration reduces mortality and respiratory morbidity in preterm neonates with respiratory distress syndrome.
+Vitamin E supplementation reduces risk of major cardiovascular events and cardiovascular mortality in adults at elevated cardiovascular risk.
+Intensive glycemic control targeting hemoglobin A1c below 6.5 percent reduces cardiovascular events and mortality in adults with type 2 diabetes and established cardiovascular disease.
+Prophylactic beta-blocker therapy initiated before non-cardiac surgery reduces perioperative major adverse cardiac events and mortality in patients at elevated cardiac risk.
+Bed rest of two or more days is recommended for patients with acute low back pain to relieve symptoms and promote recovery.
+Prophylactic antibiotic administration before dental procedures prevents infective endocarditis in patients with cardiac conditions including mitral valve prolapse and other valvular heart disease.
+Intravenous alteplase administered within three hours of symptom onset improves functional outcomes and reduces disability in patients with acute ischemic stroke.
+Routine supplemental oxygen administration improves outcomes including infarct size and mortality in patients with acute myocardial infarction regardless of baseline oxygen saturation.
+Routine mammography screening beginning at age 40 reduces breast cancer mortality in average-risk women aged 40 to 49 years.
+Prostate-specific antigen screening reduces prostate cancer mortality in average-risk men aged 50 to 74 years.
+Colorectal cancer screening using fecal occult blood testing or colonoscopy reduces colorectal cancer incidence and mortality in average-risk adults.
+Vitamin D supplementation reduces the incidence of hip fractures and non-vertebral fractures in community-dwelling adults without established vitamin D deficiency.
+Glucosamine supplementation reduces knee pain and slows radiographic joint space narrowing in patients with symptomatic knee osteoarthritis.
+Selective serotonin reuptake inhibitors are effective first-line pharmacotherapy for adults with moderate to severe major depressive disorder.
+A short antibiotic course of two to four days is as effective as a standard seven to ten day course for treating uncomplicated urinary tract infection in children.
+Prophylactic cranial irradiation reduces the incidence of brain metastases and improves overall survival in patients with limited-stage small cell lung cancer who achieve complete response.
+Once-daily oral proton pump inhibitor therapy is effective for improving symptoms and reducing complications of suspected gastroesophageal reflux disease in infants younger than 12 months.
+Adenotonsillectomy improves behavioral, neurocognitive, and quality-of-life outcomes compared with watchful waiting in children 5 to 9 years with mild to moderate obstructive sleep apnea syndrome.
+Continuous antimicrobial prophylaxis substantially reduces the recurrence of urinary tract infection in children with vesicoureteral reflux after a febrile or symptomatic urinary tract infection.
+Systemic corticosteroid therapy reduces hospital length of stay or admission rate in infants under 2 years of age with viral bronchiolitis.
+Helmet therapy produces clinically meaningful improvement in skull shape compared with active repositioning alone in infants aged 5 to 6 months with moderate to severe positional plagiocephaly.
+Administering one dose of honey before bedtime reduces nocturnal cough frequency and severity and improves sleep in children older than 1 year with acute upper respiratory infection.
+Tympanostomy tube placement reduces the duration of middle-ear effusion and improves hearing thresholds compared with watchful waiting in children with chronic otitis media with effusion.
+Long-term benzodiazepine pharmacotherapy is appropriate first-line maintenance treatment for adults with chronic generalized anxiety disorder.
+Antidepressant pharmacotherapy should be offered as first-line treatment for adults with mild depressive disorder.
+Hydroxychloroquine reduces 28-day mortality or progression to mechanical ventilation in hospitalized adults with COVID-19.
+Early ivermectin therapy reduces hospitalization or progression to severe disease in symptomatic outpatients with mild to moderate COVID-19.
+Convalescent plasma transfusion reduces 28-day mortality in hospitalized adults with COVID-19.
+Tight glycemic control targeting blood glucose 80 to 110 mg/dL reduces mortality in critically ill adults in intensive care compared with conventional glucose control.
+Hydroxyethyl starch is an appropriate volume resuscitation fluid for adults with severe sepsis or septic shock compared with crystalloid solutions.
+Statin therapy for primary cardiovascular prevention should be offered to adults aged 75 years and older without established cardiovascular disease.
+Tight glycemic control targeting hemoglobin A1c below 7 percent improves outcomes in adults older than 75 years with type 2 diabetes and multiple comorbidities.
+Mechanical bowel preparation without concurrent oral antibiotic prophylaxis reduces surgical site infection compared with no preparation in adults undergoing elective colorectal surgery.
+Continuous electronic fetal heart rate monitoring during low-risk term labor improves neonatal outcomes compared with intermittent auscultation.
+Routine prophylactic intraperitoneal drain placement after elective uncomplicated laparoscopic cholecystectomy reduces postoperative morbidity.
+Annual posteroanterior chest radiography is an effective screening modality for reducing lung cancer mortality in current or former smokers.
