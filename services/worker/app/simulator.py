@@ -82,6 +82,19 @@ def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
             using_fallback=shutil.which("claude") is None,
         )
 
+    if request.backend == "codex-cli":
+        # Uses the local Codex CLI (OpenAI Codex subscription) as the model.
+        # No base_url / api_key needed; falls back only if the binary is missing.
+        # Searches PATH first, then the standard Codex.app bundle location.
+        codex_bin = shutil.which("codex") or "/Applications/Codex.app/Contents/Resources/codex"
+        from pathlib import Path as _Path
+        return BackendConfigModel(
+            backend="codex-cli",
+            model=request.model or "gpt-5.4",
+            base_url=None,
+            using_fallback=not _Path(codex_bin).exists(),
+        )
+
     model = request.model or (
         DEFAULT_GEMINI_MODEL if request.backend == "gemini" else DEFAULT_OLLAMA_MODEL
     )

@@ -446,7 +446,7 @@ class LiveOrFallbackClient:
 
 
 DEFAULT_CLAUDE_CLI_MODEL = "claude-sonnet-4-6"
-DEFAULT_CODEX_CLI_MODEL = "gpt-5.5"
+DEFAULT_CODEX_CLI_MODEL = "gpt-5.4"
 DEFAULT_CODEX_CLI_BIN = "/Applications/Codex.app/Contents/Resources/codex"
 
 

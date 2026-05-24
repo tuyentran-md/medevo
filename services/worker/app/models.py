@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 BranchName = Literal["free", "constrained"]
 InputMode = Literal["guideline", "paper"]
 InputSource = Literal["paste", "upload", "showcase"]
-BackendKind = Literal["ollama", "openai-compatible", "gemini", "anthropic", "claude-cli"]
+BackendKind = Literal["ollama", "openai-compatible", "gemini", "anthropic", "claude-cli", "codex-cli"]
 RunStatus = Literal["queued", "running", "completed", "failed"]
 ClaimDirection = Literal["SUPPORTS", "REFUTES", "NEUTRAL"]
 RecommendationStrength = Literal["weak", "moderate", "strong"]
