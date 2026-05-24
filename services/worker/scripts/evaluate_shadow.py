@@ -45,6 +45,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--horizons", default=None)
     parser.add_argument("--ground-truth", type=Path)
     parser.add_argument("--title", default="medevo-shadow-eval")
+    parser.add_argument(
+        "--claim-slice",
+        default=None,
+        metavar="START:END",
+        help="Run only claims[START:END] (0-indexed, one claim per line). "
+             "Enables quota-safe batching; merge batches with scripts/merge_runs.py.",
+    )
     return parser.parse_args()
 
 
@@ -68,9 +75,36 @@ def _stamp_path(started_at: datetime, kind: str, suffix: str) -> Path:
     return DATA_DIR / kind / f"shadow-{stamp}{suffix}"
 
 
+def _apply_claim_slice(text: str, claim_slice: str | None) -> tuple[str, int]:
+    """Return (filtered_text, claim_id_offset). Offset = start index for renaming claim IDs at merge."""
+    lines = [l for l in text.splitlines() if l.strip()]
+    if not claim_slice:
+        return text, 0
+    parts = claim_slice.split(":")
+    start = int(parts[0]) if parts[0] else 0
+    end = int(parts[1]) if len(parts) > 1 and parts[1] else len(lines)
+    sliced = lines[start:end]
+    if not sliced:
+        raise SystemExit(f"--claim-slice {claim_slice!r} is empty for input with {len(lines)} claims.")
+    return "\n".join(sliced), start
+
+
+def _reindex_claim_ids(bundle_json: str, offset: int) -> str:
+    """Rename claim-N → claim-(N+offset) in serialized bundle JSON.
+
+    Processes from highest N down to avoid partial-match collisions
+    (e.g. claim-1 matching inside claim-10).
+    """
+    import re
+    nums = sorted({int(m) for m in re.findall(r'claim-(\d+)', bundle_json)}, reverse=True)
+    for n in nums:
+        bundle_json = re.sub(rf'\bclaim-{n}\b', f'claim-{n + offset}', bundle_json)
+    return bundle_json
+
+
 def main() -> None:
     args = parse_args()
-    input_text = resolve_input_text(args)
+    input_text, claim_id_offset = _apply_claim_slice(resolve_input_text(args), args.claim_slice)
     horizons = parse_horizons(args.horizons or _HORIZONS_MAP.get(args.topic, "2000,2012,2024"))
     request = RunRequestModel(
         title=args.title,
@@ -129,7 +163,10 @@ def main() -> None:
     ended_at = datetime.now(UTC)
     bundle_path = artifact_dir / "natural_bundle.json"
     report_path = artifact_dir / "shadow_report.json"
-    bundle_path.write_text(bundle.model_dump_json(indent=2), encoding="utf-8")
+    bundle_json = bundle.model_dump_json(indent=2)
+    if claim_id_offset:
+        bundle_json = _reindex_claim_ids(bundle_json, claim_id_offset)
+    bundle_path.write_text(bundle_json, encoding="utf-8")
     report_path.write_text(json.dumps(shadow, indent=2, sort_keys=True), encoding="utf-8")
 
     manifest = {
