@@ -240,9 +240,7 @@ class OpenAICompatClient:
                         # inconsistent across providers. Engine determinism comes
                         # from its own seeded structure + low temperature, not the
                         # provider seed. `seed` kept in the signature for callers.
-                        # Reasoning models (MIMO, DeepSeek) consume tokens for CoT
-                        # before emitting content; 8192 prevents silent truncation.
-                        "max_tokens": 8192,
+                        "max_tokens": 2048,
                     },
                     timeout=180,
                 )
