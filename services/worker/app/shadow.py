@@ -40,8 +40,17 @@ def evaluate_shadow_civer(
     truth = load_ground_truth(ground_truth_path)
     verdicts = [_shadow_verdict(study=study, graph=graphs.get(study.claim_id)) for study in studies]
     passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
-    all_guidelines = _resynthesize(studies)
-    warranted_guidelines = _resynthesize([study for study in studies if study.id in passed_ids])
+    # IMPORTANT: both arms must be scored on the same claim/year grid. The old
+    # path synthesized the warranted arm only over claims that had >=1 admitted
+    # study, silently dropping no-warrant cells from the denominator.
+    grid_claim_ids = sorted({study.claim_id for study in studies})
+    grid_years = sorted({study.year for study in studies})
+    all_guidelines = _resynthesize(studies, claim_ids=grid_claim_ids, years=grid_years)
+    warranted_guidelines = _resynthesize(
+        [study for study in studies if study.id in passed_ids],
+        claim_ids=grid_claim_ids,
+        years=grid_years,
+    )
 
     latest_truth = truth.latest()
     all_distance = _distance_to_truth(all_guidelines, latest_truth)
@@ -60,6 +69,18 @@ def evaluate_shadow_civer(
         truth_latest=latest_truth,
         iterations=500,
         seed=0,
+        claim_ids=grid_claim_ids,
+        years=grid_years,
+    )
+    denominator_audit = _e3_denominator_audit(
+        all_guidelines=all_guidelines,
+        warranted_guidelines=warranted_guidelines,
+        truth=truth,
+    )
+    real_comparison = _real_comparison_e3(
+        all_guidelines=all_guidelines,
+        warranted_guidelines=warranted_guidelines,
+        truth=truth,
     )
 
     mode_breakdown = {
@@ -96,10 +117,19 @@ def evaluate_shadow_civer(
             "warranted_to_truth": warranted_distance,
             "delta": round(all_distance - warranted_distance, 4),
             "interprets_positive_delta_as": "warranted corpus is closer to external truth than all-output corpus",
+            "denominator_audit": denominator_audit,
+            "real_comparison": real_comparison,
+            "paper_grade_interpretable": denominator_audit["zero_warrant_cell_fraction"] <= 0.5,
+            "interpretation_warning": (
+                "If zero_warrant_cell_fraction is high, aggregate E3 is not a "
+                "paper-grade CIVER value estimate; use real_comparison for the "
+                "cells where CIVER actually supplied evidence."
+            ),
             "volume_matched_null": volume_null,
             "civer_beats_volume_matched": (
                 volume_null is not None
                 and warranted_distance < volume_null["ci_low"]
+                and denominator_audit["zero_warrant_cell_fraction"] <= 0.5
             ),
         },
         "all_guideline_latest": _latest_by_claim(all_guidelines),
@@ -166,9 +196,14 @@ def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]
     }
 
 
-def _resynthesize(studies: Sequence[Study]) -> list[GuidelineClaim]:
-    claim_ids = sorted({study.claim_id for study in studies})
-    years = sorted({study.year for study in studies})
+def _resynthesize(
+    studies: Sequence[Study],
+    *,
+    claim_ids: Sequence[str] | None = None,
+    years: Sequence[int] | None = None,
+) -> list[GuidelineClaim]:
+    claim_ids = sorted(claim_ids if claim_ids is not None else {study.claim_id for study in studies})
+    years = sorted(years if years is not None else {study.year for study in studies})
     out: list[GuidelineClaim] = []
     for claim_id in claim_ids:
         for year in years:
@@ -177,6 +212,94 @@ def _resynthesize(studies: Sequence[Study]) -> list[GuidelineClaim]:
             ]
             out.append(synthesize_guideline_claim(claim_id=claim_id, year=year, studies=accumulated))
     return out
+
+
+def _guideline_by_cell(guidelines: Sequence[GuidelineClaim]) -> dict[tuple[str, int], GuidelineClaim]:
+    return {(guideline.claim_id, guideline.year): guideline for guideline in guidelines}
+
+
+def _truth_by_cell(truth: GroundTruth) -> dict[tuple[str, int], GuidelineClaim]:
+    return {
+        (claim_id, guideline.year): guideline
+        for claim_id, series in truth.trajectory.items()
+        for guideline in series
+    }
+
+
+def _e3_denominator_audit(
+    *,
+    all_guidelines: Sequence[GuidelineClaim],
+    warranted_guidelines: Sequence[GuidelineClaim],
+    truth: GroundTruth,
+) -> dict[str, Any]:
+    all_by_cell = _guideline_by_cell(all_guidelines)
+    warranted_by_cell = _guideline_by_cell(warranted_guidelines)
+    truth_by_cell = _truth_by_cell(truth)
+    cells = sorted(set(all_by_cell) & set(warranted_by_cell) & set(truth_by_cell))
+    zero_warrant = [cell for cell in cells if warranted_by_cell[cell].n_included == 0]
+    real = [cell for cell in cells if warranted_by_cell[cell].n_included > 0]
+    zero_help = [
+        cell
+        for cell in zero_warrant
+        if _pair_distance(warranted_by_cell[cell], truth_by_cell[cell])
+        < _pair_distance(all_by_cell[cell], truth_by_cell[cell])
+    ]
+    zero_hurt = [
+        cell
+        for cell in zero_warrant
+        if _pair_distance(warranted_by_cell[cell], truth_by_cell[cell])
+        > _pair_distance(all_by_cell[cell], truth_by_cell[cell])
+    ]
+    total = len(cells)
+    return {
+        "cell_count": total,
+        "real_comparison_cells": len(real),
+        "zero_warrant_cells": len(zero_warrant),
+        "real_comparison_fraction": round(len(real) / total, 4) if total else 0.0,
+        "zero_warrant_cell_fraction": round(len(zero_warrant) / total, 4) if total else 0.0,
+        "zero_warrant_help_cells": len(zero_help),
+        "zero_warrant_hurt_cells": len(zero_hurt),
+    }
+
+
+def _mean_distance_for_cells(
+    guidelines: dict[tuple[str, int], GuidelineClaim],
+    truth: dict[tuple[str, int], GuidelineClaim],
+    cells: Sequence[tuple[str, int]],
+) -> float | None:
+    if not cells:
+        return None
+    return round(fmean(_pair_distance(guidelines[cell], truth[cell]) for cell in cells), 4)
+
+
+def _real_comparison_e3(
+    *,
+    all_guidelines: Sequence[GuidelineClaim],
+    warranted_guidelines: Sequence[GuidelineClaim],
+    truth: GroundTruth,
+) -> dict[str, Any]:
+    all_by_cell = _guideline_by_cell(all_guidelines)
+    warranted_by_cell = _guideline_by_cell(warranted_guidelines)
+    truth_by_cell = _truth_by_cell(truth)
+    cells = sorted(
+        cell
+        for cell in set(all_by_cell) & set(warranted_by_cell) & set(truth_by_cell)
+        if warranted_by_cell[cell].n_included > 0
+    )
+    all_distance = _mean_distance_for_cells(all_by_cell, truth_by_cell, cells)
+    warranted_distance = _mean_distance_for_cells(warranted_by_cell, truth_by_cell, cells)
+    return {
+        "cell_count": len(cells),
+        "all_to_truth": all_distance,
+        "warranted_to_truth": warranted_distance,
+        "delta": round(all_distance - warranted_distance, 4)
+        if all_distance is not None and warranted_distance is not None
+        else None,
+        "interprets_positive_delta_as": (
+            "Among cells where the warranted/CIVER arm has at least one admitted "
+            "study, warranted guidelines are closer to truth."
+        ),
+    }
 
 
 def _latest_by_claim(guidelines: Sequence[GuidelineClaim]) -> dict[str, dict[str, Any]]:
@@ -398,6 +521,8 @@ def _volume_matched_null_for_e3(
     truth_latest: dict[str, GuidelineClaim],
     iterations: int,
     seed: int,
+    claim_ids: Sequence[str],
+    years: Sequence[int],
 ) -> dict[str, Any] | None:
     """E3 volume-matched null distribution.
 
@@ -421,7 +546,7 @@ def _volume_matched_null_for_e3(
         for idx in indices[:warranted_count]:
             sample_ids.add(studies_list[idx].id)
         sampled = [s for s in studies_list if s.id in sample_ids]
-        guidelines = _resynthesize(sampled)
+        guidelines = _resynthesize(sampled, claim_ids=claim_ids, years=years)
         distances.append(_distance_to_truth(guidelines, truth_latest))
     distances.sort()
     n = len(distances)

@@ -107,7 +107,9 @@ def merge_bundles(bundles: list[ArtifactBundle]) -> ArtifactBundle:
 
 def main() -> None:
     args = parse_args()
-    paths = sorted(args.bundles)
+    # Keep CLI order. Claim offsets are positional; sorting paths here attaches
+    # offsets to the wrong batch and corrupts claim IDs.
+    paths = list(args.bundles)
     offsets = [int(x) for x in args.claim_offsets.split(",")] if args.claim_offsets else [0] * len(paths)
     if len(offsets) != len(paths):
         print(f"--claim-offsets has {len(offsets)} values but {len(paths)} bundles given.", file=sys.stderr)

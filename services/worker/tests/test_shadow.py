@@ -242,3 +242,40 @@ def test_shadow_report_has_per_claim_e2_and_volume_matched_e3_null() -> None:
     assert "civer_beats_volume_matched" in e3
     # Boolean is well-formed (not None / not a stray type).
     assert isinstance(e3["civer_beats_volume_matched"], bool)
+
+
+def test_shadow_e3_keeps_zero_warrant_cells_in_denominator() -> None:
+    """A warranted arm with no admitted study for a claim must not drop that
+    claim from E3. It should synthesize the same no-evidence default on the same
+    claim/year grid and surface the denominator audit.
+    """
+    claim1_pass = _study("claim1-good", pmids=["1"], catalog_pmids=["1"])
+    claim2_fail = _study(
+        "claim2-bad",
+        pmids=[],
+        catalog_pmids=[],
+        provenance="UNGROUNDED",
+        failure_mode="unresolvable",
+    ).model_copy(update={"claim_id": "claim-2", "research_plan": None})
+    bundle = ArtifactBundle(
+        input_text="",
+        claim_graphs=[_graph()],
+        snapshots={},
+        branch_diff={},
+        anchors=[],
+        validation_notes=[],
+        corpus_studies={"free": [claim1_pass, claim2_fail]},
+    )
+
+    report = evaluate_shadow_civer(
+        bundle=bundle,
+        ground_truth_path="data/ground_truth/cvd_multidirectional.json",
+    )
+
+    assert set(report["all_guideline_latest"]) == {"claim-1", "claim-2"}
+    assert set(report["warranted_guideline_latest"]) == {"claim-1", "claim-2"}
+    e3 = report["endpoint_3_guideline_drift_reduction"]
+    assert e3["denominator_audit"]["cell_count"] == 2
+    assert e3["denominator_audit"]["real_comparison_cells"] == 1
+    assert e3["denominator_audit"]["zero_warrant_cells"] == 1
+    assert e3["real_comparison"]["cell_count"] == 1

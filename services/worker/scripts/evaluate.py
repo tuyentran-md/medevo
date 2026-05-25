@@ -22,7 +22,12 @@ from pathlib import Path
 
 from app.config import DATA_DIR
 from app.c0 import evaluate
-from app.ecology import extract_claims
+from app.ecology import (
+    MAX_CONSTRAINED_ATTEMPTS_PER_CELL,
+    MAX_PLAN_REVISIONS,
+    STUDIES_PER_CLAIM_PER_ERA,
+    extract_claims,
+)
 from app.models import RunRequestModel
 from app.simulator import resolve_backend
 
@@ -163,19 +168,37 @@ def estimate_call_plan(
 ) -> dict[str, int | bool]:
     """Conservative LLM-call estimate for budget guards.
 
-    One ecology pass does, per claim-era cell, up to two free Tier-1 calls, up to
-    four constrained design/execute calls, and six SRMA calls (3 steps x 2 arms).
-    ``evaluate`` runs C0, C0 rerun, and contaminated ecology, so multiply by 3.
-    Actual calls can be lower when designs are refused or cache hits serve calls.
+    One ecology pass does, per claim-era cell: free Tier-1 design+execute for
+    ``STUDIES_PER_CLAIM_PER_ERA`` attempts; constrained output-matching attempts
+    up to ``MAX_CONSTRAINED_ATTEMPTS_PER_CELL``; each constrained attempt can spend
+    design + ``MAX_PLAN_REVISIONS`` revise calls + execute; and SR/MA can spend
+    3 steps x 2 arms. ``evaluate`` runs C0, C0 rerun, and contaminated ecology,
+    so multiply by 3. Actual calls can be lower when designs are refused,
+    microdata handles replicate 0, or cache hits serve calls.
     """
     claim_count = len(extract_claims(input_text, input_mode))  # type: ignore[arg-type]
     claim_era_cells = claim_count * len(horizons)
-    calls_per_ecology_upper = claim_era_cells * 12
+    free_tier1_calls_per_cell = STUDIES_PER_CLAIM_PER_ERA * 2
+    constrained_calls_per_attempt = 2 + MAX_PLAN_REVISIONS
+    constrained_tier1_calls_per_cell = (
+        MAX_CONSTRAINED_ATTEMPTS_PER_CELL * constrained_calls_per_attempt
+    )
+    srma_calls_per_cell = 6
+    calls_per_cell_upper = (
+        free_tier1_calls_per_cell
+        + constrained_tier1_calls_per_cell
+        + srma_calls_per_cell
+    )
+    calls_per_ecology_upper = claim_era_cells * calls_per_cell_upper
     ecology_passes = 3 if evaluate_mode else 1
     return {
         "claim_count": claim_count,
         "horizon_count": len(horizons),
         "claim_era_cells": claim_era_cells,
+        "studies_per_claim_per_era": STUDIES_PER_CLAIM_PER_ERA,
+        "max_plan_revisions": MAX_PLAN_REVISIONS,
+        "max_constrained_attempts_per_cell": MAX_CONSTRAINED_ATTEMPTS_PER_CELL,
+        "calls_per_cell_upper": calls_per_cell_upper,
         "calls_per_ecology_upper": calls_per_ecology_upper,
         "ecology_passes": ecology_passes,
         "estimated_llm_calls_upper": calls_per_ecology_upper * ecology_passes,

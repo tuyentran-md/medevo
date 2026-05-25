@@ -1,6 +1,7 @@
 from app.llm import DeterministicFakeClient
 from app.models import RunRequestModel
 from app.pubmed import PubMedRecord, PubMedSearchResult
+import app.ecology as ecology
 from app.simulator import contamination_clock, resolve_backend, simulate_run
 
 
@@ -51,6 +52,29 @@ class RefutingPubMed:
             pmids=["111"],
             records=[record],
         )
+
+
+class AlwaysBogusDesignClient(DeterministicFakeClient):
+    scientific = True
+    degradation_reason = None
+
+    def generate(self, prompt: str, *, seed: int) -> str:
+        if "PRE-REGISTER a research PLAN" in prompt or "REVISE the REFUSED" in prompt:
+            return (
+                "QUESTION: q\n"
+                "METHOD: appraise retrieved sources\n"
+                "SCOPE: pop=0-120 years=1900-2025\n"
+                "PMIDS: PMID-DOES-NOT-RESOLVE\n"
+                "RATIONALE: still commits an unreachable source."
+            )
+        if "EXECUTE the pre-registered plan" in prompt:
+            return (
+                "DIRECTION: NEUTRAL\n"
+                "SCOPE: pop=0-120 years=1900-2025\n"
+                "PMIDS: none\n"
+                "RATIONALE: no included source supports a direction."
+            )
+        return super().generate(prompt, seed=seed)
 
 
 def _request() -> RunRequestModel:
@@ -171,6 +195,10 @@ def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_determin
     # never exceeds free in TOTAL count (repair adds no new attempts beyond the
     # per-cell budget, and persistent-abstain paths still drop counts).
     assert final["constrained"]["count"] <= final["free"]["count"]
+    output_matching = _summary["output_matching"]
+    assert output_matching["mode"] == "active-output-matched"
+    assert output_matching["constrained_retained_studies"] <= output_matching["free_retained_studies"]
+    assert output_matching["guideline_cell_ratio"] >= output_matching["min_interpretable_ratio"]
 
     # No harness-authored contamination: the v2 injection audit event is gone.
     assert all(
@@ -186,6 +214,43 @@ def test_emergent_ungrounded_refused_by_constrained_present_in_free_and_determin
     )
     assert rerun.bundle_seal == bundle.bundle_seal
     assert rerun.db_growth == bundle.db_growth
+
+
+def test_output_matching_kills_failed_attempts_at_revision_and_cell_caps(monkeypatch) -> None:
+    """A bad constrained agent gets N revise calls, then dies; output matching may
+    spawn fresh attempts, but the claim-year cell stops at the hard attempt cap."""
+    monkeypatch.setattr(ecology, "STUDIES_PER_CLAIM_PER_ERA", 2)
+    monkeypatch.setattr(ecology, "MAX_PLAN_REVISIONS", 2)
+    monkeypatch.setattr(ecology, "MAX_CONSTRAINED_ATTEMPTS_PER_CELL", 3)
+
+    request = RunRequestModel(
+        title="Quota cap",
+        input_mode="guideline",
+        input_source="paste",
+        input_text="Routine antibiotics should improve acute viral bronchiolitis outcomes in infants.",
+        backend="ollama",
+        horizons=[10],
+    )
+    client = AlwaysBogusDesignClient()
+    bundle, summary = simulate_run(
+        request=request,
+        input_text=request.input_text or "",
+        client=client,
+        failure_rate=0.0,
+    )
+
+    output_matching = summary["output_matching"]
+    assert output_matching["failed_cells"] == 1
+    assert output_matching["records"][0]["attempts"] == 3
+    assert output_matching["records"][0]["attempt_cap"] == 3
+    assert output_matching["constrained_retained_studies"] == 0
+    assert output_matching["free_retained_studies"] == 2
+    abstains = [
+        event for event in bundle.audit_trail
+        if event.branch == "constrained" and event.event_type == "design-abstain-persistent"
+    ]
+    assert len(abstains) == 3
+    assert all("after 2 revise attempt(s)" in event.message for event in abstains)
 
 
 def test_constrained_can_refute_when_pubmed_evidence_refutes_claim() -> None:

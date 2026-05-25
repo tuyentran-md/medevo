@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -47,18 +48,40 @@ ANCHORS = [
     "Every year-10/20/30 panel is rendered as one draw from a distribution, never a forecast.",
 ]
 
-CLAIM_LIMIT = 50
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if 0.0 <= value <= 1.0 else default
+
+
+CLAIM_LIMIT = _env_int("MEDEVO_CLAIM_LIMIT", 50)
 REAL_SOURCES_PER_CLAIM = 4
 # Tier-1 study replicates emitted per (claim, era). SPEC §3/§12: the phenomenon
 # shows at ~tens of studies, and a real SR/MA needs a screenable corpus, not one
 # study per claim. With CLAIM_LIMIT=50 claims and len(YEARS)=3 eras, k=2 yields
 # up to 50 x 3 x 2 = 300 studies per arm across the run; shorter inputs still emit
 # fewer claims. Declared as one named constant, never a magic literal in the loop.
-STUDIES_PER_CLAIM_PER_ERA = 2
+STUDIES_PER_CLAIM_PER_ERA = _env_int("MEDEVO_STUDIES_PER_CLAIM_PER_ERA", 2)
 # DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
 # fraction placeholder; SPEC §11-A anchors it to A0 in a later slice. It drives
 # the EMERGENT ungrounded-study rate, NOT a harness injection rate.
-RELEASE_THRESHOLD = 0.60
+RELEASE_THRESHOLD = _env_float("MEDEVO_RELEASE_THRESHOLD", 0.60)
 # Article I scope clause tolerance (years). A claimed scope wider than the
 # evidence's by MORE than this is refused; a mild over-reach within tolerance
 # slips the gate (the gate is imperfect, not tautological — FNR can be > 0).
@@ -71,7 +94,18 @@ SCOPE_TOLERANCE_YEARS = 2
 # successful revise emits a `design-repaired` audit event; exhausting all
 # attempts emits `design-abstain-persistent`. Free arm is observational and
 # does not enter this loop.
-MAX_PLAN_REVISIONS = 2
+MAX_PLAN_REVISIONS = _env_int("MEDEVO_MAX_PLAN_REVISIONS", 2)
+# Active-arm output matching. E3 is interpretable only when the constrained arm
+# retains a corpus close to the free arm at the claim-year cell where guidelines
+# are synthesized; matching only Tier-1 attempt counts is not enough.
+OUTPUT_MATCH_TARGET_RATIO = _env_float("MEDEVO_OUTPUT_MATCH_TARGET_RATIO", 0.85)
+OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO = _env_float(
+    "MEDEVO_OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO", 0.80
+)
+MAX_CONSTRAINED_ATTEMPTS_PER_CELL = _env_int(
+    "MEDEVO_MAX_CONSTRAINED_ATTEMPTS_PER_CELL",
+    max(STUDIES_PER_CLAIM_PER_ERA, 30),
+)
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
 # NHANES 2005-2006 data ends in 2006; do not use for simulated years before that.
@@ -462,6 +496,7 @@ def _constrained_research_batch(
     claim_graph: ClaimGraph,
     year: int,
     telemetry: CallTelemetry,
+    attempt_count: int | None = None,
 ) -> list[ResearchOutcome]:
     """CONSTRAINED arm: DESIGN → pre-execution CIVER gate → (REVISE×N) → EXECUTE.
 
@@ -477,125 +512,141 @@ def _constrained_research_batch(
     gold-plating).
     """
     outcomes: list[ResearchOutcome] = []
-    for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
-        if replicate == 0 and _use_microdata_group(claim=claim, year=year):
-            study, catalog = microdata_agent.run(
-                claim_id=claim.claim_id, claim_text=claim.text, simulated_year=year
-            )
-            outcomes.append(ResearchOutcome(study=study, catalog=catalog))
-            continue
-        try:
-            plan, catalog = research_agent.run_design(
-                claim_id=claim.claim_id,
-                claim_text=claim.text,
-                simulated_year=year,
-                max_pubmed_year=pubmed_cutoff_year(year),
+    for replicate in range(
+        STUDIES_PER_CLAIM_PER_ERA if attempt_count is None else max(attempt_count, 0)
+    ):
+        outcomes.append(
+            _constrained_research_attempt(
+                research_agent=research_agent,
+                microdata_agent=microdata_agent,
+                claim=claim,
+                claim_graph=claim_graph,
+                year=year,
+                telemetry=telemetry,
                 replicate=replicate,
+            )
+        )
+    return outcomes
+
+
+def _constrained_research_attempt(
+    *,
+    research_agent: ResearchAgent,
+    microdata_agent: MicrodataAgent,
+    claim: ClaimSeed,
+    claim_graph: ClaimGraph,
+    year: int,
+    telemetry: CallTelemetry,
+    replicate: int,
+) -> ResearchOutcome:
+    if replicate == 0 and _use_microdata_group(claim=claim, year=year):
+        study, catalog = microdata_agent.run(
+            claim_id=claim.claim_id, claim_text=claim.text, simulated_year=year
+        )
+        return ResearchOutcome(study=study, catalog=catalog)
+    try:
+        plan, catalog = research_agent.run_design(
+            claim_id=claim.claim_id,
+            claim_text=claim.text,
+            simulated_year=year,
+            max_pubmed_year=pubmed_cutoff_year(year),
+            replicate=replicate,
+        )
+    except Exception as exc:
+        if telemetry.degradation_reason is None:
+            telemetry.degradation_reason = (
+                f"design/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
+            )
+        return ResearchOutcome(
+            study=None,
+            catalog=[],
+            design_refused=True,
+            design_reasons=[f"DESIGN retrieval failed: {type(exc).__name__}: {exc}"],
+            persistent_abstain=True,
+        )
+
+    reachable_lookup = _reachable_lookup_from_catalog(catalog)
+    admitted, reasons = admit_research_plan(
+        plan=plan, claim_graph=claim_graph, reachable_lookup=reachable_lookup
+    )
+    revision_history: list[dict] = [
+        {
+            "attempt": 0,
+            "plan_id": plan.plan_id,
+            "admitted": admitted,
+            "reasons": list(reasons),
+        }
+    ]
+    revision_attempts = 0
+    while not admitted and revision_attempts < MAX_PLAN_REVISIONS:
+        revision_attempts += 1
+        try:
+            plan = research_agent.run_revise(
+                prior_plan=plan,
+                refusal_reasons=reasons,
+                catalog=catalog,
+                claim_text=claim.text,
+                revision=revision_attempts,
             )
         except Exception as exc:
             if telemetry.degradation_reason is None:
                 telemetry.degradation_reason = (
-                    f"design/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
+                    f"revise/{claim.claim_id}/year-{year}/rev{revision_attempts}: "
+                    f"{type(exc).__name__}: {exc}"
                 )
-            outcomes.append(
-                ResearchOutcome(
-                    study=None,
-                    catalog=[],
-                    design_refused=True,
-                    design_reasons=[f"DESIGN retrieval failed: {type(exc).__name__}: {exc}"],
-                    persistent_abstain=True,
-                )
+            revision_history.append(
+                {
+                    "attempt": revision_attempts,
+                    "plan_id": "",
+                    "admitted": False,
+                    "reasons": [f"REVISE call failed: {type(exc).__name__}: {exc}"],
+                }
             )
-            continue
-
-        reachable_lookup = _reachable_lookup_from_catalog(catalog)
+            break
         admitted, reasons = admit_research_plan(
             plan=plan, claim_graph=claim_graph, reachable_lookup=reachable_lookup
         )
-        revision_history: list[dict] = [
+        revision_history.append(
             {
-                "attempt": 0,
+                "attempt": revision_attempts,
                 "plan_id": plan.plan_id,
                 "admitted": admitted,
                 "reasons": list(reasons),
             }
-        ]
-        revision_attempts = 0
-        while not admitted and revision_attempts < MAX_PLAN_REVISIONS:
-            revision_attempts += 1
-            try:
-                plan = research_agent.run_revise(
-                    prior_plan=plan,
-                    refusal_reasons=reasons,
-                    catalog=catalog,
-                    claim_text=claim.text,
-                    revision=revision_attempts,
-                )
-            except Exception as exc:
-                if telemetry.degradation_reason is None:
-                    telemetry.degradation_reason = (
-                        f"revise/{claim.claim_id}/year-{year}/rev{revision_attempts}: "
-                        f"{type(exc).__name__}: {exc}"
-                    )
-                revision_history.append(
-                    {
-                        "attempt": revision_attempts,
-                        "plan_id": "",
-                        "admitted": False,
-                        "reasons": [f"REVISE call failed: {type(exc).__name__}: {exc}"],
-                    }
-                )
-                break
-            admitted, reasons = admit_research_plan(
-                plan=plan, claim_graph=claim_graph, reachable_lookup=reachable_lookup
-            )
-            revision_history.append(
-                {
-                    "attempt": revision_attempts,
-                    "plan_id": plan.plan_id,
-                    "admitted": admitted,
-                    "reasons": list(reasons),
-                }
-            )
-
-        if not admitted:
-            # All revisions exhausted: persistent abstain. No execution, no study.
-            outcomes.append(
-                ResearchOutcome(
-                    study=None,
-                    catalog=catalog,
-                    design_refused=True,
-                    design_reasons=reasons,
-                    revision_attempts=revision_attempts,
-                    revision_history=revision_history,
-                    persistent_abstain=True,
-                )
-            )
-            continue
-
-        study = research_agent.run_execute(
-            plan=plan, catalog=catalog, claim_text=claim.text, replicate=replicate
         )
-        # Article II — execution deviation from the registered plan (WARN): the
-        # execute step cited a PMID outside the committed set, or widened the scope
-        # beyond the registered plan. Made visible; the release gate / scope clause
-        # may also catch gross over-reach (do not double-revoke here).
-        deviations = _plan_execution_deviations(plan=plan, study=study)
-        outcomes.append(
-            ResearchOutcome(
-                study=study,
-                catalog=catalog,
-                plan=plan,
-                design_admitted=True,
-                design_reasons=reasons,
-                execution_deviated=bool(deviations),
-                deviation_note="; ".join(deviations),
-                revision_attempts=revision_attempts,
-                revision_history=revision_history,
-                persistent_abstain=False,
-            )
+
+    if not admitted:
+        # All revisions exhausted: persistent abstain. No execution, no study.
+        return ResearchOutcome(
+            study=None,
+            catalog=catalog,
+            design_refused=True,
+            design_reasons=reasons,
+            revision_attempts=revision_attempts,
+            revision_history=revision_history,
+            persistent_abstain=True,
         )
-    return outcomes
+
+    study = research_agent.run_execute(
+        plan=plan, catalog=catalog, claim_text=claim.text, replicate=replicate
+    )
+    # Article II — execution deviation from the registered plan (WARN): the
+    # execute step cited a PMID outside the committed set, or widened the scope
+    # beyond the registered plan. Made visible; the release gate / scope clause
+    # may also catch gross over-reach (do not double-revoke here).
+    deviations = _plan_execution_deviations(plan=plan, study=study)
+    return ResearchOutcome(
+        study=study,
+        catalog=catalog,
+        plan=plan,
+        design_admitted=True,
+        design_reasons=reasons,
+        execution_deviated=bool(deviations),
+        deviation_note="; ".join(deviations),
+        revision_attempts=revision_attempts,
+        revision_history=revision_history,
+        persistent_abstain=False,
+    )
 
 
 def _plan_execution_deviations(*, plan: ResearchPlan, study: Study) -> list[str]:
@@ -1273,6 +1324,21 @@ class Tier3RunStore:
             if study.claim_id == claim_id and study.year <= up_to_year
         ]
 
+    def count_studies(
+        self,
+        *,
+        branch: BranchName,
+        claim_id: str,
+        year: int | None = None,
+        up_to_year: int | None = None,
+    ) -> int:
+        studies = [study for study in self._studies[branch] if study.claim_id == claim_id]
+        if year is not None:
+            studies = [study for study in studies if study.year == year]
+        if up_to_year is not None:
+            studies = [study for study in studies if study.year <= up_to_year]
+        return len(studies)
+
     def all_studies(self) -> dict[BranchName, list[Study]]:
         return {
             "free": list(self._studies["free"]),
@@ -1404,6 +1470,56 @@ def mean_branch_divergence(bundle: ArtifactBundle) -> float:
     return round(fmean(cells), 4) if cells else 0.0
 
 
+def _output_match_summary(
+    *,
+    records: list[dict[str, Any]],
+    guideline_timeline: dict[BranchName, list[GuidelineClaim]],
+) -> dict[str, Any]:
+    free_retained = sum(int(row["free_retained"]) for row in records)
+    constrained_retained = sum(int(row["constrained_retained"]) for row in records)
+    free_guidelines = {
+        (g.claim_id, g.year)
+        for g in guideline_timeline.get("free", [])
+        if g.n_included > 0
+    }
+    constrained_guidelines = {
+        (g.claim_id, g.year)
+        for g in guideline_timeline.get("constrained", [])
+        if g.n_included > 0
+    }
+    free_guideline_count = len(free_guidelines)
+    constrained_guideline_count = len(constrained_guidelines)
+    retained_ratio = (
+        round(constrained_retained / free_retained, 4) if free_retained else 1.0
+    )
+    guideline_cell_ratio = (
+        round(constrained_guideline_count / free_guideline_count, 4)
+        if free_guideline_count
+        else 1.0
+    )
+    achieved_cells = sum(1 for row in records if row["achieved"])
+    return {
+        "mode": "active-output-matched",
+        "target_retained_ratio": OUTPUT_MATCH_TARGET_RATIO,
+        "min_interpretable_ratio": OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO,
+        "max_constrained_attempts_per_cell": MAX_CONSTRAINED_ATTEMPTS_PER_CELL,
+        "cell_count": len(records),
+        "achieved_cells": achieved_cells,
+        "failed_cells": len(records) - achieved_cells,
+        "free_retained_studies": free_retained,
+        "constrained_retained_studies": constrained_retained,
+        "retained_study_ratio": retained_ratio,
+        "free_guideline_bearing_cells": free_guideline_count,
+        "constrained_guideline_bearing_cells": constrained_guideline_count,
+        "guideline_cell_ratio": guideline_cell_ratio,
+        "paper_grade_interpretable": (
+            retained_ratio >= OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO
+            and guideline_cell_ratio >= OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO
+        ),
+        "records": records,
+    }
+
+
 def sweep_failure_rate(
     *,
     request: RunRequestModel,
@@ -1510,6 +1626,7 @@ def run_ecology(
     }
     db_growth: dict[str, Any] = {}
     population_stats: dict[str, Any] = {}
+    output_match_records: list[dict[str, Any]] = []
 
     for year in years:
         branch_scores: dict[str, list[float]] = {"free": [], "constrained": []}
@@ -1532,6 +1649,23 @@ def run_ecology(
                 # NOTE: per-arm calls CAN be parallelized later (independent per
                 # claim/replicate); not implemented now to keep determinism + the
                 # telemetry call-count contract obvious.
+                free_retained_this_cell = (
+                    tier3_store.count_studies(
+                        branch="free", claim_id=claim.claim_id, year=year
+                    )
+                    if branch == "constrained"
+                    else 0
+                )
+                target_retained_this_cell = (
+                    min(
+                        free_retained_this_cell,
+                        math.ceil(free_retained_this_cell * OUTPUT_MATCH_TARGET_RATIO),
+                    )
+                    if branch == "constrained"
+                    else 0
+                )
+                constrained_attempt_cap = MAX_CONSTRAINED_ATTEMPTS_PER_CELL
+
                 if branch == "free":
                     outcomes = _free_research_batch(
                         research_agent=research_agent,
@@ -1549,6 +1683,11 @@ def run_ecology(
                         claim_graph=graph_lookup[claim.claim_id],
                         year=year,
                         telemetry=telemetry,
+                        attempt_count=min(
+                            STUDIES_PER_CLAIM_PER_ERA,
+                            target_retained_this_cell,
+                            constrained_attempt_cap,
+                        ),
                     )
 
                 catalog_pmids: set[str] = set()
@@ -1583,9 +1722,19 @@ def run_ecology(
                     resolved_locators=[],
                     claimed_scope=EvidenceScope(),
                 )
-
                 # Tier-1 -> Tier-2 (CIVER) -> Tier-3 admission, per replicate study.
-                for outcome in outcomes:
+                # Constrained arm may append additional attempts, but only after
+                # every currently scheduled attempt for this cell has been scored.
+                outcome_index = 0
+                while outcome_index < len(outcomes):
+                    outcome = outcomes[outcome_index]
+                    catalog_pmids.update(record.pmid for record in outcome.catalog)
+                    reachable_lookup.update(_reachable_lookup_from_catalog(outcome.catalog))
+                    if outcome.study is not None:
+                        for source in _source_records_from_study(outcome.study):
+                            if source.source_id not in source_ids_seen[claim.claim_id]:
+                                source_catalog[claim.claim_id].append(source)
+                                source_ids_seen[claim.claim_id].add(source.source_id)
                     if outcome.study is None:
                         # Constrained DESIGN persistently refused even after the
                         # repair loop (SPEC Endpoint 4): MAX_PLAN_REVISIONS revise
@@ -1611,6 +1760,28 @@ def run_ecology(
                             ),
                         )
                         blocked_this_era += 1
+                        if (
+                            branch == "constrained"
+                            and target_retained_this_cell > 0
+                            and tier3_store.count_studies(
+                                branch="constrained", claim_id=claim.claim_id, year=year
+                            )
+                            < target_retained_this_cell
+                            and outcome_index == len(outcomes) - 1
+                            and len(outcomes) < constrained_attempt_cap
+                        ):
+                            outcomes.append(
+                                _constrained_research_attempt(
+                                    research_agent=research_agent,
+                                    microdata_agent=microdata_agent,
+                                    claim=claim,
+                                    claim_graph=graph_lookup[claim.claim_id],
+                                    year=year,
+                                    telemetry=telemetry,
+                                    replicate=len(outcomes),
+                                )
+                            )
+                        outcome_index += 1
                         continue
 
                     branch_study = outcome.study.model_copy(deep=True)
@@ -1643,6 +1814,28 @@ def run_ecology(
                             ),
                         )
                         blocked_this_era += 1
+                        if (
+                            branch == "constrained"
+                            and target_retained_this_cell > 0
+                            and tier3_store.count_studies(
+                                branch="constrained", claim_id=claim.claim_id, year=year
+                            )
+                            < target_retained_this_cell
+                            and outcome_index == len(outcomes) - 1
+                            and len(outcomes) < constrained_attempt_cap
+                        ):
+                            outcomes.append(
+                                _constrained_research_attempt(
+                                    research_agent=research_agent,
+                                    microdata_agent=microdata_agent,
+                                    claim=claim,
+                                    claim_graph=graph_lookup[claim.claim_id],
+                                    year=year,
+                                    telemetry=telemetry,
+                                    replicate=len(outcomes),
+                                )
+                            )
+                        outcome_index += 1
                         continue
                     if outcome.plan is not None:
                         # Design event type distinguishes friction-cost from
@@ -1805,6 +1998,71 @@ def run_ecology(
                             warranted_ids.add(branch_study.id)
                     else:
                         blocked_this_era += 1
+
+                    if (
+                        branch == "constrained"
+                        and target_retained_this_cell > 0
+                        and tier3_store.count_studies(
+                            branch="constrained", claim_id=claim.claim_id, year=year
+                        )
+                        < target_retained_this_cell
+                        and outcome_index == len(outcomes) - 1
+                        and len(outcomes) < constrained_attempt_cap
+                    ):
+                        outcomes.append(
+                            _constrained_research_attempt(
+                                research_agent=research_agent,
+                                microdata_agent=microdata_agent,
+                                claim=claim,
+                                claim_graph=graph_lookup[claim.claim_id],
+                                year=year,
+                                telemetry=telemetry,
+                                replicate=len(outcomes),
+                            )
+                        )
+                    outcome_index += 1
+
+                if branch == "constrained":
+                    constrained_retained_this_cell = tier3_store.count_studies(
+                        branch="constrained", claim_id=claim.claim_id, year=year
+                    )
+                    achieved = constrained_retained_this_cell >= target_retained_this_cell
+                    output_match_records.append(
+                        {
+                            "claim_id": claim.claim_id,
+                            "year": year,
+                            "free_retained": free_retained_this_cell,
+                            "target_retained": target_retained_this_cell,
+                            "constrained_retained": constrained_retained_this_cell,
+                            "attempts": len(outcomes),
+                            "attempt_cap": constrained_attempt_cap,
+                            "achieved": achieved,
+                            "retained_ratio": round(
+                                constrained_retained_this_cell / free_retained_this_cell, 4
+                            )
+                            if free_retained_this_cell
+                            else 1.0,
+                        }
+                    )
+                    record_transition(
+                        audit_trail=audit_trail,
+                        audit_counters=audit_counters,
+                        last_hashes=last_hashes,
+                        run_id=run_id or "preview-run",
+                        claim_id=claim.claim_id,
+                        branch=branch,
+                        year=year,
+                        phase="output-matching",
+                        event_type="output-match-achieved" if achieved else "output-match-failed",
+                        severity="info" if achieved else "block",
+                        integrity_score_before=1.0,
+                        integrity_score_after=1.0 if achieved else 0.0,
+                        message=(
+                            f"Output matching retained constrained={constrained_retained_this_cell} "
+                            f"vs free={free_retained_this_cell}; target={target_retained_this_cell}; "
+                            f"attempts={len(outcomes)}/{constrained_attempt_cap}."
+                        ),
+                    )
 
                 # Tier-4: ONE SR/MA over the accumulated Tier-3 DB for this branch.
                 guideline = srma_agent.run(
@@ -1996,6 +2254,11 @@ def run_ecology(
         "llm_cache": llm_cache_stats(llm),
         "calls": [trace.__dict__ for trace in telemetry.traces],
     }
+    output_match = _output_match_summary(
+        records=output_match_records,
+        guideline_timeline=guideline_timeline,
+    )
+    provenance_log["output_matching"] = output_match
 
     if not scientific:
         validation_notes = [
@@ -2009,6 +2272,7 @@ def run_ecology(
             "Reachable-corpus divergence is branch-conditioned only at corpus construction, not selection scoring.",
             "Tier-1 studies are produced by ResearchAgent over PubMed/date-cut records; Tier-4 SRMA uses LLM appraisal over the accumulated Tier-3 DB and keeps numeric pooling deterministic.",
             "The release gate reads the hash-chained audit trail and never calls the LLM.",
+            "Active constrained arm uses output-matched generation: it keeps attempting until retained studies approach the free arm for each claim-year cell, or records coverage failure.",
         ]
         mode_banner = ""
 
@@ -2078,6 +2342,7 @@ def run_ecology(
         "provenance_log": provenance_log,
         "failure_rate": failure_rate,
         "repair_counters": repair_counters,
+        "output_matching": output_match,
         "calibration_matrix": bundle.calibration_matrix.model_dump()
         if bundle.calibration_matrix
         else None,

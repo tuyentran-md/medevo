@@ -100,4 +100,8 @@ def test_evaluate_call_plan_is_conservative_and_structured() -> None:
     assert plan["claim_count"] == 2
     assert plan["horizon_count"] == 2
     assert plan["ecology_passes"] == 3
-    assert plan["estimated_llm_calls_upper"] == 144
+    assert plan["studies_per_claim_per_era"] == 2
+    assert plan["max_plan_revisions"] == 2
+    assert plan["max_constrained_attempts_per_cell"] == 30
+    assert plan["calls_per_cell_upper"] == 130
+    assert plan["estimated_llm_calls_upper"] == 1560
