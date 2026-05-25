@@ -1,5 +1,5 @@
 from app.llm import DeterministicFakeClient
-from app.models import RunRequestModel
+from app.models import GuidelineClaim, RunRequestModel
 from app.pubmed import PubMedRecord, PubMedSearchResult
 import app.ecology as ecology
 from app.simulator import contamination_clock, resolve_backend, simulate_run
@@ -251,6 +251,46 @@ def test_output_matching_kills_failed_attempts_at_revision_and_cell_caps(monkeyp
     ]
     assert len(abstains) == 3
     assert all("after 2 revise attempt(s)" in event.message for event in abstains)
+
+
+def test_output_matching_requires_real_guideline_cells_for_interpretability() -> None:
+    summary = ecology._output_match_summary(
+        records=[
+            {
+                "free_retained": 2,
+                "constrained_retained": 2,
+                "achieved": True,
+            }
+        ],
+        guideline_timeline={
+            "free": [
+                GuidelineClaim(
+                    claim_id="claim-1",
+                    year=2000,
+                    direction="NEUTRAL",
+                    level="no-recommendation",
+                    study_count=2,
+                    n_included=0,
+                )
+            ],
+            "constrained": [
+                GuidelineClaim(
+                    claim_id="claim-1",
+                    year=2000,
+                    direction="NEUTRAL",
+                    level="no-recommendation",
+                    study_count=2,
+                    n_included=0,
+                )
+            ],
+        },
+    )
+
+    assert summary["free_guideline_bearing_cells"] == 0
+    assert summary["constrained_guideline_bearing_cells"] == 0
+    assert summary["retained_study_ratio"] == 1.0
+    assert summary["guideline_cell_ratio"] == 0.0
+    assert summary["paper_grade_interpretable"] is False
 
 
 def test_constrained_can_refute_when_pubmed_evidence_refutes_claim() -> None:

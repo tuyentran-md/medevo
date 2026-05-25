@@ -1495,9 +1495,12 @@ def _output_match_summary(
     guideline_cell_ratio = (
         round(constrained_guideline_count / free_guideline_count, 4)
         if free_guideline_count
-        else 1.0
+        else 0.0
     )
     achieved_cells = sum(1 for row in records if row["achieved"])
+    has_real_guideline_comparison = (
+        free_guideline_count > 0 and constrained_guideline_count > 0
+    )
     return {
         "mode": "active-output-matched",
         "target_retained_ratio": OUTPUT_MATCH_TARGET_RATIO,
@@ -1513,7 +1516,8 @@ def _output_match_summary(
         "constrained_guideline_bearing_cells": constrained_guideline_count,
         "guideline_cell_ratio": guideline_cell_ratio,
         "paper_grade_interpretable": (
-            retained_ratio >= OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO
+            has_real_guideline_comparison
+            and retained_ratio >= OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO
             and guideline_cell_ratio >= OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO
         ),
         "records": records,
