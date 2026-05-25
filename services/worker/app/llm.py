@@ -240,19 +240,28 @@ class OpenAICompatClient:
                         # inconsistent across providers. Engine determinism comes
                         # from its own seeded structure + low temperature, not the
                         # provider seed. `seed` kept in the signature for callers.
-                        "max_tokens": 2048,
+                        # Reasoning models (MIMO, DeepSeek) consume tokens for CoT
+                        # before emitting content; 8192 prevents silent truncation.
+                        "max_tokens": 8192,
                     },
                     timeout=180,
                 )
                 self._last_call_at = time.monotonic()
                 if response.status_code in (429, 500, 502, 503, 529):
                     raise requests.HTTPError(f"retryable {response.status_code}")
-                response.raise_for_status()
+                if not response.ok:
+                    body_excerpt = response.text[:400].replace("\n", " ")
+                    raise requests.HTTPError(
+                        f"{response.status_code} {response.reason}: {body_excerpt}"
+                    )
                 message = response.json()["choices"][0]["message"]
                 content = str(message.get("content") or "").strip()
                 if not content:
-                    # Some reasoning models (e.g. MIMO) put output in reasoning_content
-                    content = str(message.get("reasoning_content") or "").strip()
+                    # Reasoning models return CoT in reasoning/reasoning_content;
+                    # try both fields (provider-dependent key name).
+                    content = str(
+                        message.get("reasoning_content") or message.get("reasoning") or ""
+                    ).strip()
                 if content:
                     return content
                 raise ValueError("empty content")
