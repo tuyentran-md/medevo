@@ -224,8 +224,11 @@ class OpenAICompatClient:
             time.sleep(remaining)
 
     def generate(self, prompt: str, *, seed: int) -> str:
+        # 8 attempts with exponential backoff (capped at 60s) to ride out
+        # MIMO Xiaomi endpoint 400/500 transient spikes that can last 2-4
+        # minutes. Total worst-case ~4min before raising.
         last_exc: Exception | None = None
-        for attempt in range(4):
+        for attempt in range(8):
             try:
                 self._pace()
                 response = requests.post(
@@ -265,8 +268,11 @@ class OpenAICompatClient:
                 raise ValueError("empty content")
             except (requests.RequestException, ValueError) as exc:
                 last_exc = exc
-                time.sleep((2 * (attempt + 1)) + random.uniform(0.15, 0.65))
-        raise RuntimeError(f"OpenAICompat generate failed after retries: {last_exc}")
+                backoff = min(2 ** attempt, 60) + random.uniform(0.15, 0.65)
+                time.sleep(backoff)
+        raise RuntimeError(
+            f"OpenAICompat generate failed after 8 retries: {last_exc}"
+        )
 
     def describe(self) -> ModelDescriptor:
         digest = hashlib.sha256(self._model.encode("utf-8")).hexdigest()[:16]

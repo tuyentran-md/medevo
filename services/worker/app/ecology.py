@@ -166,6 +166,31 @@ class CallTelemetry:
     call_count: int = 0
     degradation_reason: str | None = None
     traces: list[CallTrace] = field(default_factory=list)
+    transient_failures: list[dict] = field(default_factory=list)
+
+    def record_failure(self, label: str, exc: BaseException) -> None:
+        """Record a per-call failure without poisoning the run-level flag.
+
+        Single-call API failures (transient 400/timeout from upstream model
+        endpoint) are absorbed by the output-matching retry loop and do not
+        invalidate the overall corpus. The scientific flag is decided at the
+        end based on total transient failure rate vs tolerance.
+        """
+        self.transient_failures.append(
+            {"label": label, "kind": type(exc).__name__, "message": str(exc)[:300]}
+        )
+
+    @property
+    def transient_failure_rate(self) -> float:
+        if self.call_count <= 0:
+            return 0.0
+        return len(self.transient_failures) / self.call_count
+
+
+# Tolerance for transient per-call failures before the run is flagged
+# non-scientific. Default 2% — anything beyond suggests systemic upstream
+# breakage, not normal endpoint flakiness.
+TRANSIENT_FAILURE_TOLERANCE = _env_float("MEDEVO_TRANSIENT_FAILURE_TOLERANCE", 0.02)
 
 
 def contamination_clock(year: int) -> float:
@@ -323,8 +348,7 @@ def _research_study_for_year(
             replicate=replicate,
         )
     except Exception as exc:
-        if telemetry.degradation_reason is None:
-            telemetry.degradation_reason = f"pubmed/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
+        telemetry.record_failure(f"pubmed/{claim.claim_id}/year-{year}", exc)
         study = Study(
             id=f"{claim.claim_id}-study-{year}-r{replicate}-pubmed-error",
             claim_id=claim.claim_id,
@@ -447,10 +471,7 @@ def _free_research_batch(
                 plan=plan, catalog=catalog, claim_text=claim.text, replicate=replicate
             )
         except Exception as exc:
-            if telemetry.degradation_reason is None:
-                telemetry.degradation_reason = (
-                    f"free-process/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
-                )
+            telemetry.record_failure(f"free-process/{claim.claim_id}/year-{year}", exc)
             study = Study(
                 id=f"{claim.claim_id}-study-{year}-r{replicate}-process-error",
                 claim_id=claim.claim_id,
@@ -553,10 +574,7 @@ def _constrained_research_attempt(
             replicate=replicate,
         )
     except Exception as exc:
-        if telemetry.degradation_reason is None:
-            telemetry.degradation_reason = (
-                f"design/{claim.claim_id}/year-{year}: {type(exc).__name__}: {exc}"
-            )
+        telemetry.record_failure(f"design/{claim.claim_id}/year-{year}", exc)
         return ResearchOutcome(
             study=None,
             catalog=[],
@@ -589,11 +607,9 @@ def _constrained_research_attempt(
                 revision=revision_attempts,
             )
         except Exception as exc:
-            if telemetry.degradation_reason is None:
-                telemetry.degradation_reason = (
-                    f"revise/{claim.claim_id}/year-{year}/rev{revision_attempts}: "
-                    f"{type(exc).__name__}: {exc}"
-                )
+            telemetry.record_failure(
+                f"revise/{claim.claim_id}/year-{year}/rev{revision_attempts}", exc
+            )
             revision_history.append(
                 {
                     "attempt": revision_attempts,
@@ -2229,9 +2245,18 @@ def run_ecology(
             )
 
     descriptor = llm.describe()
+    transient_rate = telemetry.transient_failure_rate
+    within_tolerance = transient_rate <= TRANSIENT_FAILURE_TOLERANCE
+    if not within_tolerance and telemetry.degradation_reason is None:
+        telemetry.degradation_reason = (
+            f"transient_failure_rate={transient_rate:.3%} "
+            f"({len(telemetry.transient_failures)}/{telemetry.call_count}) "
+            f"exceeds tolerance {TRANSIENT_FAILURE_TOLERANCE:.1%}"
+        )
     scientific = (
         llm.scientific
         and telemetry.degradation_reason is None
+        and within_tolerance
         and not isinstance(pubmed_client, DeterministicPubMedClient)
     )
     degradation_reason = (
@@ -2341,6 +2366,9 @@ def run_ecology(
         "population_stats": population_stats,
         "llm_call_count": telemetry.call_count,
         "llm_cache": llm_cache_stats(llm),
+        "transient_failures": list(telemetry.transient_failures),
+        "transient_failure_rate": round(transient_rate, 4),
+        "transient_failure_tolerance": TRANSIENT_FAILURE_TOLERANCE,
         "degradation_reason": degradation_reason,
         "bundle_seal": bundle.bundle_seal,
         "provenance_log": provenance_log,
