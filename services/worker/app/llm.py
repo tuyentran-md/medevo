@@ -523,7 +523,7 @@ class ClaudeCLIClient:
     scientific = True
     degradation_reason = None
 
-    def __init__(self, model: str | None = None, *, timeout: float = 240.0) -> None:
+    def __init__(self, model: str | None = None, *, timeout: float = 600.0) -> None:
         self._model = model or DEFAULT_CLAUDE_CLI_MODEL
         self._bin = shutil.which("claude") or "claude"
         self._timeout = timeout

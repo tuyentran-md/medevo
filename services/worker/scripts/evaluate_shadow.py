@@ -71,7 +71,10 @@ def _git_sha() -> str:
 
 
 def _stamp_path(started_at: datetime, kind: str, suffix: str) -> Path:
-    stamp = started_at.strftime("%Y%m%dT%H%M%SZ")
+    # Include microseconds + PID to prevent collision when parallel runners
+    # launch in the same second.
+    stamp = started_at.strftime("%Y%m%dT%H%M%SfZ").replace("fZ", f"{started_at.microsecond:06d}Z")
+    stamp = f"{stamp}-pid{os.getpid()}"
     return DATA_DIR / kind / f"shadow-{stamp}{suffix}"
 
 
