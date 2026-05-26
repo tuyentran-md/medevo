@@ -1,0 +1,331 @@
+{
+  "Cigarette smoking is causally associated with dose-dependent increases in coronary heart disease risk, and smoking cessation substantially reduces cardiovascular mortality within years of quitting.": [
+    "cigarette smoking coronary heart disease risk dose-response",
+    "smoking cessation cardiovascular mortality reduction",
+    "tobacco smoking causal association ischemic heart disease",
+    "smoking cessation cardiovascular outcomes time course",
+    "nicotine smoking coronary artery disease epidemiology"
+  ],
+  "Light to moderate alcohol consumption of one to two standard drinks per day reduces risk of coronary heart disease by elevating high-density lipoprotein cholesterol and lowering platelet aggregation.": [
+    "alcohol consumption coronary heart disease risk",
+    "moderate alcohol intake HDL cholesterol cardiovascular",
+    "alcohol platelet aggregation antiplatelet effect",
+    "light moderate drinking myocardial infarction protection",
+    "alcohol HDL cardiovascular mortality meta-analysis"
+  ],
+  "Menopausal hormone therapy with combined estrogen and progestin reduces risk of coronary heart disease and all-cause mortality in postmenopausal women and should be considered for primary prevention of chronic disease.": [
+    "menopausal hormone therapy estrogen progestin coronary heart disease",
+    "combined hormone therapy postmenopausal women cardiovascular outcomes",
+    "estrogen progestin primary prevention chronic disease mortality",
+    "hormone replacement therapy CHD risk postmenopausal",
+    "WHI trial combined HRT all-cause mortality cardiovascular"
+  ],
+  "In patients with established coronary artery disease, overweight and mild obesity is associated with reduced cardiovascular mortality compared to normal weight, the so-called obesity paradox.": [
+    "obesity paradox coronary artery disease mortality",
+    "overweight mild obesity cardiovascular outcomes established CAD",
+    "body mass index cardiovascular mortality coronary heart disease",
+    "obesity paradox BMI all-cause mortality cardiac patients",
+    "normal weight overweight obesity survival coronary artery disease"
+  ],
+  "Statin therapy reduces major adverse cardiovascular events and all-cause mortality in patients with established cardiovascular disease or prior myocardial infarction.": [
+    "statin therapy cardiovascular events secondary prevention",
+    "statin myocardial infarction all-cause mortality randomized trial",
+    "HMG-CoA reductase inhibitor MACE established cardiovascular disease",
+    "statin secondary prevention meta-analysis outcomes",
+    "lipid lowering therapy coronary heart disease mortality"
+  ],
+  "Daily low-dose aspirin reduces the incidence of first myocardial infarction and cardiovascular death in adults without established cardiovascular disease who are at elevated risk.": [
+    "aspirin primary prevention myocardial infarction",
+    "low-dose aspirin cardiovascular mortality high-risk adults",
+    "aspirin primary prevention cardiovascular events randomized trial",
+    "aspirin benefits harms cardiovascular disease prevention",
+    "antiplatelet therapy primary prevention cardiovascular outcomes"
+  ],
+  "Beta-blocker therapy reduces all-cause mortality and sudden cardiac death in patients who have survived acute myocardial infarction.": [
+    "beta-blocker post myocardial infarction mortality",
+    "beta-blocker secondary prevention acute MI sudden cardiac death",
+    "carvedilol metoprolol AMI survival randomized trial",
+    "beta-adrenergic blockade post-infarction all-cause mortality",
+    "beta-blocker therapy myocardial infarction long-term outcomes"
+  ],
+  "Class I antiarrhythmic drugs such as flecainide and encainide suppress ventricular premature contractions and reduce arrhythmic death in patients after myocardial infarction.": [
+    "flecainide encainide ventricular arrhythmia mortality myocardial infarction",
+    "class I antiarrhythmic post-MI sudden cardiac death",
+    "CAST trial encainide flecainide arrhythmia suppression",
+    "ventricular premature contractions antiarrhythmic drug survival",
+    "antiarrhythmic therapy myocardial infarction arrhythmic death randomized trial"
+  ],
+  "Angiotensin-converting enzyme inhibitors reduce mortality and hospitalizations in patients with heart failure and reduced ejection fraction.": [
+    "ACE inhibitors heart failure reduced ejection fraction mortality",
+    "enalapril captopril HFrEF survival randomized trial",
+    "renin angiotensin system inhibition heart failure hospitalization outcomes",
+    "ACE inhibitor heart failure ejection fraction clinical trial",
+    "CONSENSUS SOLVD enalapril heart failure mortality"
+  ],
+  "Omega-3 fatty acid supplementation reduces major cardiovascular events and cardiovascular mortality in adults without established cardiovascular disease.": [
+    "omega-3 fatty acids cardiovascular events primary prevention",
+    "fish oil supplementation cardiovascular mortality randomized trial",
+    "omega-3 supplementation myocardial infarction stroke prevention",
+    "EPA DHA cardiovascular disease healthy adults",
+    "marine omega-3 MACE primary prevention meta-analysis"
+  ],
+  "Arthroscopic surgery including debridement and lavage reduces knee pain and improves function in patients with osteoarthritis of the knee compared to conservative management.": [
+    "arthroscopic debridement lavage knee osteoarthritis",
+    "knee arthroscopy osteoarthritis pain function outcomes",
+    "arthroscopic surgery versus conservative treatment knee osteoarthritis",
+    "debridement lavage placebo controlled knee osteoarthritis trial",
+    "knee osteoarthritis arthroscopy sham surgery randomized"
+  ],
+  "Percutaneous vertebroplasty reduces pain and improves functional outcomes in patients with painful osteoporotic vertebral compression fractures.": [
+    "vertebroplasty osteoporotic vertebral compression fracture pain",
+    "percutaneous vertebroplasty functional outcomes vertebral fracture",
+    "vertebroplasty kyphoplasty osteoporosis fracture randomized controlled trial",
+    "vertebroplasty placebo sham controlled pain relief",
+    "osteoporotic vertebral fracture cement augmentation disability outcomes"
+  ],
+  "Routine or liberal episiotomy during vaginal delivery reduces perineal trauma and improves maternal recovery compared to restrictive use.": [
+    "episiotomy perineal trauma vaginal delivery",
+    "restrictive versus routine episiotomy outcomes",
+    "liberal episiotomy maternal recovery postpartum",
+    "episiotomy perineal laceration randomized trial",
+    "episiotomy policy perineal morbidity"
+  ],
+  "Laparoscopic appendectomy is associated with superior clinical outcomes including shorter hospital stay and fewer wound complications compared to open appendectomy for acute appendicitis.": [
+    "laparoscopic versus open appendectomy acute appendicitis",
+    "appendectomy hospital stay length outcomes",
+    "wound complications appendectomy laparoscopic open",
+    "minimally invasive appendectomy postoperative outcomes",
+    "acute appendicitis surgical approach randomized controlled trial"
+  ],
+  "Exogenous surfactant administration reduces mortality and respiratory morbidity in preterm neonates with respiratory distress syndrome.": [
+    "surfactant therapy preterm respiratory distress syndrome mortality",
+    "exogenous surfactant neonatal RDS outcomes",
+    "surfactant replacement therapy premature infant lung morbidity",
+    "surfactant administration respiratory distress syndrome randomized trial",
+    "neonatal surfactant therapy survival respiratory outcomes"
+  ],
+  "Vitamin E supplementation reduces risk of major cardiovascular events and cardiovascular mortality in adults at elevated cardiovascular risk.": [
+    "vitamin E supplementation cardiovascular events",
+    "tocopherol cardiovascular mortality prevention",
+    "antioxidant vitamin E cardiovascular risk reduction",
+    "vitamin E supplementation heart disease adults",
+    "alpha-tocopherol major adverse cardiovascular events trial"
+  ],
+  "Intensive glycemic control targeting hemoglobin A1c below 6.5 percent reduces cardiovascular events and mortality in adults with type 2 diabetes and established cardiovascular disease.": [
+    "intensive glycemic control cardiovascular outcomes type 2 diabetes",
+    "hemoglobin A1c target cardiovascular disease mortality diabetes",
+    "tight glucose control HbA1c below 6.5 established cardiovascular disease",
+    "ACCORD ADVANCE VADT glycemic control cardiovascular events",
+    "intensive versus standard glycemic control mortality type 2 diabetes"
+  ],
+  "Prophylactic beta-blocker therapy initiated before non-cardiac surgery reduces perioperative major adverse cardiac events and mortality in patients at elevated cardiac risk.": [
+    "beta-blocker perioperative non-cardiac surgery cardiac risk",
+    "prophylactic metoprolol perioperative major adverse cardiac events",
+    "beta-blocker initiation preoperative mortality cardiovascular outcomes",
+    "perioperative beta-blockade elevated cardiac risk randomized trial",
+    "POISE trial beta-blocker non-cardiac surgery MACE"
+  ],
+  "Bed rest of two or more days is recommended for patients with acute low back pain to relieve symptoms and promote recovery.": [
+    "bed rest acute low back pain",
+    "bed rest versus activity low back pain recovery",
+    "acute low back pain mobilization outcomes",
+    "bed rest harmful low back pain",
+    "low back pain activity restriction systematic review"
+  ],
+  "Prophylactic antibiotic administration before dental procedures prevents infective endocarditis in patients with cardiac conditions including mitral valve prolapse and other valvular heart disease.": [
+    "prophylactic antibiotics dental procedures infective endocarditis prevention",
+    "antibiotic prophylaxis valvular heart disease bacteremia",
+    "mitral valve prolapse dental antibiotic endocarditis risk",
+    "infective endocarditis prevention cardiac conditions oral procedures",
+    "amoxicillin prophylaxis dental endocarditis high-risk patients"
+  ],
+  "Intravenous alteplase administered within three hours of symptom onset improves functional outcomes and reduces disability in patients with acute ischemic stroke.": [
+    "alteplase acute ischemic stroke functional outcome",
+    "intravenous thrombolysis stroke three hours disability",
+    "rtPA ischemic stroke early treatment recovery",
+    "alteplase stroke modified Rankin Scale outcome",
+    "thrombolysis stroke onset time neurological outcome"
+  ],
+  "Routine supplemental oxygen administration improves outcomes including infarct size and mortality in patients with acute myocardial infarction regardless of baseline oxygen saturation.": [
+    "supplemental oxygen acute myocardial infarction mortality",
+    "oxygen therapy AMI infarct size randomized trial",
+    "supplemental oxygen normoxic myocardial infarction outcomes",
+    "routine oxygen ACS ST elevation mortality harm",
+    "hyperoxia acute coronary syndrome infarct size"
+  ],
+  "Routine mammography screening beginning at age 40 reduces breast cancer mortality in average-risk women aged 40 to 49 years.": [
+    "mammography screening age 40 breast cancer mortality",
+    "breast cancer screening 40-49 average risk women",
+    "mammography mortality reduction premenopausal women",
+    "early mammography screening randomized controlled trial",
+    "breast cancer screening benefit younger women 40s"
+  ],
+  "Prostate-specific antigen screening reduces prostate cancer mortality in average-risk men aged 50 to 74 years.": [
+    "PSA screening prostate cancer mortality",
+    "prostate-specific antigen screening randomized trial",
+    "PSA testing average-risk men mortality reduction",
+    "prostate cancer screening benefit harm balance",
+    "PSA screening 50-74 years survival outcomes"
+  ],
+  "Colorectal cancer screening using fecal occult blood testing or colonoscopy reduces colorectal cancer incidence and mortality in average-risk adults.": [
+    "colorectal cancer screening fecal occult blood test mortality",
+    "colonoscopy screening colorectal cancer incidence average-risk",
+    "fecal occult blood testing colorectal cancer mortality randomized trial",
+    "colonoscopy colorectal cancer prevention average risk adults",
+    "colorectal cancer screening mortality reduction systematic review"
+  ],
+  "Vitamin D supplementation reduces the incidence of hip fractures and non-vertebral fractures in community-dwelling adults without established vitamin D deficiency.": [
+    "vitamin D supplementation hip fracture prevention",
+    "vitamin D fracture incidence community-dwelling adults",
+    "cholecalciferol non-vertebral fracture randomized trial",
+    "vitamin D supplementation fracture risk without deficiency",
+    "vitamin D calcium fracture prevention meta-analysis"
+  ],
+  "Glucosamine supplementation reduces knee pain and slows radiographic joint space narrowing in patients with symptomatic knee osteoarthritis.": [
+    "glucosamine knee osteoarthritis pain",
+    "glucosamine joint space narrowing radiographic",
+    "glucosamine supplementation symptomatic knee osteoarthritis",
+    "glucosamine chondroitin knee pain randomized trial",
+    "glucosamine disease modification osteoarthritis outcome"
+  ],
+  "Selective serotonin reuptake inhibitors are effective first-line pharmacotherapy for adults with moderate to severe major depressive disorder.": [
+    "SSRI major depressive disorder efficacy",
+    "selective serotonin reuptake inhibitors first-line treatment depression adults",
+    "antidepressant moderate severe depression randomized controlled trial",
+    "SSRI versus placebo major depression outcomes",
+    "fluoxetine sertraline escitalopram depression efficacy meta-analysis"
+  ],
+  "A short antibiotic course of two to four days is as effective as a standard seven to ten day course for treating uncomplicated urinary tract infection in children.": [
+    "short course antibiotics urinary tract infection children",
+    "2-4 day antibiotic UTI pediatric efficacy",
+    "uncomplicated UTI children treatment duration outcome",
+    "short versus standard antibiotic course pediatric UTI randomized",
+    "urinary tract infection children antibiotic duration recurrence"
+  ],
+  "Prophylactic cranial irradiation reduces the incidence of brain metastases and improves overall survival in patients with limited-stage small cell lung cancer who achieve complete response.": [
+    "prophylactic cranial irradiation small cell lung cancer",
+    "PCI limited stage SCLC complete response",
+    "brain metastases prevention SCLC overall survival",
+    "cranial irradiation survival benefit limited SCLC",
+    "prophylactic cranial irradiation randomized trial SCLC"
+  ],
+  "Once-daily oral proton pump inhibitor therapy is effective for improving symptoms and reducing complications of suspected gastroesophageal reflux disease in infants younger than 12 months.": [
+    "proton pump inhibitor infant gastroesophageal reflux",
+    "PPI therapy GERD infants symptoms outcomes",
+    "omeprazole esomeprazole infant reflux randomized trial",
+    "acid suppression therapy infant regurgitation complications",
+    "proton pump inhibitor efficacy infants under 12 months"
+  ],
+  "Adenotonsillectomy improves behavioral, neurocognitive, and quality-of-life outcomes compared with watchful waiting in children 5 to 9 years with mild to moderate obstructive sleep apnea syndrome.": [
+    "adenotonsillectomy obstructive sleep apnea children behavioral outcomes",
+    "pediatric OSA adenotonsillectomy neurocognitive outcomes randomized trial",
+    "childhood sleep apnea watchful waiting surgery quality of life",
+    "adenotonsillectomy mild moderate OSA children 5-9 years",
+    "pediatric obstructive sleep apnea surgery cognitive behavior comparison"
+  ],
+  "Continuous antimicrobial prophylaxis substantially reduces the recurrence of urinary tract infection in children with vesicoureteral reflux after a febrile or symptomatic urinary tract infection.": [
+    "continuous antibiotic prophylaxis vesicoureteral reflux children UTI recurrence",
+    "antimicrobial prophylaxis febrile urinary tract infection pediatric vesicoureteral reflux",
+    "VUR children prophylaxis urinary tract infection prevention randomized trial",
+    "continuous low-dose antibiotics UTI recurrence children reflux",
+    "vesicoureteral reflux antibiotic prophylaxis recurrent pyelonephritis pediatric"
+  ],
+  "Systemic corticosteroid therapy reduces hospital length of stay or admission rate in infants under 2 years of age with viral bronchiolitis.": [
+    "corticosteroids bronchiolitis infants hospital length of stay",
+    "systemic corticosteroids viral bronchiolitis randomized controlled trial",
+    "dexamethasone prednisolone bronchiolitis admission rate infants",
+    "corticosteroid treatment bronchiolitis under 2 years outcomes",
+    "bronchiolitis management corticosteroids meta-analysis"
+  ],
+  "Helmet therapy produces clinically meaningful improvement in skull shape compared with active repositioning alone in infants aged 5 to 6 months with moderate to severe positional plagiocephaly.": [
+    "helmet therapy positional plagiocephaly infants",
+    "cranial orthosis vs repositioning plagiocephaly randomized trial",
+    "helmet molding therapy skull shape improvement moderate severe plagiocephaly",
+    "positional plagiocephaly treatment outcomes 5 6 months infants",
+    "cranial asymmetry orthotic repositioning comparative effectiveness"
+  ],
+  "Administering one dose of honey before bedtime reduces nocturnal cough frequency and severity and improves sleep in children older than 1 year with acute upper respiratory infection.": [
+    "honey nocturnal cough children upper respiratory infection",
+    "honey cough suppressant pediatric acute URI",
+    "honey sleep quality cough frequency children",
+    "honey versus placebo cough treatment children",
+    "honey antitussive effect children randomized trial"
+  ],
+  "Tympanostomy tube placement reduces the duration of middle-ear effusion and improves hearing thresholds compared with watchful waiting in children with chronic otitis media with effusion.": [
+    "tympanostomy tubes otitis media effusion children",
+    "ventilation tubes hearing outcomes chronic middle ear effusion",
+    "grommets watchful waiting otitis media with effusion randomized trial",
+    "tympanostomy tube placement middle ear effusion resolution",
+    "otitis media effusion hearing thresholds children treatment"
+  ],
+  "Long-term benzodiazepine pharmacotherapy is appropriate first-line maintenance treatment for adults with chronic generalized anxiety disorder.": [
+    "benzodiazepine long-term generalized anxiety disorder",
+    "benzodiazepine dependence tolerance anxiety maintenance",
+    "generalized anxiety disorder pharmacotherapy first-line treatment",
+    "benzodiazepine versus SSRI SNRI anxiety disorder outcomes",
+    "chronic anxiety benzodiazepine risks benefits adults"
+  ],
+  "Antidepressant pharmacotherapy should be offered as first-line treatment for adults with mild depressive disorder.": [
+    "antidepressant mild depression treatment",
+    "pharmacotherapy mild depressive disorder adults",
+    "antidepressant efficacy mild depression randomized trial",
+    "first-line treatment mild depression guidelines",
+    "antidepressant versus placebo mild depression"
+  ],
+  "Tight glycemic control targeting blood glucose 80 to 110 mg/dL reduces mortality in critically ill adults in intensive care compared with conventional glucose control.": [
+    "tight glycemic control intensive care mortality",
+    "intensive insulin therapy ICU critically ill adults",
+    "blood glucose target 80 110 mg/dL ICU outcomes",
+    "glycemic control mechanical ventilation mortality randomized trial",
+    "conventional versus intensive glucose control critical illness"
+  ],
+  "Hydroxyethyl starch is an appropriate volume resuscitation fluid for adults with severe sepsis or septic shock compared with crystalloid solutions.": [
+    "hydroxyethyl starch sepsis mortality",
+    "HES crystalloid resuscitation septic shock",
+    "colloid versus crystalloid severe sepsis outcomes",
+    "hydroxyethyl starch acute kidney injury sepsis",
+    "starch solution resuscitation ICU randomized trial"
+  ],
+  "Statin therapy for primary cardiovascular prevention should be offered to adults aged 75 years and older without established cardiovascular disease.": [
+    "statin primary prevention elderly cardiovascular",
+    "statin therapy adults 75 years cardiovascular risk",
+    "HMG-CoA reductase inhibitor older adults primary prevention outcomes",
+    "statin benefit older adults without cardiovascular disease",
+    "lipid lowering therapy elderly primary prevention mortality"
+  ],
+  "Tight glycemic control targeting hemoglobin A1c below 7 percent improves outcomes in adults older than 75 years with type 2 diabetes and multiple comorbidities.": [
+    "tight glycemic control HbA1c elderly type 2 diabetes",
+    "hemoglobin A1c target older adults diabetes outcomes",
+    "intensive glucose control comorbidities mortality older patients",
+    "glycemic target frail elderly diabetes complications",
+    "HbA1c below 7 diabetes adults 75 years outcomes"
+  ],
+  "Mechanical bowel preparation without concurrent oral antibiotic prophylaxis reduces surgical site infection compared with no preparation in adults undergoing elective colorectal surgery.": [
+    "mechanical bowel preparation colorectal surgery surgical site infection",
+    "bowel preparation oral antibiotics elective colorectal surgery outcomes",
+    "mechanical bowel preparation alone SSI randomized controlled trial",
+    "colorectal surgery preoperative preparation infection prophylaxis",
+    "bowel preparation antibiotic prophylaxis wound infection adults"
+  ],
+  "Continuous electronic fetal heart rate monitoring during low-risk term labor improves neonatal outcomes compared with intermittent auscultation.": [
+    "continuous electronic fetal monitoring labor neonatal outcomes",
+    "intermittent auscultation versus continuous CTG low-risk",
+    "fetal heart rate monitoring term labor randomized trial",
+    "electronic fetal monitoring cesarean rate perinatal mortality",
+    "CTG intermittent auscultation neonatal morbidity comparison"
+  ],
+  "Routine prophylactic intraperitoneal drain placement after elective uncomplicated laparoscopic cholecystectomy reduces postoperative morbidity.": [
+    "prophylactic drain laparoscopic cholecystectomy morbidity",
+    "intraperitoneal drainage elective cholecystectomy complications",
+    "abdominal drain placement laparoscopic cholecystectomy outcomes",
+    "drain versus no drain cholecystectomy postoperative",
+    "routine drainage uncomplicated cholecystectomy randomized trial"
+  ],
+  "Annual posteroanterior chest radiography is an effective screening modality for reducing lung cancer mortality in current or former smokers.": [
+    "chest radiography lung cancer screening mortality",
+    "annual chest X-ray smokers lung cancer detection",
+    "posteroanterior radiograph lung cancer screening randomized trial",
+    "lung cancer screening current former smokers mortality reduction",
+    "chest radiograph versus low-dose CT lung cancer survival"
+  ]
+}

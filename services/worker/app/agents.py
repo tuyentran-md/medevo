@@ -486,13 +486,45 @@ def _attempt_seed(*, namespace: str, claim_id: str, year: int, replicate: int) -
     )
 
 
+_CLAIM_QUERIES_CACHE: dict[str, list[str]] | None = None
+
+
+def _load_claim_queries() -> dict[str, list[str]]:
+    global _CLAIM_QUERIES_CACHE
+    if _CLAIM_QUERIES_CACHE is not None:
+        return _CLAIM_QUERIES_CACHE
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / "data" / "claim_queries.json"
+    if not path.exists():
+        _CLAIM_QUERIES_CACHE = {}
+        return _CLAIM_QUERIES_CACHE
+    try:
+        _CLAIM_QUERIES_CACHE = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        _CLAIM_QUERIES_CACHE = {}
+    return _CLAIM_QUERIES_CACHE
+
+
 def pubmed_query_candidates(claim_text: str) -> list[str]:
     """Deterministic PubMed search strategy for benchmark claims.
 
     Raw guideline sentences are too long for Entrez and repeatedly return empty
-    catalogs. Try compact domain queries first, then fall back to the literal
-    claim so arbitrary user inputs still have a generic path.
+    catalogs. Lookup pre-curated queries from data/claim_queries.json first
+    (auto-generated per claim via scripts/generate_claim_queries.py); fall back
+    to compact CVD-domain heuristics, then the literal claim text.
     """
+    # Pre-curated lookup first (most accurate per-claim retrieval)
+    curated = _load_claim_queries()
+    if claim_text in curated and curated[claim_text]:
+        seen: set[str] = set()
+        unique: list[str] = []
+        for q in curated[claim_text]:
+            n = " ".join(q.split())
+            if n and n.lower() not in seen:
+                seen.add(n.lower())
+                unique.append(n)
+        unique.append(claim_text)
+        return unique
     text = claim_text.lower()
     candidates: list[str] = []
     if "smoking" in text or "cigarette" in text or "tobacco" in text:
