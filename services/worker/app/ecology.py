@@ -758,7 +758,12 @@ def admit_research_plan(
     required_nodes = {"QUESTION", "METHOD", "EVIDENCE", "ANALYSIS", "CLAIM"}
     graph_complete = required_nodes.issubset({node.node_type for node in claim_graph.nodes})
     method_coherent = plan.parse_ok and bool(plan.method.strip())
-    committed_resolve = bool(plan.committed_pmids) and all(
+    # Honest abstain (committed_pmids=[]) is NOT a CIVER violation — the agent
+    # explicitly declined to commit to any source. The committed-resolve and
+    # scope-within-sources rules are vacuously true for the empty set. Refusal
+    # only when the agent CLAIMS sources that don't resolve or scope exceeds
+    # the sources it DID commit to.
+    committed_resolve = all(
         pmid in reachable_lookup for pmid in plan.committed_pmids
     )
     committed_items = [

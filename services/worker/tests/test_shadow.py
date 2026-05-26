@@ -96,7 +96,9 @@ def test_shadow_civer_brim_filters_same_natural_corpus_without_active_branch() -
     assert report["verdict_counts"] == {"passed": 1, "failed": 1, "total": 2}
     assert report["endpoint_2_process_validation"]["passed"]["ungrounded_rate"] == 0.0
     assert report["endpoint_2_process_validation"]["failed"]["ungrounded_rate"] == 1.0
-    assert report["endpoint_2_process_validation"]["process_counts"]["civer_failed"] == 1
+    # Honest-abstain plan (empty committed_pmids) admits at CIVER but the
+    # study's non-NEUTRAL direction without evidence trips BRIM GC-03.
+    assert report["endpoint_2_process_validation"]["process_counts"]["brim_failed"] == 1
     assert "claim-1" in report["all_guideline_latest"]
     assert "claim-1" in report["warranted_guideline_latest"]
 

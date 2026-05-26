@@ -270,6 +270,20 @@ def execution_deviations(*, plan: ResearchPlan, study: Study) -> list[ProcessVio
     a WARN that accumulates toward patent GC-01.
     """
     violations: list[ProcessViolation] = []
+    # Honest-abstain integrity: if the plan committed no evidence, the study
+    # must emit a NEUTRAL direction. Any non-NEUTRAL conclusion from an
+    # evidence-empty plan is claim-without-evidence — block.
+    if not plan.committed_pmids and study.direction != "NEUTRAL":
+        violations.append(
+            ProcessViolation(
+                code="GC-03",
+                severity="block",
+                message=(
+                    "claim direction is non-NEUTRAL but the plan committed no "
+                    "evidence (honest-abstain integrity)"
+                ),
+            )
+        )
     committed = set(plan.committed_pmids)
     out_of_plan = [pmid for pmid in study.pmids if pmid not in committed]
     if out_of_plan:
