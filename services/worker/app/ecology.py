@@ -774,11 +774,31 @@ def admit_research_plan(
         scope.population_low <= scope.population_high
         and scope.year_start <= scope.year_end
     )
-    scope_within_committed_sources = committed_resolve and all(
-        hasattr(item, "scope")
-        and not scope.exceeds(item.scope, tolerance=SCOPE_TOLERANCE_YEARS)
-        for item in committed_items
-    )
+    # Scope clause: the claim's envelope must lie inside the UNION of the
+    # committed sources' coverages (within SCOPE_TOLERANCE_YEARS). A per-item
+    # all() refused any claim that extended past the narrowest committed source,
+    # which spuriously fired whenever PubMed records carry year_start=year_end=
+    # pub_year (a 1-yr "coverage" window): a multi-PMID citation spanning
+    # 2002-2024 would refuse the natural claim year_start=2002 because each
+    # individual source's year_start equals its own pub year. The aggregate
+    # envelope is the right semantic: "claim is supported by at least one source
+    # on each edge".
+    if committed_resolve and committed_items:
+        scoped_items = [item for item in committed_items if hasattr(item, "scope")]
+        if scoped_items:
+            agg = EvidenceScope(
+                population_low=min(item.scope.population_low for item in scoped_items),
+                population_high=max(item.scope.population_high for item in scoped_items),
+                year_start=min(item.scope.year_start for item in scoped_items),
+                year_end=max(item.scope.year_end for item in scoped_items),
+            )
+            scope_within_committed_sources = not scope.exceeds(
+                agg, tolerance=SCOPE_TOLERANCE_YEARS
+            )
+        else:
+            scope_within_committed_sources = True
+    else:
+        scope_within_committed_sources = committed_resolve
     # Patent IC-01 BLOCK + GC-02: every ANALYSIS node must have at least one
     # ANALYZES edge to an EVIDENCE node, AND there must exist a full path
     # QUESTION → … → CLAIM in the graph. Either failing = incomplete analysis
@@ -1010,13 +1030,24 @@ def admit_evidence_unit(
         or _is_valid_warrant(warrants_by_output.get(item.item_id))
         for item in cited_items
     )
-    # Article I scope clause: the claim's scope (population/timeframe) may not
-    # exceed any cited evidence's authoritative source scope (beyond tolerance).
-    # This catches Mode-2 over-reach, which RESOLVES (real PMID) yet over-claims.
-    scope_within_evidence = not any(
-        unit.claimed_scope.exceeds(item.scope, tolerance=SCOPE_TOLERANCE_YEARS)
-        for item in cited_items
-    )
+    # Article I scope clause: the claim's envelope must lie inside the UNION of
+    # the cited evidence's authoritative source scopes (within tolerance). This
+    # catches Mode-2 over-reach (real PMID, over-claimed envelope) without
+    # spuriously refusing a multi-PMID citation whose individual sources each
+    # cover only one publication year.
+    scoped_cited = [item for item in cited_items if hasattr(item, "scope")]
+    if scoped_cited:
+        agg_cited = EvidenceScope(
+            population_low=min(item.scope.population_low for item in scoped_cited),
+            population_high=max(item.scope.population_high for item in scoped_cited),
+            year_start=min(item.scope.year_start for item in scoped_cited),
+            year_end=max(item.scope.year_end for item in scoped_cited),
+        )
+        scope_within_evidence = not unit.claimed_scope.exceeds(
+            agg_cited, tolerance=SCOPE_TOLERANCE_YEARS
+        )
+    else:
+        scope_within_evidence = True
     passed = (
         graph_complete
         and cited_resolve
