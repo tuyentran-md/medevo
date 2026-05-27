@@ -279,5 +279,9 @@ def test_shadow_e3_keeps_zero_warrant_cells_in_denominator() -> None:
     e3 = report["endpoint_3_guideline_drift_reduction"]
     assert e3["denominator_audit"]["cell_count"] == 2
     assert e3["denominator_audit"]["real_comparison_cells"] == 1
-    assert e3["denominator_audit"]["zero_warrant_cells"] == 1
+    # The claim-2 cell now correctly classifies as ABSTAIN (NA), not as a
+    # zero-warrant cell that produced a NEUTRAL answer. Honest abstention is
+    # distinct from "evidence balanced" and must be excluded from truth-match.
+    assert e3["denominator_audit"]["abstain_cells"] == 1
+    assert e3["denominator_audit"]["zero_warrant_cells"] == 0
     assert e3["real_comparison"]["cell_count"] == 1

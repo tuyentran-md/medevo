@@ -265,6 +265,12 @@ class GuidelineClaim(BaseModel):
     # only study inputs). A refused guideline degrades to no-recommendation.
     output_gate_refused: bool = False
     output_gate_reason: str = ""
+    # True when the SR/MA had zero substantive included studies after screening
+    # (every emitted study was a honest-abstain emission below the quality floor,
+    # or no study reached the cell at all). Semantically this is "NA / no answer",
+    # NOT "NEUTRAL / evidence balanced". Truth-match scoring must EXCLUDE these
+    # cells, not penalise them — an honest abstention is not a wrong answer.
+    insufficient_evidence: bool = False
 
 
 class CitationEdge(BaseModel):

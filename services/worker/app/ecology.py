@@ -2156,6 +2156,25 @@ def run_ecology(
                         studies=corpus_studies,
                         warranted_ids=corpus_warranted_ids,
                     )
+                    if guideline.insufficient_evidence:
+                        guideline_event_type = "guideline-abstained"
+                        guideline_severity = "warn"
+                        guideline_integrity_after = 0.5
+                        guideline_message = (
+                            "Insufficient substantive evidence after screening: "
+                            "no included studies survived the SR quality floor. "
+                            "Guideline returns NA (no answer), not NEUTRAL."
+                        )
+                    elif output_admitted:
+                        guideline_event_type = "guideline-issued"
+                        guideline_severity = "info"
+                        guideline_integrity_after = 1.0
+                        guideline_message = output_reason
+                    else:
+                        guideline_event_type = "guideline-refused"
+                        guideline_severity = "block"
+                        guideline_integrity_after = 0.0
+                        guideline_message = output_reason
                     record_transition(
                         audit_trail=audit_trail,
                         audit_counters=audit_counters,
@@ -2165,11 +2184,11 @@ def run_ecology(
                         branch=branch,
                         year=year,
                         phase="guideline-admission",
-                        event_type="guideline-issued" if output_admitted else "guideline-refused",
-                        severity="info" if output_admitted else "block",
+                        event_type=guideline_event_type,
+                        severity=guideline_severity,
                         integrity_score_before=1.0,
-                        integrity_score_after=1.0 if output_admitted else 0.0,
-                        message=output_reason,
+                        integrity_score_after=guideline_integrity_after,
+                        message=guideline_message,
                     )
                 if run_id is not None:
                     insert_guideline_claims(run_id=run_id, branch=branch, claims=[guideline])

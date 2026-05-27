@@ -236,8 +236,17 @@ def _e3_denominator_audit(
     warranted_by_cell = _guideline_by_cell(warranted_guidelines)
     truth_by_cell = _truth_by_cell(truth)
     cells = sorted(set(all_by_cell) & set(warranted_by_cell) & set(truth_by_cell))
-    zero_warrant = [cell for cell in cells if warranted_by_cell[cell].n_included == 0]
-    real = [cell for cell in cells if warranted_by_cell[cell].n_included > 0]
+    abstain = [cell for cell in cells if _is_abstain(warranted_by_cell[cell])]
+    zero_warrant = [
+        cell
+        for cell in cells
+        if warranted_by_cell[cell].n_included == 0 and not _is_abstain(warranted_by_cell[cell])
+    ]
+    real = [
+        cell
+        for cell in cells
+        if warranted_by_cell[cell].n_included > 0 and not _is_abstain(warranted_by_cell[cell])
+    ]
     zero_help = [
         cell
         for cell in zero_warrant
@@ -255,8 +264,10 @@ def _e3_denominator_audit(
         "cell_count": total,
         "real_comparison_cells": len(real),
         "zero_warrant_cells": len(zero_warrant),
+        "abstain_cells": len(abstain),
         "real_comparison_fraction": round(len(real) / total, 4) if total else 0.0,
         "zero_warrant_cell_fraction": round(len(zero_warrant) / total, 4) if total else 0.0,
+        "abstain_cell_fraction": round(len(abstain) / total, 4) if total else 0.0,
         "zero_warrant_help_cells": len(zero_help),
         "zero_warrant_hurt_cells": len(zero_hurt),
     }
@@ -267,9 +278,10 @@ def _mean_distance_for_cells(
     truth: dict[tuple[str, int], GuidelineClaim],
     cells: Sequence[tuple[str, int]],
 ) -> float | None:
-    if not cells:
+    scored = [cell for cell in cells if not _is_abstain(guidelines[cell])]
+    if not scored:
         return None
-    return round(fmean(_pair_distance(guidelines[cell], truth[cell]) for cell in cells), 4)
+    return round(fmean(_pair_distance(guidelines[cell], truth[cell]) for cell in scored), 4)
 
 
 def _real_comparison_e3(
@@ -285,6 +297,8 @@ def _real_comparison_e3(
         cell
         for cell in set(all_by_cell) & set(warranted_by_cell) & set(truth_by_cell)
         if warranted_by_cell[cell].n_included > 0
+        and not _is_abstain(warranted_by_cell[cell])
+        and not _is_abstain(all_by_cell[cell])
     )
     all_distance = _mean_distance_for_cells(all_by_cell, truth_by_cell, cells)
     warranted_distance = _mean_distance_for_cells(warranted_by_cell, truth_by_cell, cells)
@@ -326,10 +340,11 @@ def _distance_to_truth(
 ) -> float:
     latest = {claim_id: item for claim_id, item in _latest_guidelines(guidelines).items()}
     claim_ids = sorted(set(latest) & set(truth_latest))
-    if not claim_ids:
+    scored = [cid for cid in claim_ids if not _is_abstain(latest[cid])]
+    if not scored:
         return 0.0
     return round(
-        fmean(_pair_distance(latest[claim_id], truth_latest[claim_id]) for claim_id in claim_ids),
+        fmean(_pair_distance(latest[cid], truth_latest[cid]) for cid in scored),
         4,
     )
 
@@ -338,7 +353,23 @@ def _natural_drift(guidelines: Sequence[GuidelineClaim], truth: GroundTruth) -> 
     latest = _latest_guidelines(guidelines)
     latest_truth = truth.latest()
     rows = []
+    abstained = 0
     for claim_id in sorted(set(latest) & set(latest_truth)):
+        if _is_abstain(latest[claim_id]):
+            abstained += 1
+            rows.append(
+                {
+                    "claim_id": claim_id,
+                    "distance_to_truth": None,
+                    "output": {"direction": "NA", "level": "insufficient-evidence"},
+                    "truth": {
+                        "direction": latest_truth[claim_id].direction,
+                        "level": latest_truth[claim_id].level,
+                    },
+                    "abstained": True,
+                }
+            )
+            continue
         distance = _pair_distance(latest[claim_id], latest_truth[claim_id])
         rows.append(
             {
@@ -352,12 +383,14 @@ def _natural_drift(guidelines: Sequence[GuidelineClaim], truth: GroundTruth) -> 
                     "direction": latest_truth[claim_id].direction,
                     "level": latest_truth[claim_id].level,
                 },
+                "abstained": False,
             }
         )
+    scored = [r["distance_to_truth"] for r in rows if r.get("distance_to_truth") is not None]
     return {
-        "mean_distance_to_truth": round(fmean(row["distance_to_truth"] for row in rows), 4)
-        if rows
-        else 0.0,
+        "mean_distance_to_truth": round(fmean(scored), 4) if scored else 0.0,
+        "n_scored": len(scored),
+        "n_abstained": abstained,
         "per_claim": rows,
     }
 
@@ -373,6 +406,18 @@ def _pair_distance(left: GuidelineClaim, right: GuidelineClaim) -> float:
     direction = abs(_DIRECTION_AXIS[left.direction] - _DIRECTION_AXIS[right.direction]) / 2.0
     level = abs(_LEVEL_AXIS[left.level] - _LEVEL_AXIS[right.level]) / 4.0
     return (direction + level) / 2.0
+
+
+def _is_abstain(guideline: GuidelineClaim) -> bool:
+    """A guideline that says 'NA / no answer', not 'NEUTRAL / evidence balanced'.
+
+    Marked by the synthesizer when the SR/MA had zero substantive included
+    studies after screening (every emitted study was a honest-abstain
+    quality-floor fallback). Truth-match scoring must skip these cells —
+    penalising an abstention as a wrong answer is the bug that made the
+    constrained arm look worse than free on sparse-catalog cells.
+    """
+    return bool(getattr(guideline, "insufficient_evidence", False))
 
 
 def _verdict_counts(verdicts: Sequence[dict[str, Any]]) -> dict[str, int]:

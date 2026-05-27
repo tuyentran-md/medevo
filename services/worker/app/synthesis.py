@@ -257,6 +257,9 @@ def synthesize_guideline_claim(
     pooled = pooled_effect(included, review=review)
     direction = direction_from_pooled_effect(pooled)
     certainty = sr.rob.graded_certainty
+    # No substantive study survived screening — this is NA / abstention, not a
+    # NEUTRAL ("evidence balanced") conclusion. Mark for downstream scorers.
+    insufficient = not included
     return GuidelineClaim(
         claim_id=claim_id,
         year=year,
@@ -270,6 +273,7 @@ def synthesize_guideline_claim(
         n_included=sr.n_included,
         n_excluded=sr.n_excluded,
         screening_report=sr.as_summary(),
+        insufficient_evidence=insufficient,
     )
 
 
@@ -389,6 +393,7 @@ def admit_guideline_output(
             "n_excluded": warranted_sr.n_excluded,
             "output_gate_refused": True,
             "output_gate_reason": reason_str,
+            "insufficient_evidence": not warranted_included,
         }
     )
     return warranted_guideline, False, reason_str
