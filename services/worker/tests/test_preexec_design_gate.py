@@ -412,9 +412,10 @@ def test_repair_loop_admits_revised_plan_after_initial_refusal() -> None:
 
 
 def test_patent_ic01_blocks_when_analysis_lacks_evidence_edge() -> None:
-    """Patent IC-01 BLOCK: ANALYSIS node present but missing ANALYZES edge to
-    EVIDENCE node. Graph has every required node type so Tier-1 chain rule
-    passes, but the analysis link is incomplete — IC-01 must catch it."""
+    """CIVER 2.0 spec SC-02 BLOCK (medevo formerly mis-named as IC-01):
+    ANALYSIS node present but missing ANALYZES edge to EVIDENCE node. Graph
+    has every required node type so Tier-1 chain rule passes, but the
+    analysis link is incomplete — SC-02 must catch it."""
     from app.models import ClaimEdge, ClaimGraph as ClaimGraphModel, ClaimNode
 
     broken_graph = ClaimGraphModel(
@@ -445,8 +446,8 @@ def test_patent_ic01_blocks_when_analysis_lacks_evidence_edge() -> None:
     )
     admitted, reasons = result
     assert admitted is False
-    assert any("Patent IC-01" in r for r in reasons)
-    assert any("IC-01" in b for b in result.blocks)
+    assert any("SC-02" in r for r in reasons)
+    assert any("SC-02" in b for b in result.blocks)
 
 
 def test_patent_gc02_blocks_when_no_question_to_claim_path() -> None:
@@ -645,3 +646,172 @@ def test_repair_loop_persistent_abstain_after_max_revisions() -> None:
     execute_calls = [p for p in llm.prompts if "EXECUTE the pre-registered plan" in p]
     assert len(revise_calls) == 2
     assert len(execute_calls) == 0
+
+
+# --- CIVER 2.0 spec Tier-2 + Tier-5 (this session) -------------------------- #
+
+
+def test_ac01_blocks_when_question_and_method_study_types_disagree() -> None:
+    """CIVER 2.0 §5.3 AC-01 BLOCK: QUESTION.study_type ≠ METHOD.study_type.
+
+    A causal-cohort question cannot be answered by a case-series method. The
+    plan must declare both attributes; when they mismatch the gate refuses
+    BEFORE execution — this is the methodology-rigor check that the previous
+    structure-only CIVER missed.
+    """
+    from app.models import ClaimEdge, ClaimGraph as CG, ClaimNode
+
+    good_graph = CG(
+        claim_id="claim-1",
+        claim_text=CLAIM.text,
+        nodes=[
+            ClaimNode(id="q", label="q", node_type="QUESTION", timestamp=1),
+            ClaimNode(id="m", label="m", node_type="METHOD", timestamp=2),
+            ClaimNode(id="e", label="e", node_type="EVIDENCE", timestamp=3),
+            ClaimNode(id="a", label="a", node_type="ANALYSIS", timestamp=4),
+            ClaimNode(id="c", label="c", node_type="CLAIM", timestamp=5),
+        ],
+        edges=[
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="m", target="e", edge_type="PRODUCES"),
+            ClaimEdge(source="e", target="a", edge_type="ANALYZES"),
+            ClaimEdge(source="a", target="c", edge_type="SUPPORTS"),
+        ],
+    )
+    plan = parse_research_plan(
+        "QUESTION: q\nMETHOD: appraise the committed cohort studies\n"
+        "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok.\n"
+        # AC-01 trigger: question demands causal-cohort, method proposes case-series.
+        "QUESTION_ATTRS: study_type=causal-cohort\n"
+        "METHOD_ATTRS: study_type=case-series variables=smoking,CHD\n"
+        "EVIDENCE_ATTRS: study_type=cohort variables=smoking,CHD\n"
+        "ANALYSIS_ATTRS: statistical_method=narrative-synthesis\n",
+        plan_id="p", claim_id="claim-1", year=2020, claim_text=CLAIM.text,
+    )
+    result = admit_research_plan(
+        plan=plan, claim_graph=good_graph, reachable_lookup={"111": object()},  # type: ignore[dict-item]
+    )
+    assert result.admitted is False
+    assert any("AC-01" in b for b in result.blocks)
+
+
+def test_ac01_admits_when_study_types_match() -> None:
+    """Matched study_type pair must not trigger AC-01; the plan otherwise
+    well-formed should be admitted (with IS above the GC-03 threshold)."""
+    from app.models import ClaimEdge, ClaimGraph as CG, ClaimNode
+    from app.ecology import CorpusItem as CI
+
+    good_graph = CG(
+        claim_id="claim-1",
+        claim_text=CLAIM.text,
+        nodes=[
+            ClaimNode(id="q", label="q", node_type="QUESTION", timestamp=1),
+            ClaimNode(id="m", label="m", node_type="METHOD", timestamp=2),
+            ClaimNode(id="e", label="e", node_type="EVIDENCE", timestamp=3),
+            ClaimNode(id="a", label="a", node_type="ANALYSIS", timestamp=4),
+            ClaimNode(id="c", label="c", node_type="CLAIM", timestamp=5),
+        ],
+        edges=[
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="m", target="e", edge_type="PRODUCES"),
+            ClaimEdge(source="e", target="a", edge_type="ANALYZES"),
+            ClaimEdge(source="a", target="c", edge_type="SUPPORTS"),
+        ],
+    )
+    plan = parse_research_plan(
+        "QUESTION: q\nMETHOD: random-effects meta-analysis of the committed cohort PMIDs\n"
+        "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok.\n"
+        "QUESTION_ATTRS: study_type=causal-cohort\n"
+        "METHOD_ATTRS: study_type=causal-cohort variables=smoking,CHD\n"
+        "EVIDENCE_ATTRS: study_type=cohort variables=smoking,CHD sample_size=4000\n"
+        "ANALYSIS_ATTRS: statistical_method=random-effects-meta-analysis variables=smoking,CHD\n",
+        plan_id="p", claim_id="claim-1", year=2020, claim_text=CLAIM.text,
+    )
+    lookup = {
+        "111": CI(
+            item_id="111", kind="real", text="t", rationale="r", direction="NEUTRAL",
+            cited_ids=["111"], resolved_real_ids=["111"], resolved_locators=["PMID:111"],
+            scope=EvidenceScope(population_low=40, population_high=60, year_start=2015, year_end=2018),
+        )
+    }
+    result = admit_research_plan(plan=plan, claim_graph=good_graph, reachable_lookup=lookup)
+    assert result.admitted is True
+    assert result.integrity_score >= 0.60
+    assert not any("AC-01" in b for b in result.blocks)
+
+
+def test_ac03_warns_on_incompatible_statistical_method() -> None:
+    """CIVER 2.0 §5.3 AC-03 WARN: ANALYSIS.statistical_method must be
+    compatible with EVIDENCE.study_type. Diagnostic-accuracy evidence cannot
+    be analysed by a hazard-ratio pool. The rule WARNs (counted toward GC-03
+    IS) and only BLOCKs via accumulated IS, not on its own."""
+    from app.models import ClaimEdge, ClaimGraph as CG, ClaimNode
+    from app.ecology import CorpusItem as CI
+
+    good_graph = CG(
+        claim_id="claim-1",
+        claim_text=CLAIM.text,
+        nodes=[
+            ClaimNode(id="q", label="q", node_type="QUESTION", timestamp=1),
+            ClaimNode(id="m", label="m", node_type="METHOD", timestamp=2),
+            ClaimNode(id="e", label="e", node_type="EVIDENCE", timestamp=3),
+            ClaimNode(id="a", label="a", node_type="ANALYSIS", timestamp=4),
+            ClaimNode(id="c", label="c", node_type="CLAIM", timestamp=5),
+        ],
+        edges=[
+            ClaimEdge(source="q", target="m", edge_type="ADDRESSES"),
+            ClaimEdge(source="m", target="e", edge_type="PRODUCES"),
+            ClaimEdge(source="e", target="a", edge_type="ANALYZES"),
+            ClaimEdge(source="a", target="c", edge_type="SUPPORTS"),
+        ],
+    )
+    plan = parse_research_plan(
+        "QUESTION: q\nMETHOD: review the committed diagnostic-accuracy studies\n"
+        "SCOPE: pop=40-60 years=2015-2018\nPMIDS: 111\nRATIONALE: ok.\n"
+        "QUESTION_ATTRS: study_type=diagnostic-accuracy\n"
+        "METHOD_ATTRS: study_type=diagnostic-accuracy variables=ultrasound,gold-standard\n"
+        "EVIDENCE_ATTRS: study_type=diagnostic-accuracy variables=ultrasound,gold-standard sample_size=200\n"
+        # AC-03 trigger: hazard-ratio-pool only valid for cohort/RCT, not diagnostic-accuracy
+        "ANALYSIS_ATTRS: statistical_method=hazard-ratio-pool variables=ultrasound,gold-standard\n",
+        plan_id="p", claim_id="claim-1", year=2020, claim_text=CLAIM.text,
+    )
+    lookup = {
+        "111": CI(
+            item_id="111", kind="real", text="t", rationale="r", direction="NEUTRAL",
+            cited_ids=["111"], resolved_real_ids=["111"], resolved_locators=["PMID:111"],
+            scope=EvidenceScope(population_low=40, population_high=60, year_start=2015, year_end=2018),
+        )
+    }
+    result = admit_research_plan(plan=plan, claim_graph=good_graph, reachable_lookup=lookup)
+    # AC-03 alone is WARN, not BLOCK; the plan can still admit on a single warn
+    # (IS stays above 0.60). The point is the warn is RECORDED.
+    assert any("AC-03" in w for w in result.warns)
+
+
+def test_gc03_blocks_when_integrity_score_below_threshold() -> None:
+    """CIVER 2.0 §7 GC-03 BLOCK: a plan that piles up enough WARNs to drag
+    Integrity Score below 0.60 must be refused even with no individual BLOCK.
+    Six WARNs at 0.08 each ≈ -0.48 → IS ≈ 0.53 < 0.60 → refuse."""
+    from app.ecology import _integrity_score, _IS_GATING_THRESHOLD
+
+    # Pure-function check: 6 WARNs, 1 complete chain → IS = 1 - 6*0.08 + 0.01 = 0.53.
+    score = _integrity_score(blocks=[], warns=["w"] * 6, complete_chains=1)
+    assert score < _IS_GATING_THRESHOLD
+    # And 1 BLOCK alone already trips the threshold (0.15 deduction is small,
+    # but combined with the admitted=False on the block itself, the gate refuses).
+    score_block = _integrity_score(blocks=["x"] * 3, warns=[], complete_chains=1)
+    # 3 BLOCKs at 0.15 each → IS = 1 - 0.45 + 0.01 = 0.56 < 0.60
+    assert score_block < _IS_GATING_THRESHOLD
+
+
+def test_integrity_score_is_a_pure_function() -> None:
+    """Same (blocks, warns, complete_chains) → same IS, no LLM, no time. The
+    spec §7 mathematical-property requirement."""
+    from app.ecology import _integrity_score
+
+    a = _integrity_score(blocks=["b1"], warns=["w1", "w2"], complete_chains=1)
+    b = _integrity_score(blocks=["b1"], warns=["w1", "w2"], complete_chains=1)
+    assert a == b
+    # Different inputs → different IS.
+    c = _integrity_score(blocks=[], warns=[], complete_chains=1)
+    assert c != a

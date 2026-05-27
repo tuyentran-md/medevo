@@ -627,6 +627,57 @@ def parse_research_emission(raw: str) -> ResearchStudyEmission:
 
 _METHOD_LINE_RE = re.compile(r"^\s*METHOD\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
 _QUESTION_LINE_RE = re.compile(r"^\s*QUESTION\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+# CIVER 2.0 §4.4 structured attribute lines, one per PIR node. Each is a flat
+# k=v space-separated bag: ``study_type=<kind> statistical_method=<name>
+# variables=<v1,v2,...> sample_size=<n> time_frame=<Y1-Y2>``. All keys optional;
+# unknown / missing keys default to None on the parsed PIRNodeAttributes.
+_QUESTION_ATTRS_RE = re.compile(r"^\s*QUESTION_ATTRS\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_METHOD_ATTRS_RE = re.compile(r"^\s*METHOD_ATTRS\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_EVIDENCE_ATTRS_RE = re.compile(r"^\s*EVIDENCE_ATTRS\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_ANALYSIS_ATTRS_RE = re.compile(r"^\s*ANALYSIS_ATTRS\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+
+
+def _parse_node_attrs(line: str | None):
+    """Parse a CIVER PIR node attribute line into PIRNodeAttributes.
+
+    Format: space-separated k=v pairs. ``variables`` value is comma-split. All
+    keys optional; values containing 'null'/'none'/'n/a' are treated as None.
+    Unknown keys are silently ignored — the parser is permissive so a noisy LLM
+    emission doesn't cascade into a parse-failed plan; the actual semantic check
+    is the Tier-2 attribute gate, which fires only on populated fields.
+    """
+    from app.models import PIRNodeAttributes
+
+    if not line:
+        return PIRNodeAttributes()
+    body = line.strip()
+    fields: dict[str, str | int | list[str] | None] = {}
+    # Tokens are ``key=value`` separated by whitespace. Values must not contain
+    # `=` or whitespace themselves; if the agent wants a list it uses commas
+    # (parsed for ``variables``). A previous multi-word-value parser was too
+    # greedy and absorbed the next key token into the value.
+    for token in re.findall(r"([a-zA-Z_]+)\s*=\s*(\S+)", body):
+        key = token[0].lower()
+        val = token[1].strip()
+        if val.lower() in ("null", "none", "n/a", "-", ""):
+            continue
+        if key == "variables":
+            fields[key] = [v.strip() for v in val.split(",") if v.strip()]
+        elif key == "sample_size":
+            try:
+                fields[key] = int(val.replace(",", ""))
+            except ValueError:
+                pass
+        elif key in {
+            "study_type",
+            "population",
+            "time_frame",
+            "statistical_method",
+            "blinding_status",
+            "randomization_method",
+        }:
+            fields[key] = val
+    return PIRNodeAttributes(**fields)
 
 
 def parse_research_plan(
@@ -669,6 +720,13 @@ def parse_research_plan(
     rationale = (
         " ".join(rationale_match.group(1).split())[:400] if rationale_match else ""
     )
+    # CIVER §4.4 PIR structured attributes — one bag per typed node, all fields
+    # optional. The Tier-2 attribute gate (AC-01..AC-03) fires only when both
+    # sides of the comparison are populated, so a sparse emission is safe.
+    qa = _QUESTION_ATTRS_RE.search(text)
+    ma = _METHOD_ATTRS_RE.search(text)
+    ea = _EVIDENCE_ATTRS_RE.search(text)
+    aa = _ANALYSIS_ATTRS_RE.search(text)
     return ResearchPlan(
         plan_id=plan_id,
         claim_id=claim_id,
@@ -679,6 +737,10 @@ def parse_research_plan(
         claimed_scope=scope,
         rationale=rationale or "Model returned no plan rationale.",
         parse_ok=bool(method),
+        question_attrs=_parse_node_attrs(qa.group(1) if qa else None),
+        method_attrs=_parse_node_attrs(ma.group(1) if ma else None),
+        evidence_attrs=_parse_node_attrs(ea.group(1) if ea else None),
+        analysis_attrs=_parse_node_attrs(aa.group(1) if aa else None),
     )
 
 
@@ -957,8 +1019,12 @@ def _design_prompt(
         "clinical claim BEFORE executing any analysis. Do NOT report results, a "
         "direction, or an effect — only the design. Commit to PMIDS drawn ONLY from "
         "the supplied catalog (never invent an identifier) and to a scope you can "
-        "support from those sources without widening it.\n"
-        "Respond with EXACTLY these five lines and nothing else. Each line starts "
+        "support from those sources without widening it. You MUST also declare the "
+        "PIR node attributes the integrity gate will check: the study_type the "
+        "QUESTION demands, the study_type the METHOD actually proposes (these "
+        "must match — a causal-cohort question cannot be answered by a case-series "
+        "method), the EVIDENCE data type, and the ANALYSIS statistical method.\n"
+        "Respond with EXACTLY these nine lines and nothing else. Each line starts "
         "with the field name in CAPS, then a colon and a space, then the value. Use "
         "real values - do NOT emit angle brackets, the words 'low'/'high'/'start'/"
         "'end', or any other placeholder text.\n"
@@ -968,12 +1034,20 @@ def _design_prompt(
         "  Line 3 (SCOPE): the field name SCOPE followed by 'pop=A-B years=Y1-Y2' where A, B, Y1, Y2 are integers\n"
         "  Line 4 (PMIDS): the field name PMIDS followed by a comma-separated list of integer PMIDs drawn ONLY from the supplied catalog; if you cannot defend any choice, write the single token: none\n"
         "  Line 5 (RATIONALE): the field name RATIONALE followed by one sentence on why these sources fit the question\n"
+        "  Line 6 (QUESTION_ATTRS): the field name QUESTION_ATTRS followed by k=v pairs declaring what the question demands; required key: study_type=<rct|causal-cohort|case-control|cross-sectional|diagnostic-accuracy|case-series|narrative-review>\n"
+        "  Line 7 (METHOD_ATTRS): the field name METHOD_ATTRS followed by k=v pairs declaring the method; required keys: study_type=<same vocabulary> variables=<comma-separated outcome and exposure names>\n"
+        "  Line 8 (EVIDENCE_ATTRS): the field name EVIDENCE_ATTRS followed by k=v pairs describing the committed sources' data; recommended keys: study_type=<source kind> variables=<vars> sample_size=<aggregate n>\n"
+        "  Line 9 (ANALYSIS_ATTRS): the field name ANALYSIS_ATTRS followed by k=v pairs; required key: statistical_method=<random-effects-meta-analysis|fixed-effects-meta-analysis|hazard-ratio-pool|risk-ratio-pool|narrative-synthesis|mcnemar|roc-analysis|...>; the chosen method must be compatible with the EVIDENCE data type\n"
         "Example of a well-formed response (use your OWN values, do not copy):\n"
         "QUESTION: Does cigarette smoking increase coronary heart disease incidence in adults?\n"
         "METHOD: Appraise the committed prospective cohort studies for dose-response on CHD mortality.\n"
         "SCOPE: pop=40-79 years=1995-2024\n"
         "PMIDS: 33754833,32150674,31345423\n"
         "RATIONALE: Three large cohort studies in the catalog directly address dose-response on CHD.\n"
+        "QUESTION_ATTRS: study_type=causal-cohort\n"
+        "METHOD_ATTRS: study_type=causal-cohort variables=smoking,CHD-incidence\n"
+        "EVIDENCE_ATTRS: study_type=cohort variables=smoking,CHD-incidence sample_size=58000\n"
+        "ANALYSIS_ATTRS: statistical_method=random-effects-meta-analysis variables=smoking,CHD-incidence\n"
         "Now produce YOUR response below using actual values from the supplied catalog:\n"
         f"claim_id={claim_id} simulated_year={simulated_year} claim={claim_text!r} "
         f"sources={payload}"
@@ -1013,11 +1087,13 @@ def _revise_prompt(
         "You are a research agent. REVISE the REFUSED research PLAN below. The "
         "pre-execution integrity gate listed structured reasons; your revision "
         "must address EACH reason. Cite ONLY pmids from the supplied catalog "
-        "(never invent), tighten scope to within the cited sources, and restate "
-        "the method if it was incoherent. If the refusal cannot be fixed from "
-        "this catalog, submit a NEUTRAL minimal plan with no committed pmids; it "
-        "will be recorded as a persistent abstain.\n"
-        "Respond with EXACTLY these five lines and nothing else. Each line starts "
+        "(never invent), tighten scope to within the cited sources, restate the "
+        "method if it was incoherent, and FIX any PIR attribute mismatches "
+        "(e.g. QUESTION study_type must equal METHOD study_type, ANALYSIS "
+        "statistical_method must fit the EVIDENCE data type). If the refusal "
+        "cannot be fixed from this catalog, submit a NEUTRAL minimal plan with no "
+        "committed pmids; it will be recorded as a persistent abstain.\n"
+        "Respond with EXACTLY these nine lines and nothing else. Each line starts "
         "with the field name in CAPS, then a colon and a space, then the value. Use "
         "real values - do NOT emit angle brackets, the words 'low'/'high'/'start'/"
         "'end', or any other placeholder text.\n"
@@ -1027,12 +1103,20 @@ def _revise_prompt(
         "  Line 3 (SCOPE): the field name SCOPE followed by 'pop=A-B years=Y1-Y2' where A, B, Y1, Y2 are integers\n"
         "  Line 4 (PMIDS): the field name PMIDS followed by a comma-separated list of integer PMIDs drawn ONLY from the supplied catalog; if no valid choice, write the single token: none\n"
         "  Line 5 (RATIONALE): the field name RATIONALE followed by one sentence explaining how this revision addresses the refusal\n"
+        "  Line 6 (QUESTION_ATTRS): the field name QUESTION_ATTRS followed by k=v pairs; required key: study_type=<rct|causal-cohort|case-control|cross-sectional|diagnostic-accuracy|case-series|narrative-review>\n"
+        "  Line 7 (METHOD_ATTRS): the field name METHOD_ATTRS followed by k=v pairs; required keys: study_type=<same vocabulary, MUST match QUESTION_ATTRS.study_type> variables=<comma-separated names>\n"
+        "  Line 8 (EVIDENCE_ATTRS): the field name EVIDENCE_ATTRS followed by k=v pairs; recommended keys: study_type=<source kind> variables=<vars> sample_size=<aggregate n>\n"
+        "  Line 9 (ANALYSIS_ATTRS): the field name ANALYSIS_ATTRS followed by k=v pairs; required key: statistical_method=<must be compatible with EVIDENCE data type>\n"
         "Example of a well-formed revised response (use your OWN values, do not copy):\n"
         "QUESTION: Does cigarette smoking increase coronary heart disease incidence in adults?\n"
         "METHOD: Restrict appraisal to the three committed cohort PMIDs; tighten scope to their reported year span.\n"
         "SCOPE: pop=40-79 years=1995-2020\n"
         "PMIDS: 33754833,32150674,31345423\n"
         "RATIONALE: Dropping the unresolved PMIDs leaves a scope within the committed evidence.\n"
+        "QUESTION_ATTRS: study_type=causal-cohort\n"
+        "METHOD_ATTRS: study_type=causal-cohort variables=smoking,CHD-incidence\n"
+        "EVIDENCE_ATTRS: study_type=cohort variables=smoking,CHD-incidence sample_size=58000\n"
+        "ANALYSIS_ATTRS: statistical_method=random-effects-meta-analysis variables=smoking,CHD-incidence\n"
         "Now produce YOUR revised response below:\n"
         f"prior_plan={prior_blob}\n"
         f"refusal_reasons:\n{reasons_blob}\n"

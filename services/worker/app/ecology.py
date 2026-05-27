@@ -853,17 +853,57 @@ def admit_research_plan(
     )
     _record(
         ic01_ok,
-        "Patent IC-01: every ANALYSIS node links to EVIDENCE via ANALYZES.",
-        f"Patent IC-01 BLOCK: {ic01_reason}",
+        "SC-02: every ANALYSIS node links to EVIDENCE via ANALYZES.",
+        f"SC-02 BLOCK: {ic01_reason}",
     )
     _record(
         gc02_ok,
-        "Patent GC-02: graph carries a full QUESTION→…→CLAIM path.",
-        f"Patent GC-02 BLOCK: {gc02_reason}",
+        "GC-02: graph carries a full QUESTION→…→CLAIM path.",
+        f"GC-02 BLOCK: {gc02_reason}",
     )
     if ic03_warn_reason:
         warns.append(ic03_warn_reason)
-        reasons.append(f"Patent IC-03 WARN: {ic03_warn_reason}")
+        reasons.append(f"IC-03 WARN: {ic03_warn_reason}")
+
+    # CIVER 2.0 Tier-2 AC-01..AC-03: attribute constraints across linked PIR
+    # nodes. AC-01 is BLOCK (foundational — wrong study design); AC-02, AC-03
+    # are WARN (declarative gaps that accumulate toward GC-01).
+    ac01_ok, ac01_reason = _ac01_study_type_match(plan)
+    _record(
+        ac01_ok,
+        "AC-01: QUESTION.study_type matches METHOD.study_type.",
+        ac01_reason or "AC-01 BLOCK: question/method study_type mismatch",
+    )
+    ac02_reason = _ac02_variables_match(plan)
+    if ac02_reason:
+        warns.append(ac02_reason)
+        reasons.append(ac02_reason)
+    ac03_reason = _ac03_statistical_method_compat(plan)
+    if ac03_reason:
+        warns.append(ac03_reason)
+        reasons.append(ac03_reason)
+
+    # CIVER 2.0 Tier-5 GC-03: Integrity Score gating. A plan that accumulates
+    # too many WARNs (each shaves 0.08 off IS) can fail even with no individual
+    # BLOCK. Plans that hit BLOCK rules are already refused; GC-03 catches the
+    # "many small violations" pattern that local rules cannot.
+    complete_chains = _count_complete_chains(claim_graph)
+    integrity_score = _integrity_score(
+        blocks=list(blocks), warns=list(warns), complete_chains=complete_chains
+    )
+    is_gated = integrity_score < _IS_GATING_THRESHOLD
+    if is_gated:
+        gc03_msg = (
+            f"GC-03 BLOCK: Integrity Score {integrity_score:.3f} < threshold "
+            f"{_IS_GATING_THRESHOLD:.2f}"
+        )
+        blocks.append(gc03_msg)
+        reasons.append(gc03_msg)
+    else:
+        reasons.append(
+            f"GC-03: Integrity Score {integrity_score:.3f} ≥ threshold "
+            f"{_IS_GATING_THRESHOLD:.2f}."
+        )
 
     admitted = (
         graph_complete
@@ -873,12 +913,15 @@ def admit_research_plan(
         and scope_within_committed_sources
         and ic01_ok
         and gc02_ok
+        and ac01_ok
+        and not is_gated
     )
     return PlanAdmissionResult(
         admitted=admitted,
         reasons=reasons,
         blocks=blocks,
         warns=warns,
+        integrity_score=integrity_score,
     )
 
 
@@ -891,12 +934,17 @@ class PlanAdmissionResult:
     process_gate can apply patent GC-01 (WARN accumulation BLOCK) during the
     post-execution release score, and so audit-trail messages can render the
     correct severity per rule.
+
+    ``integrity_score`` is the spec §7 deterministic IS used as GC-03 gating
+    condition (default threshold 0.60). It is a pure function of the PIR
+    (blocks, warns, complete chain count); same inputs → same IS.
     """
 
     admitted: bool
     reasons: list[str]
     blocks: list[str]
     warns: list[str]
+    integrity_score: float = 1.0
 
     def __iter__(self):
         yield self.admitted
@@ -961,6 +1009,161 @@ def _gc02_full_chain_path_exists(claim_graph: ClaimGraph) -> tuple[bool, str]:
                 return True, ""
             stack.extend(adjacency.get(node, set()))
     return False, "no directed path QUESTION→…→CLAIM in the graph"
+
+
+# --- CIVER 2.0 spec Tier-2 + Tier-5 implementation ----------------------------
+#
+# The medevo CIVER originally checked only graph structure (SC/GC) and scope
+# (SpC). Spec §5.3 Tier-2 Attribute Constraints (AC-01..AC-03) and §7 Integrity
+# Score gating (GC-03) were missing — a methodologically empty METHOD step
+# passed the gate as long as the graph nodes existed. The block below adds the
+# missing tiers so a plan whose METHOD is "review sources and conclude" with no
+# declared study_type can no longer slip through.
+
+# Canonical study-type vocabulary the prompt asks the agent to use. The AC-01
+# comparison is case-/whitespace-/punctuation-tolerant after this normalisation.
+_STUDY_TYPE_NORMALISE_RE = re.compile(r"[\s_\-]+")
+
+
+def _normalise_study_type(value: str | None) -> str | None:
+    if not value:
+        return None
+    norm = _STUDY_TYPE_NORMALISE_RE.sub("-", value.strip().lower())
+    return norm or None
+
+
+# Compatibility map: which statistical_method values are compatible with which
+# EVIDENCE study_type / data_type. The map is intentionally permissive (any
+# unknown combination = "compatible" so spurious WARNs don't dominate); it only
+# fires on KNOWN mismatches (e.g. linear regression on binary outcome).
+_STAT_COMPAT: dict[str, set[str]] = {
+    # Aggregating effects across multiple studies
+    "random-effects-meta-analysis": {"cohort", "case-control", "rct", "diagnostic-accuracy", "cross-sectional"},
+    "fixed-effects-meta-analysis": {"cohort", "case-control", "rct"},
+    "hazard-ratio-pool": {"cohort", "rct"},
+    "risk-ratio-pool": {"cohort", "rct", "case-control"},
+    "odds-ratio-pool": {"case-control", "cross-sectional"},
+    # Diagnostic
+    "mcnemar": {"diagnostic-accuracy"},
+    "roc-analysis": {"diagnostic-accuracy"},
+    "kappa-agreement": {"diagnostic-accuracy"},
+    # Narrative / single-study
+    "narrative-synthesis": {"cohort", "case-control", "rct", "case-series", "cross-sectional", "diagnostic-accuracy", "narrative-review"},
+    # Continuous-outcome methods only on continuous outcomes — flagged via
+    # variables, not study_type; default = permissive for now.
+}
+
+
+def _ac01_study_type_match(plan: "ResearchPlan") -> tuple[bool, str]:
+    """CIVER 2.0 Tier-2 AC-01 BLOCK: QUESTION.study_type and METHOD.study_type
+    must agree. A causal-cohort question cannot be answered by a case-series
+    method; a diagnostic-accuracy question cannot be answered by a narrative
+    review. Fires only when BOTH sides declared (permissive on missing data —
+    the prompt asks for them, but a sparse emission shouldn't escalate)."""
+    q = _normalise_study_type(plan.question_attrs.study_type)
+    m = _normalise_study_type(plan.method_attrs.study_type)
+    if q is None or m is None:
+        return True, ""
+    if q == m:
+        return True, ""
+    return False, (
+        f"AC-01: QUESTION.study_type={q!r} ≠ METHOD.study_type={m!r} — "
+        "the method's design cannot answer the question's design"
+    )
+
+
+def _ac02_variables_match(plan: "ResearchPlan") -> str:
+    """CIVER 2.0 Tier-2 AC-02 WARN: variables declared by METHOD must appear
+    in the EVIDENCE variable set. Returns the WARN reason, or empty string if
+    the rule holds / is vacuous. Permissive on missing data."""
+    method_vars = {v.lower() for v in (plan.method_attrs.variables or [])}
+    evidence_vars = {v.lower() for v in (plan.evidence_attrs.variables or [])}
+    if not method_vars or not evidence_vars:
+        return ""
+    missing = sorted(method_vars - evidence_vars)
+    if not missing:
+        return ""
+    return (
+        f"AC-02 WARN: METHOD variables {missing} not declared in EVIDENCE "
+        "variables — planned variables exceed the data the sources support"
+    )
+
+
+def _ac03_statistical_method_compat(plan: "ResearchPlan") -> str:
+    """CIVER 2.0 Tier-2 AC-03 WARN: ANALYSIS.statistical_method must be
+    compatible with the EVIDENCE study_type / data type. Fires on KNOWN
+    mismatches in the compatibility map; unknown combos are treated as
+    compatible (permissive)."""
+    method = _normalise_study_type(plan.analysis_attrs.statistical_method)
+    evid = _normalise_study_type(
+        plan.evidence_attrs.study_type or plan.method_attrs.study_type
+    )
+    if method is None or evid is None:
+        return ""
+    allowed = _STAT_COMPAT.get(method)
+    if allowed is None:
+        return ""  # method not in our compatibility table — don't fire
+    if evid in allowed:
+        return ""
+    return (
+        f"AC-03 WARN: ANALYSIS.statistical_method={method!r} is not "
+        f"compatible with EVIDENCE.study_type={evid!r}"
+    )
+
+
+# Spec §7 penalty weights. Medevo's BLOCK rules map to "BLOCK" weight (0.15);
+# AC-01 maps to "BLOCK (foundational)" (0.25) because mismatching method to
+# question is a load-bearing methodology error, not a surface issue.
+_PENALTY_WARN_LIGHT = 0.03
+_PENALTY_WARN_SIGNIFICANT = 0.08
+_PENALTY_BLOCK = 0.15
+_PENALTY_BLOCK_FOUNDATIONAL = 0.25
+_COMPLETENESS_BONUS_PER_CHAIN = 0.01
+_COMPLETENESS_BONUS_CAP = 0.10
+_IS_GATING_THRESHOLD = 0.60  # spec §7 default GC-03
+
+
+def _integrity_score(*, blocks: list[str], warns: list[str], complete_chains: int) -> float:
+    """CIVER 2.0 §7 deterministic Integrity Score.
+
+    IS = 1.0 - Σ(penalty × weight) + Σ(bonus), clamped to [0, 1].
+
+    The function is intentionally a pure function of (blocks, warns,
+    complete_chains) — same inputs always produce the same IS, no LLM in the
+    loop. ``blocks`` entries containing 'AC-01' are treated as foundational
+    (0.25 penalty); other BLOCKs use 0.15. WARNs default to 0.08 (significant);
+    a future refinement may split light vs significant — for now every WARN is
+    treated as 'significant' to be conservative against borderline plans.
+    """
+    score = 1.0
+    for block in blocks:
+        if "AC-01" in block:
+            score -= _PENALTY_BLOCK_FOUNDATIONAL
+        else:
+            score -= _PENALTY_BLOCK
+    for _warn in warns:
+        score -= _PENALTY_WARN_SIGNIFICANT
+    bonus = min(_COMPLETENESS_BONUS_CAP, complete_chains * _COMPLETENESS_BONUS_PER_CHAIN)
+    score += bonus
+    return max(0.0, min(1.0, round(score, 4)))
+
+
+def _count_complete_chains(claim_graph: ClaimGraph) -> int:
+    """Count distinct QUESTION→METHOD→EVIDENCE→ANALYSIS→CLAIM paths that exist
+    in the graph (spec §7 completeness bonus). One path per (Q, C) pair counts
+    once. Direction-tolerant on intermediate edges so a process-flow wiring
+    (EVIDENCE→ANALYSIS via PRODUCES) is recognised the same as the
+    analyser-perspective ANALYSIS→EVIDENCE.
+
+    For the medevo claim graph (1 Q, 1 M, 1 E, 1 A, 1 C, fully connected by
+    the constitutional edges) this returns 1 — earning the minimum +0.01 bonus.
+    """
+    nodes_by_type: dict[str, list[str]] = {}
+    for n in claim_graph.nodes:
+        nodes_by_type.setdefault(n.node_type, []).append(n.id)
+    if not all(t in nodes_by_type for t in ("QUESTION", "METHOD", "EVIDENCE", "ANALYSIS", "CLAIM")):
+        return 0
+    return min(len(nodes_by_type["QUESTION"]), len(nodes_by_type["CLAIM"]))
 
 
 def _ic03_multi_claim_scope_conflict(claim_graph: ClaimGraph) -> str:

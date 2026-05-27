@@ -161,17 +161,39 @@ class EvidenceUnit(BaseModel):
     output_hash: str | None = None
 
 
+class PIRNodeAttributes(BaseModel):
+    """Structured attributes attached to each PIR node, per CIVER 2.0 spec §4.4.
+
+    Each of the 6 typed nodes (QUESTION, ASSUMPTION, METHOD, EVIDENCE, ANALYSIS,
+    CLAIM) carries this same attribute bag — populated by the parser when the
+    field is declared, ``None`` otherwise. Tier-2 attribute constraints (AC-01,
+    AC-02, AC-03) compare these across linked nodes deterministically.
+
+    Fields are intentionally permissive (all optional, strings + ints). The gate
+    treats missing fields as "not declared", not "wrong" — AC checks fire only
+    when both sides of the comparison are present.
+    """
+
+    study_type: str | None = None
+    population: str | None = None
+    sample_size: int | None = None
+    time_frame: str | None = None
+    variables: list[str] = Field(default_factory=list)
+    statistical_method: str | None = None
+    blinding_status: str | None = None
+    randomization_method: str | None = None
+
+
 class ResearchPlan(BaseModel):
     """A pre-registration PLAN emitted by a constrained-arm agent BEFORE it
     executes (CONSTITUTION Article I — prove integrity before the process runs).
 
-    The agent commits, ahead of seeing any result, to: the question, the method,
-    the specific evidence sources it WILL use (``committed_pmids`` — real PMIDs /
-    dataset-slice ids), and the scope it claims it will support. The pre-execution
-    CIVER gate (``app.ecology.admit_research_plan``) admits the plan to execute
-    ONLY if the method is coherent with the question, every committed source
-    resolves in the retrieved catalog, and the scope is bounded. A refused plan is
-    never executed; no study enters the constrained corpus.
+    Per CIVER 2.0 spec, the plan is the agent's externalised PIR — a typed DAG
+    proposing QUESTION → METHOD → EVIDENCE → ANALYSIS → CLAIM, with structured
+    attributes on each node. The pre-execution CIVER gate
+    (``app.ecology.admit_research_plan``) runs the spec's 5-tier check on the
+    plan and admits ONLY if every BLOCK rule holds AND the Integrity Score
+    stays above GC-03 threshold (0.60 by default).
 
     Article II then monitors EXECUTION against this registered plan: a Study whose
     cited PMIDs leave ``committed_pmids`` or whose scope over-reaches
@@ -187,6 +209,13 @@ class ResearchPlan(BaseModel):
     claimed_scope: EvidenceScope = Field(default_factory=EvidenceScope)
     rationale: str = ""
     parse_ok: bool = True
+    # CIVER 2.0 spec §4.4 structured attributes per node. Each is filled when the
+    # design emission declared the field; otherwise default = empty attributes
+    # (every field None / empty). Tier-2 AC checks compare attrs across these.
+    question_attrs: PIRNodeAttributes = Field(default_factory=PIRNodeAttributes)
+    method_attrs: PIRNodeAttributes = Field(default_factory=PIRNodeAttributes)
+    evidence_attrs: PIRNodeAttributes = Field(default_factory=PIRNodeAttributes)
+    analysis_attrs: PIRNodeAttributes = Field(default_factory=PIRNodeAttributes)
 
 
 class PubMedRecord(BaseModel):
