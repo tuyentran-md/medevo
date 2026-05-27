@@ -458,7 +458,7 @@ def heterogeneity(studies: list[Study]) -> float:
 
 def ungrounded_fraction(studies: list[Study]) -> float:
     if not studies:
-        return 0.0
+        return 1.0
     return sum(1 for study in studies if study.provenance == "UNGROUNDED") / len(studies)
 
 
@@ -494,7 +494,7 @@ def parse_srma_review(text: str, *, study_ids: list[str]) -> SrmaReview:
 
 
 def _extract_json_object(text: str) -> dict[str, object] | None:
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
+    fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, flags=re.DOTALL)
     candidate = fenced.group(1) if fenced else None
     if candidate is None:
         direct = re.search(r"(\{.*\})", text, flags=re.DOTALL)

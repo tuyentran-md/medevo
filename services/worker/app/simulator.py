@@ -63,6 +63,18 @@ def extract_text_from_upload(filename: str, content: bytes) -> str:
     return content.decode("utf-8", errors="ignore")
 
 
+def _env_api_key(backend: str) -> str | None:
+    if backend == "gemini":
+        return os.environ.get("GEMINI_API_KEY")
+    if backend == "openai-compatible":
+        return (
+            os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("OPENROUTER_API_KEY")
+            or os.environ.get("MIMO_API_KEY")
+        )
+    return None
+
+
 def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
     if os.environ.get("MEDEVO_FORCE_FALLBACK") == "1":
         return BackendConfigModel(
@@ -116,9 +128,7 @@ def resolve_backend(request: RunRequestModel) -> BackendConfigModel:
         except Exception:
             using_fallback = True
     else:
-        api_key = request.api_key or (
-            os.environ.get("GEMINI_API_KEY") if request.backend == "gemini" else None
-        )
+        api_key = request.api_key or _env_api_key(request.backend)
         using_fallback = not bool(api_key and base_url)
 
     return BackendConfigModel(
@@ -186,8 +196,7 @@ def resolve_client(
         base_url=backend.base_url,
         model=backend.model,
         backend=backend.backend,
-        api_key=request.api_key
-        or (os.environ.get("GEMINI_API_KEY") if backend.backend == "gemini" else None),
+        api_key=request.api_key or _env_api_key(backend.backend),
     )
 
 

@@ -77,7 +77,10 @@ async def _parse_run_request(request: Request) -> tuple[RunRequestModel, bytes |
         content = await upload.read() if hasattr(upload, "read") else None
         return _parse_request_payload(payload), content, filename
 
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON body.") from exc
     return _parse_request_payload(payload), None, None
 
 
@@ -89,9 +92,11 @@ def _resolve_input_text(run_request: RunRequestModel, upload_content: bytes | No
         return showcase.input_text, showcase.title
 
     if upload_content and filename:
-        extracted = extract_text_from_upload(filename, upload_content)
-        title = run_request.title or Path(filename).stem.replace("-", " ").title()
-        return extracted, title
+        extracted = extract_text_from_upload(filename, upload_content).strip()
+        if len(extracted) < 25:
+            raise HTTPException(status_code=400, detail="Could not extract enough text from uploaded file.")
+        title_seed = run_request.title or Path(filename).stem.replace("-", " ").title()
+        return extracted, sanitize_title(title_seed, "Uploaded MedEvo Run")
 
     if run_request.input_text:
         title_seed = run_request.title or run_request.input_text.splitlines()[0]

@@ -577,8 +577,8 @@ _DIRECTION_LINE_RE = re.compile(r"^\s*DIRECTION\s*:\s*(\w+)", re.IGNORECASE | re
 _SCOPE_LINE_RE = re.compile(r"^\s*SCOPE\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
 _PMIDS_LINE_RE = re.compile(r"^\s*PMIDS\s*:\s*(.*)$", re.IGNORECASE | re.MULTILINE)
 _RATIONALE_LINE_RE = re.compile(r"^\s*RATIONALE\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE | re.DOTALL)
-_AGE_RE = re.compile(r"pop\s*=?\s*(\d{1,3})\s*[-to]+\s*(\d{1,3})", re.IGNORECASE)
-_YEAR_RE = re.compile(r"years?\s*=?\s*((?:19|20)\d{2})\s*[-to]+\s*((?:19|20)\d{2})", re.IGNORECASE)
+_AGE_RE = re.compile(r"pop\s*=?\s*(\d{1,3})\s*(?:-|to)\s*(\d{1,3})", re.IGNORECASE)
+_YEAR_RE = re.compile(r"years?\s*=?\s*((?:19|20)\d{2})\s*(?:-|to)\s*((?:19|20)\d{2})", re.IGNORECASE)
 
 
 def parse_research_emission(raw: str) -> ResearchStudyEmission:
@@ -1063,12 +1063,20 @@ def _execute_prompt(
     # plan — cite only the committed PMIDS and stay within the registered scope.
     # Leaving the committed set / widening scope at execution is a deviation the
     # caller flags (WARN) and the gate's scope clause may also catch.
+    empty_pmids_warning = (
+        "IMPORTANT: The plan committed NO sources (committed_pmids is empty). "
+        "You MUST conclude DIRECTION: NEUTRAL and PMIDS: none — do NOT draw on "
+        "prior/parametric knowledge to fill the gap.\n"
+        if not plan.committed_pmids
+        else ""
+    )
     return (
         "You are a research agent. EXECUTE the pre-registered plan below: appraise "
         "ONLY the committed sources and conclude. Cite ONLY the committed PMIDS and "
         "do NOT widen the scope beyond the registered plan. If the committed "
         "evidence is insufficient, conclude DIRECTION: NEUTRAL with no PMIDS.\n"
-        "Respond with EXACTLY these four lines and nothing else. Each line starts "
+        + empty_pmids_warning
+        + "Respond with EXACTLY these four lines and nothing else. Each line starts "
         "with the field name in CAPS, then a colon and a space, then the value. Use "
         "real values - do NOT emit angle brackets, the words 'low'/'high'/'start'/"
         "'end', or any other placeholder text.\n"
@@ -1237,7 +1245,11 @@ def _parse_screen_decisions(text: str, *, studies: list[Study]):
         study_id = str(item.get("study_id") or "").strip()
         if study_id not in by_id:
             continue
-        include = bool(item.get("include"))
+        raw_include = item.get("include")
+        if isinstance(raw_include, str):
+            include = raw_include.strip().lower() not in ("false", "0", "no", "")
+        else:
+            include = bool(raw_include)
         reason = str(item.get("reason") or ("meets eligibility" if include else "excluded")).strip()
         seen[study_id] = ScreeningDecision(study_id=study_id, included=include, reason=reason)
     # Any study the screen did not mention defaults to the deterministic decision
