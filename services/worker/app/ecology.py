@@ -799,10 +799,13 @@ def admit_research_plan(
             scope_within_committed_sources = True
     else:
         scope_within_committed_sources = committed_resolve
-    # Patent IC-01 BLOCK + GC-02: every ANALYSIS node must have at least one
-    # ANALYZES edge to an EVIDENCE node, AND there must exist a full path
-    # QUESTION → … → CLAIM in the graph. Either failing = incomplete analysis
-    # link from CLAIM to underlying evidence.
+    # SC-02 (spec Tier-1) + GC-02 (spec Tier-5): every ANALYSIS node must have
+    # at least one ANALYZES edge to an EVIDENCE node, AND there must exist a
+    # full path QUESTION → … → CLAIM in the graph. Either failing = incomplete
+    # analysis link from CLAIM to underlying evidence. The medevo code
+    # previously mis-labelled the SC-02 check as "Patent IC-01" — the spec's
+    # IC-01 is a Tier-4 sequencing rule (CLAIM exists before its ANALYSIS link
+    # is wired ≈ HARKing), not a structural-completeness rule.
     ic01_ok, ic01_reason = _ic01_analysis_links_to_evidence(claim_graph)
     gc02_ok, gc02_reason = _gc02_full_chain_path_exists(claim_graph)
 
@@ -952,11 +955,14 @@ class PlanAdmissionResult:
 
 
 def _ic01_analysis_links_to_evidence(claim_graph: ClaimGraph) -> tuple[bool, str]:
-    """Patent IC-01 BLOCK: every ANALYSIS node must be linked to EVIDENCE via
-    an ANALYZES edge. Direction-agnostic (process-flow EVIDENCE→ANALYSIS and
-    analyzer-perspective ANALYSIS→EVIDENCE both count): a CLAIM resting on an
-    ANALYSIS that has NO ANALYZES connection to any EVIDENCE is structurally
-    incomplete and the patent rule blocks it."""
+    """CIVER 2.0 spec SC-02 BLOCK: every ANALYSIS node must be linked to
+    EVIDENCE via an ANALYZES edge. Direction-agnostic (process-flow
+    EVIDENCE→ANALYSIS and analyser-perspective ANALYSIS→EVIDENCE both count):
+    a CLAIM resting on an ANALYSIS that has NO ANALYZES connection to any
+    EVIDENCE is structurally incomplete.
+
+    Function name retained as ``_ic01_`` for back-compat with the test that
+    imports it; the rule it implements is the spec's Tier-1 SC-02."""
     analysis_ids = {n.id for n in claim_graph.nodes if n.node_type == "ANALYSIS"}
     evidence_ids = {n.id for n in claim_graph.nodes if n.node_type == "EVIDENCE"}
     if not analysis_ids or not evidence_ids:
