@@ -188,10 +188,12 @@ def test_output_gate_refuses_guideline_pooling_unwarranted_study() -> None:
 
 def test_output_gate_refuses_strength_overreach() -> None:
     """The emitted level over-reaches the strength the warranted-only evidence
-    earns (e.g. an LLM certainty bump pushed conditional -> strong). Refused."""
+    earns (e.g. an LLM certainty bump pushed conditional -> strong). The gate
+    now returns the warranted synthesis level instead of collapsing to
+    no-recommendation — so the constrained arm still produces a useful output."""
     # Only TWO warranted studies -> the warranted-only SR earns at most a
     # conditional level (sparse-evidence GRADE cap). An emitted strong-for
-    # over-reaches that.
+    # over-reaches that; gate should re-anchor to conditional-for, not NEUTRAL.
     studies = [_study("w-1"), _study("w-2")]
     warranted = {"w-1", "w-2"}
     guideline = _included_guideline(["w-1", "w-2"], level="strong-for", direction="SUPPORTS")
@@ -200,7 +202,9 @@ def test_output_gate_refuses_strength_overreach() -> None:
         guideline=guideline, studies=studies, warranted_ids=warranted
     )
     assert admitted is False
-    assert gated.level == "no-recommendation"
+    assert gated.output_gate_refused is True
+    assert gated.level == "conditional-for"
+    assert gated.direction == "SUPPORTS"
     assert "over-reaches the strength" in reason
 
 

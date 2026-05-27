@@ -358,15 +358,40 @@ def admit_guideline_output(
     if not reasons:
         return guideline, True, "Guideline traces to warranted evidence within supported strength."
 
-    refused = guideline.model_copy(
+    reason_str = "; ".join(reasons)
+
+    # Emit the warranted synthesis instead of NEUTRAL so the constrained arm
+    # produces the highest defensible conclusion rather than always collapsing
+    # to no-recommendation on a strength mis-calibration.  Trace failure (an
+    # unwarranted study snuck into the pool) still degrades to NEUTRAL because
+    # the pool itself is compromised; strength-only overreach just re-anchors to
+    # the warranted level.
+    trace_failed = bool(unwarranted_in_pool)
+    if trace_failed:
+        refused = guideline.model_copy(
+            update={
+                "direction": "NEUTRAL",
+                "level": NO_RECOMMENDATION,
+                "output_gate_refused": True,
+                "output_gate_reason": reason_str,
+            }
+        )
+        return refused, False, reason_str
+
+    # Strength overreach only: return the warranted-evidence synthesis.
+    warranted_guideline = guideline.model_copy(
         update={
-            "direction": "NEUTRAL",
-            "level": NO_RECOMMENDATION,
+            "direction": warranted_direction,
+            "level": warranted_level,
+            "certainty": round(warranted_certainty, 4),
+            "pooled_effect": round(warranted_pooled, 4) if warranted_included else None,
+            "n_included": warranted_sr.n_included,
+            "n_excluded": warranted_sr.n_excluded,
             "output_gate_refused": True,
-            "output_gate_reason": "; ".join(reasons),
+            "output_gate_reason": reason_str,
         }
     )
-    return refused, False, "; ".join(reasons)
+    return warranted_guideline, False, reason_str
 
 
 def pooled_effect(studies: list[Study], *, review: SrmaReview | None = None) -> float:
