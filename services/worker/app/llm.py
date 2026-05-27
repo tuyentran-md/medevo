@@ -667,16 +667,11 @@ def _direction_from_prompt_sources(prompt: str) -> str:
 def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
     """Best-effort source scope for the fake's SCOPE line.
 
-    Group-A prompts state ``pop=<low>-<high>`` and ``years=2005-2006`` inline;
-    Group-B records carry no parseable population band offline, so default broad
-    bands keyed to the source year are used."""
-    pop = re.search(r"pop=(\d+)-(\d+)", prompt)
-    if pop:
-        low, high = int(pop.group(1)), int(pop.group(2))
-        years = re.search(r"years=((?:19|20)\d{2})-((?:19|20)\d{2})", prompt)
-        if years:
-            return low, high, int(years.group(1)), int(years.group(2))
-        return low, high, 2005, 2006
+    Group-B records carry structured ``population_band`` / ``year_band`` in the
+    ``sources=[...]`` JSON — prefer that so an inline ``pop=A-B`` example in the
+    prompt's format spec doesn't override the real source scope. Group-A
+    microdata prompts have no JSON sources and DO state ``pop=<low>-<high>``
+    inline; they fall through to the regex path."""
     match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
     year = 2020
     if match:
@@ -696,6 +691,13 @@ def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
                     return int(pop_band[0]), int(pop_band[1]), int(year_band[0]), int(year_band[1])
         except (ValueError, TypeError):
             pass
+    pop = re.search(r"pop=(\d+)-(\d+)", prompt)
+    if pop:
+        low, high = int(pop.group(1)), int(pop.group(2))
+        years = re.search(r"years=((?:19|20)\d{2})-((?:19|20)\d{2})", prompt)
+        if years:
+            return low, high, int(years.group(1)), int(years.group(2))
+        return low, high, 2005, 2006
     return 0, 120, 1900, year
 
 
