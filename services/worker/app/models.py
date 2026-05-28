@@ -229,6 +229,13 @@ class PubMedRecord(BaseModel):
     # precise population band, so it defaults broad; the deterministic fixture
     # sets a narrow band so scope over-reach is observable in tests/demos.
     scope: EvidenceScope = Field(default_factory=EvidenceScope)
+    # MeSH DescriptorName terms PubMed indexes the article under. Canonical
+    # biomedical vocabulary used as the EVIDENCE node's `variables` attribute in
+    # MedEvo (replacing agent-emitted free-form strings, so SpC-04 outcome
+    # matching is ontology-grounded and reproducible across claims). Lowercased,
+    # de-duplicated. Empty when PubMed has not yet indexed the article or for
+    # deterministic fixtures.
+    mesh_terms: list[str] = Field(default_factory=list)
 
 
 class EffectEstimate(BaseModel):

@@ -270,6 +270,22 @@ def execution_deviations(*, plan: ResearchPlan, study: Study) -> list[ProcessVio
     a WARN that accumulates toward patent GC-01.
     """
     violations: list[ProcessViolation] = []
+    # A no-citation output can be an honest abstention, but it is not an
+    # evidence unit and must not receive an execution warrant or enter the
+    # warranted Tier-3 corpus. Otherwise constrained runs fill the corpus with
+    # NEUTRAL/no-evidence pseudo-studies and output-matching reports false
+    # coverage.
+    if not study.pmids:
+        violations.append(
+            ProcessViolation(
+                code="GC-03",
+                severity="block",
+                message=(
+                    "no cited evidence emitted; abstention is not warrantable "
+                    "corpus evidence"
+                ),
+            )
+        )
     # Honest-abstain integrity: if the plan committed no evidence, the study
     # must emit a NEUTRAL direction. Any non-NEUTRAL conclusion from an
     # evidence-empty plan is claim-without-evidence — block.

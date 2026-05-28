@@ -104,7 +104,7 @@ OUTPUT_MATCH_MIN_INTERPRETABLE_RATIO = _env_float(
 )
 MAX_CONSTRAINED_ATTEMPTS_PER_CELL = _env_int(
     "MEDEVO_MAX_CONSTRAINED_ATTEMPTS_PER_CELL",
-    max(STUDIES_PER_CLAIM_PER_ERA, 30),
+    max(STUDIES_PER_CLAIM_PER_ERA * 3, 6),
 )
 GENESIS_HASH = "GENESIS"
 PUBMED_FORWARD_CEILING_YEAR = 2025
@@ -141,6 +141,9 @@ class CorpusItem:
     resolved_real_ids: list[str]
     resolved_locators: list[str]
     scope: EvidenceScope = field(default_factory=EvidenceScope)
+    # Canonical MeSH descriptors PubMed attached to the underlying real record.
+    # Empty for non-real items. Read by SpC-04 to gate outcome coherence.
+    mesh_terms: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -394,6 +397,32 @@ def _study_is_temporally_consistent(study: "Study", simulated_year: int) -> bool
     return study.source_scope.year_end <= simulated_year
 
 
+def _study_passes_medevo_environment(study: "Study") -> tuple[bool, str]:
+    """Baseline MedEvo evidence-validity layer shared by BOTH arms.
+
+    The free arm is free from CIVER/BRIM process control, not free to inject
+    invalid evidence. Every study entering either Tier-3 corpus must cite at
+    least one retrieved source, all cited sources must resolve in the date-cut
+    catalog, and the emitted scope must stay inside the cited evidence.
+    """
+    if not study.pmids:
+        return False, "MedEvo environment rejected study: no cited PubMed/source id."
+    catalog = set(study.catalog_pmids)
+    unresolved = [pmid for pmid in study.pmids if pmid not in catalog]
+    if unresolved:
+        return (
+            False,
+            "MedEvo environment rejected study: cited ids absent from retrieved catalog: "
+            + ", ".join(unresolved),
+        )
+    if study.claimed_scope.exceeds(study.source_scope, tolerance=0):
+        return (
+            False,
+            "MedEvo environment rejected study: claimed scope exceeds cited evidence scope.",
+        )
+    return True, "MedEvo environment accepted source-resolved, scope-bounded evidence."
+
+
 @dataclass(frozen=True)
 class ResearchOutcome:
     """One Tier-1 attempt's result for a SINGLE branch.
@@ -432,11 +461,11 @@ def _free_research_batch(
     year: int,
     telemetry: CallTelemetry,
 ) -> list[ResearchOutcome]:
-    """FREE/natural arm: plan -> execute, but CIVER/BRIM are observational only.
+    """FREE/natural arm: direct research output under MedEvo environment rules.
 
-    This keeps a process trace for shadow CIVER/BRIM. The free arm does not block
-    invalid plans; it records whether the plan would have passed and lets the
-    agent execute anyway so the same natural corpus can be post-hoc evaluated.
+    Free means no CIVER/BRIM pre-execution process control. It does NOT mean
+    invalid evidence can enter the corpus: citation resolvability, source scope,
+    and temporal validity are enforced later by the shared MedEvo environment.
     """
     outcomes: list[ResearchOutcome] = []
     for replicate in range(STUDIES_PER_CLAIM_PER_ERA):
@@ -455,23 +484,15 @@ def _free_research_batch(
             )
             continue
         try:
-            plan, catalog = research_agent.run_design(
+            study, catalog = research_agent.run(
                 claim_id=claim.claim_id,
                 claim_text=claim.text,
                 simulated_year=year,
                 max_pubmed_year=pubmed_cutoff_year(year),
                 replicate=replicate,
             )
-            admitted, reasons = admit_research_plan(
-                plan=plan,
-                claim_graph=claim_graph,
-                reachable_lookup=_reachable_lookup_from_catalog(catalog),
-            )
-            study = research_agent.run_execute(
-                plan=plan, catalog=catalog, claim_text=claim.text, replicate=replicate
-            )
         except Exception as exc:
-            telemetry.record_failure(f"free-process/{claim.claim_id}/year-{year}", exc)
+            telemetry.record_failure(f"free-research/{claim.claim_id}/year-{year}", exc)
             study = Study(
                 id=f"{claim.claim_id}-study-{year}-r{replicate}-process-error",
                 claim_id=claim.claim_id,
@@ -489,21 +510,18 @@ def _free_research_batch(
                     study=study,
                     catalog=[],
                     plan=None,
-                    design_admitted=False,
-                    design_reasons=[f"Natural research process failed: {type(exc).__name__}: {exc}"],
+                    design_admitted=None,
+                    design_reasons=[f"Natural research failed: {type(exc).__name__}: {exc}"],
                 )
             )
             continue
-        deviations = _plan_execution_deviations(plan=plan, study=study)
         outcomes.append(
             ResearchOutcome(
                 study=study,
                 catalog=catalog,
-                plan=plan,
-                design_admitted=admitted,
-                design_reasons=reasons,
-                execution_deviated=bool(deviations),
-                deviation_note="; ".join(deviations),
+                plan=None,
+                design_admitted=None,
+                design_reasons=["Free branch: direct MedEvo research output; no active CIVER design gate."],
             )
         )
     return outcomes
@@ -885,6 +903,14 @@ def admit_research_plan(
     if ac03_reason:
         warns.append(ac03_reason)
         reasons.append(ac03_reason)
+    spc04_ok, spc04_reason = _spc04_evidence_measures_claim_outcome(
+        plan, claim_graph, reachable_lookup
+    )
+    _record(
+        spc04_ok,
+        "SpC-04: cited evidence measures the claim's outcome.",
+        spc04_reason or "SpC-04 BLOCK: evidence does not measure the claim's outcome",
+    )
 
     # CIVER 2.0 Tier-5 GC-03: Integrity Score gating. A plan that accumulates
     # too many WARNs (each shaves 0.08 off IS) can fail even with no individual
@@ -917,6 +943,7 @@ def admit_research_plan(
         and ic01_ok
         and gc02_ok
         and ac01_ok
+        and spc04_ok
         and not is_gated
     )
     return PlanAdmissionResult(
@@ -1092,6 +1119,84 @@ def _ac02_variables_match(plan: "ResearchPlan") -> str:
     return (
         f"AC-02 WARN: METHOD variables {missing} not declared in EVIDENCE "
         "variables — planned variables exceed the data the sources support"
+    )
+
+
+# Markers after which a clinical claim names its outcome/endpoint. The capture
+# runs to the first boundary word that ends the outcome phrase.
+_CLAIM_OUTCOME_RE = re.compile(
+    r"\b(?:risk|incidence|rates?|mortality|probability|odds|hazard|likelihood)\s+"
+    r"(?:of|for|from)\s+(.+?)"
+    r"(?:\s+(?:by|in|among|when|during|through|via|with|after|due|"
+    r"because|that|which|and|or)\b|[.,;:]|$)",
+    re.IGNORECASE,
+)
+
+
+def claim_outcome_phrase(claim_text: str) -> str:
+    """Extract the claim's clinical OUTCOME phrase verbatim (e.g. 'coronary heart
+    disease' from 'reduces risk of coronary heart disease by ...')."""
+    phrases = _CLAIM_OUTCOME_RE.findall(claim_text or "")
+    return phrases[0].strip() if phrases else ""
+
+
+def _spc04_evidence_measures_claim_outcome(
+    plan: "ResearchPlan",
+    claim_graph: ClaimGraph,
+    reachable_lookup: dict[str, "CorpusItem"],
+) -> tuple[bool, str]:
+    """Clinical domain extension of CIVER 2.0 Tier-3 (scope) — SpC-04 BLOCK.
+
+    Spec Tier-3 forbids a CLAIM from exceeding the EVIDENCE it rests on. This
+    rule applies that principle to the OUTCOME dimension: the cited PMIDs must
+    be PubMed-indexed under a MeSH descriptor that is the claim's outcome OR a
+    DESCENDANT of it (standard SR `[MeSH]` explosion semantics).
+
+    The agent's QUESTION/EVIDENCE outcome attribute is PINNED here from canonical
+    NLM sources — NOT from the agent's self-reported `evidence_attrs.variables`
+    (free-form text the agent can drift to fit any groundable PMID — exactly the
+    HARK pattern). The claim outcome MeSH tree and each cited record's MeSH tree
+    are both resolved through `app.mesh`, giving an ontology-grounded, generic
+    match across all biomedical claims (CHD / MI / T2DM / cancer subtypes /
+    etc.) with no per-vocabulary hand-coding.
+
+    Architecture (mindset confirmed with sếp 2026-05-28): real CIVER has
+    'human-in-the-loop' confirming structured attributes; MedEvo substitutes
+    'medevo-rule-in-the-loop' — the harness pins attributes from canonical
+    sources so the agent cannot redefine them. SpC-04 is the structural-gate
+    surface of that substitution for the outcome attribute.
+
+    Fires only when (a) the claim outcome resolves to a MeSH descriptor AND
+    (b) at least one cited record carries MeSH terms. Otherwise vacuous
+    (permissive on missing data — recent uncindexed articles, niche outcomes —
+    consistent with the other attribute rules and the spec's permissive default)."""
+    from app.mesh import (
+        claim_outcome_trees,
+        evidence_mesh_trees,
+        mesh_hierarchy_match,
+    )
+
+    outcome_phrase = claim_outcome_phrase(claim_graph.claim_text)
+    if not outcome_phrase:
+        return True, ""
+    claim_trees = claim_outcome_trees(outcome_phrase)
+    if not claim_trees:
+        return True, ""
+    cited_mesh_terms: list[str] = []
+    for pmid in plan.committed_pmids:
+        item = reachable_lookup.get(pmid)
+        cited_mesh_terms.extend(getattr(item, "mesh_terms", None) or [])
+    if not cited_mesh_terms:
+        return True, ""
+    evidence_trees = evidence_mesh_trees(cited_mesh_terms)
+    if mesh_hierarchy_match(claim_trees, evidence_trees):
+        return True, ""
+    cited_mesh_summary = sorted(set(cited_mesh_terms))[:8]
+    return False, (
+        f"SpC-04: claim outcome {outcome_phrase!r} (MeSH tree {claim_trees}) "
+        f"is not measured by the cited evidence — MeSH terms attached: "
+        f"{cited_mesh_summary}. The cited indexing does not exist under or "
+        "equal the claim's outcome descriptor (off-endpoint / drifted question)"
     )
 
 
@@ -1537,6 +1642,7 @@ def _reachable_lookup_from_catalog(catalog: list[PubMedRecord]) -> dict[str, Cor
             resolved_real_ids=[record.pmid],
             resolved_locators=[record.locator or f"PMID:{record.pmid}"],
             scope=record.scope.model_copy(deep=True),
+            mesh_terms=list(record.mesh_terms),
         )
         for record in catalog
     }
@@ -2194,6 +2300,47 @@ def run_ecology(
                             f"with cutoff {pubmed_cutoff_year(year)}."
                         ),
                     )
+                    env_passed, env_message = _study_passes_medevo_environment(branch_study)
+                    if not env_passed:
+                        record_transition(
+                            audit_trail=audit_trail,
+                            audit_counters=audit_counters,
+                            last_hashes=last_hashes,
+                            run_id=run_id or "preview-run",
+                            claim_id=claim.claim_id,
+                            branch=branch,
+                            year=year,
+                            phase="environment",
+                            event_type="environment-refused",
+                            severity="block",
+                            integrity_score_before=1.0,
+                            integrity_score_after=0.0,
+                            message=env_message,
+                        )
+                        blocked_this_era += 1
+                        if (
+                            branch == "constrained"
+                            and target_retained_this_cell > 0
+                            and tier3_store.count_studies(
+                                branch="constrained", claim_id=claim.claim_id, year=year
+                            )
+                            < target_retained_this_cell
+                            and outcome_index == len(outcomes) - 1
+                            and len(outcomes) < constrained_attempt_cap
+                        ):
+                            outcomes.append(
+                                _constrained_research_attempt(
+                                    research_agent=research_agent,
+                                    microdata_agent=microdata_agent,
+                                    claim=claim,
+                                    claim_graph=graph_lookup[claim.claim_id],
+                                    year=year,
+                                    telemetry=telemetry,
+                                    replicate=len(outcomes),
+                                )
+                            )
+                        outcome_index += 1
+                        continue
                     if branch == "constrained":
                         from app.process_gate import issue_process_warrant
 
@@ -2364,6 +2511,7 @@ def run_ecology(
                         guideline=guideline,
                         studies=corpus_studies,
                         warranted_ids=corpus_warranted_ids,
+                        claim_text=claim.text,
                     )
                     if guideline.insufficient_evidence:
                         guideline_event_type = "guideline-abstained"

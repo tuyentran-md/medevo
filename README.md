@@ -46,8 +46,8 @@ Each simulation runs two branches.
 ```mermaid
 flowchart TD
     A["Medical claim at historical time point"] --> B["AI agents generate study-like outputs"]
-    B --> C["Ungated branch: keep all generated studies"]
-    B --> D["Process-gated branch: keep only studies that pass integrity checks"]
+    B --> C["Environment-only branch: keep studies that pass shared evidence-validity rules"]
+    B --> D["Process-gated branch: same environment rules plus CIVER/BRIM process control"]
     C --> E["Review-style synthesis"]
     D --> F["Review-style synthesis"]
     E --> G["Compare recommendation with historical truth"]
@@ -56,10 +56,16 @@ flowchart TD
 
 | Branch | What it keeps | Purpose |
 |---|---|---|
-| Ungated | All generated study-like outputs | Simulates an AI-era literature without process filtering |
-| Process-gated | Only outputs that pass integrity checks | Tests whether filtering the research process reduces downstream drift |
+| Environment-only | Studies that cite retrieved evidence, stay within source scope, and respect the time cutoff | Baseline MedEvo control: evidence-valid outputs without extra process control |
+| Process-gated | The same environment-valid outputs, but only when the research process also passes CIVER/BRIM checks | Tests whether process control reduces downstream drift beyond baseline evidence validity |
 
-The gated branch uses two process checks in this repository:
+Both branches share MedEvo environment validity rules before a study can enter the corpus:
+
+- cited identifiers must resolve in the retrieved date-cut evidence set
+- claimed scope must stay within the cited evidence
+- evidence must not post-date the simulated year
+
+The process-gated branch adds two process checks in this repository:
 
 - **CIVER**, the claim-evidence integrity check, tests whether the claim, method, evidence, analysis, and conclusion form a coherent chain.
 - **BRIM**, the plan-execution monitor, tests whether execution stays aligned with the declared plan instead of drifting during the research process.

@@ -229,6 +229,7 @@ def synthesize_guideline_claim(
     studies: list[Study],
     review: SrmaReview | None = None,
     screening: SrReview | None = None,
+    claim_text: str = "",
 ) -> GuidelineClaim:
     """Real SR/MA: screen → risk-of-bias → pool ONLY the included studies.
 
@@ -242,19 +243,30 @@ def synthesize_guideline_claim(
     ``review`` (LLM appraisal nudge) is applied to the graded certainty.
     """
     if screening is not None:
-        included_for_rob = [s for s in studies if s.id in set(screening.included_ids)]
+        # Separation of concerns: the LLM screen judges RELEVANCE only; the
+        # deterministic eligibility floor (quality / cited-source / sample size)
+        # is the harness's job and must NOT be overridable by a nondeterministic
+        # LLM verdict. v6 had the LLM exclude an above-floor study as "below
+        # minimum quality 0.5" in one arm and include it in another — pure noise.
+        # Final inclusion = the LLM kept it for relevance AND it clears the floor.
+        eligible_ids = {d.study_id for d in screen_studies(studies) if d.included}
+        combined_included = [
+            sid for sid in screening.included_ids if sid in eligible_ids
+        ]
+        included_for_rob = [s for s in studies if s.id in set(combined_included)]
         rob = assess_risk_of_bias(included_for_rob, review=review)
         sr = SrReview(
             screening=screening.screening,
             rob=rob,
-            included_ids=list(screening.included_ids),
-            n_included=screening.n_included,
-            n_excluded=screening.n_excluded,
+            included_ids=combined_included,
+            n_included=len(combined_included),
+            n_excluded=len(studies) - len(combined_included),
         )
     else:
         sr = run_systematic_review(studies, review=review)
     included = [study for study in studies if study.id in set(sr.included_ids)]
-    pooled = pooled_effect(included, review=review)
+    polarity = claim_polarity(claim_text)
+    pooled = pooled_effect(included, review=review, claim_polarity=polarity)
     direction = direction_from_pooled_effect(pooled)
     certainty = sr.rob.graded_certainty
     # No substantive study survived screening — this is NA / abstention, not a
@@ -296,6 +308,7 @@ def admit_guideline_output(
     studies: list[Study],
     warranted_ids: set[str],
     review: SrmaReview | None = None,
+    claim_text: str = "",
 ) -> tuple[GuidelineClaim, bool, str]:
     """CIVER admissibility on the SRMA OUTPUT (Article I + IV, constrained only).
 
@@ -320,7 +333,9 @@ def admit_guideline_output(
     # Re-run the appraisal on the warranted-only corpus.
     warranted_sr = run_systematic_review(warranted, review=review)
     warranted_included = [s for s in warranted if s.id in set(warranted_sr.included_ids)]
-    warranted_pooled = pooled_effect(warranted_included, review=review)
+    warranted_pooled = pooled_effect(
+        warranted_included, review=review, claim_polarity=claim_polarity(claim_text)
+    )
     warranted_direction = direction_from_pooled_effect(warranted_pooled)
     warranted_certainty = warranted_sr.rob.graded_certainty
     warranted_level = recommendation_level(
@@ -399,14 +414,71 @@ def admit_guideline_output(
     return warranted_guideline, False, reason_str
 
 
-def pooled_effect(studies: list[Study], *, review: SrmaReview | None = None) -> float:
+# The outcome/risk noun the claim's verb must govern. Anchoring polarity to this
+# noun ignores MECHANISM clauses ("by elevating HDL cholesterol", "by lowering
+# platelet aggregation") whose verbs would otherwise flip the reading.
+_RISK_NOUN = (
+    r"(?:risk|risks|incidence|mortality|morbidity|odds|likelihood|rate|rates|"
+    r"hazard|chance|probability|prevalence|events?|outcomes?)"
+)
+_REDUCE_VERB = (
+    r"(?:reduc(?:e[sd]?|ing|tion)|lower(?:s|ed|ing)?|decreas(?:e[sd]?|ing)|"
+    r"diminish(?:e[sd]?|ing)?|protect(?:s|ed|ing|ive)?|prevent(?:s|ed|ing|ion)?)"
+)
+# Verb-form only (NOT bare 'cause' — would match 'all-cause mortality' and
+# falsely flag a reduces-risk claim as ambiguous, as v11 HRT polarity exposed).
+_INCREASE_VERB = (
+    r"(?:increas(?:e[sd]?|ing)|rais(?:e[sd]?|ing)|elevat(?:e[sd]?|ing)|"
+    r"caus(?:es|ed|ing)|worsen(?:s|ed|ing)?)"
+)
+# verb → ... → risk-noun  (e.g. "reduces risk of CHD", "lowers the incidence of")
+_REDUCE_RE = re.compile(rf"\b{_REDUCE_VERB}\s+(?:the\s+)?(?:[\w-]+\s+){{0,6}}{_RISK_NOUN}\b")
+_INCREASE_RE = re.compile(rf"\b{_INCREASE_VERB}\s+(?:the\s+)?(?:[\w-]+\s+){{0,6}}{_RISK_NOUN}\b")
+# risk-noun → ... → verb  (e.g. "CHD risk is reduced"). Reverse window is
+# tight (0,2) on purpose: a wider window crosses mechanism clauses like
+# "risk of CHD by elevating HDL" and misreads the mechanism verb as a
+# claim-direction verb (alcohol claim v11 regression).
+_REDUCE_REV_RE = re.compile(rf"\b{_RISK_NOUN}\s+(?:[\w-]+\s+){{0,2}}{_REDUCE_VERB}\b")
+_INCREASE_REV_RE = re.compile(rf"\b{_RISK_NOUN}\s+(?:[\w-]+\s+){{0,2}}{_INCREASE_VERB}\b")
+
+
+def claim_polarity(claim_text: str) -> int:
+    """Direction the claim ASSERTS about the exposure→outcome relationship.
+
+    -1 = claim says the exposure REDUCES/protects against the outcome
+    +1 = claim says the exposure INCREASES/causes the outcome
+     0 = unclear (caller must fall back to the model's per-study label)
+
+    Anchored to the risk/incidence noun so a mechanism clause cannot flip it:
+    "alcohol REDUCES RISK of CHD by ELEVATING HDL and LOWERING platelet
+    aggregation" reads -1 (the 'elevating'/'lowering' verbs govern HDL/platelets,
+    not risk). Used to give an extracted ratio a claim-relative sign
+    deterministically instead of trusting the model's SUPPORTS/REFUTES label
+    (which v6 let invert: a harmful OR=2.0 counted as SUPPORTS for a reduces-risk
+    claim)."""
+    t = " ".join((claim_text or "").lower().split())
+    reduce_hit = bool(_REDUCE_RE.search(t) or _REDUCE_REV_RE.search(t))
+    increase_hit = bool(_INCREASE_RE.search(t) or _INCREASE_REV_RE.search(t))
+    if reduce_hit and not increase_hit:
+        return -1
+    if increase_hit and not reduce_hit:
+        return 1
+    return 0
+
+
+def pooled_effect(
+    studies: list[Study],
+    *,
+    review: SrmaReview | None = None,
+    claim_polarity: int = 0,
+) -> float:
     if not studies:
         return 0.0
     weighted_sum = 0.0
     total_weight = 0.0
     for study in studies:
         direction_component = _DIRECTION_SCORE[study.direction]
-        numeric_component = numeric_effect_component(study)
+        numeric_component = numeric_effect_component(study, claim_polarity=claim_polarity)
         effect = numeric_component if numeric_component is not None else direction_component
         weight = study_weight(study, review=review)
         weighted_sum += effect * weight
@@ -414,7 +486,7 @@ def pooled_effect(studies: list[Study], *, review: SrmaReview | None = None) -> 
     return weighted_sum / total_weight if total_weight else 0.0
 
 
-def numeric_effect_component(study: Study) -> float | None:
+def numeric_effect_component(study: Study, *, claim_polarity: int = 0) -> float | None:
     if study.effect_point is None:
         return None
     point = study.effect_point
@@ -423,7 +495,23 @@ def numeric_effect_component(study: Study) -> float | None:
     if study.direction == "NEUTRAL":
         return 0.0
     distance = max(0.35, min(abs(math.log(point)), 1.0))
-    return distance if study.direction == "SUPPORTS" else -distance
+    if claim_polarity == 0:
+        # Unknown claim framing: fall back to the model's per-study label sign.
+        return distance if study.direction == "SUPPORTS" else -distance
+    # Framing known: a ratio < 1 is protective, > 1 is harmful. The effect
+    # SUPPORTS the claim when (claim says 'reduces' AND ratio protective) or
+    # (claim says 'increases' AND ratio harmful). If the study's own number
+    # contradicts its SUPPORTS/REFUTES label, the study is internally
+    # incoherent — neutralise its numeric vote rather than let a harmful ratio
+    # masquerade as support (thà NEUTRAL còn đỡ).
+    log_ratio = math.log(point)
+    effect_supports = (claim_polarity < 0 and log_ratio < 0) or (
+        claim_polarity > 0 and log_ratio > 0
+    )
+    label_supports = study.direction == "SUPPORTS"
+    if effect_supports != label_supports:
+        return 0.0
+    return distance if label_supports else -distance
 
 
 def study_weight(study: Study, *, review: SrmaReview | None = None) -> float:

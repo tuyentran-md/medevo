@@ -1,0 +1,60 @@
+{
+ "_status": "VERIFIED 2026-05-22 \u2014 30 claims spanning 6 domains; directions derived from USPSTF, WHO, AHA, ESC, Cochrane, and primary RCT/cohort sources. Per-claim _provenance cites primary sources.",
+ "_design": "single-claim re-score: claim-1 = battery claim-3 (HRT->CHD, WHI 2002 reversal)",
+ "topic": "hrt-chd",
+ "scope_note": "Thirty clinical claims selected to span all truth directions and multiple documented era-reversals across diverse medical domains. A well-calibrated ecology must DIVERGE across claims; leakage-collapsed models converge mono-directionally.",
+ "trajectory": {
+  "claim-1": [
+   {
+    "year": 2000,
+    "direction": "SUPPORTS",
+    "level": "conditional-for",
+    "_basis": "Pre-WHI observational data (HERS design era) suggested HRT cardioprotective; widely recommended for chronic-disease prevention."
+   },
+   {
+    "year": 2012,
+    "direction": "REFUTES",
+    "level": "strong-against",
+    "_basis": "WHI 2002 (E+P) and 2004 (E-alone) RCTs showed excess stroke/thromboembolism; USPSTF Grade D 2002 reaffirmed 2012."
+   },
+   {
+    "year": 2024,
+    "direction": "REFUTES",
+    "level": "strong-against",
+    "_basis": "USPSTF Grade D reaffirmed 2017/2022; no cardiovascular prevention benefit; ESC 2022 consistent."
+   }
+  ]
+ },
+ "_provenance": {
+  "claim-1-smoking-cvd": "Stable SUPPORTS. Surgeon General 1964; Doll & Hill 1954/1964; AHA/ACC universal; unchanged.",
+  "claim-2-alcohol-cardio": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2024). J-curve observational; reversed by MR studies Wood 2018 Lancet, Biddinger 2022, WHO 2023.",
+  "claim-3-hrt-cvd": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). WHI 2002 E+P and 2004 E-alone; USPSTF Grade D 2002 reaffirmed 2012/2017/2022.",
+  "claim-4-obesity-paradox": "Stable NEUTRAL. Lavie/Flegal observational contested; no guideline endorses; methodologically contested throughout.",
+  "claim-5-statins-secondary": "Stable SUPPORTS. 4S 1994, CARE 1996, LIPID 1998, HPS 2002; ACC/AHA cornerstone GDMT; uncontested.",
+  "claim-6-aspirin-primary": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2024). ASPREE/ASCEND/ARRIVE 2018; AHA/ACC 2019 guideline against primary prevention in most adults.",
+  "claim-7-beta-blocker-post-mi": "Stable SUPPORTS. ISIS-1 1986, MERIT-HF 1999, COMMIT 2005; ACC/AHA Class I cornerstone; uncontested.",
+  "claim-8-antiarrhythmic-class1-post-mi": "Stable REFUTES (already refuted by 2000). CAST I 1989 NEJM, CAST II 1992; contraindicated post-MI; lethal pro-arrhythmic effect.",
+  "claim-9-ace-inhibitor-hfref": "Stable SUPPORTS. CONSENSUS 1987, SOLVD 1991/1992, SAVE 1992; cornerstone GDMT; PARADIGM-HF (ARNI) extends but doesn't negate.",
+  "claim-10-omega3-primary-cvd": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2024). ASCEND/VITAL 2018 null; Cochrane 2021 neutral; AHA 2021 insufficient evidence for primary prevention.",
+  "claim-11-routine-arthroscopy-knee-oa": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). Moseley 2002 NEJM sham-RCT; Kirkley 2008 NEJM; AAOS 2008 Grade D \u2192 2021 strong against.",
+  "claim-12-vertebroplasty-osteo": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). INVEST 2009 NEJM sham-RCT; FREE 2009 NEJM; Cochrane 2018 no benefit vs sham.",
+  "claim-13-routine-episiotomy": "ERA REVERSAL: NEUTRAL\u2192REFUTES (2012). Argentine trial 1993; Cochrane 2009/2017; WHO 2018 against routine; ACOG 2006/2016/2020 against.",
+  "claim-14-laparoscopic-appendectomy": "ERA REVERSAL: NEUTRAL\u2192SUPPORTS (2012). Sauerland 2010 Cochrane; Cochrane 2018; WSES 2020 standard of care.",
+  "claim-15-neonatal-surfactant-rds": "Stable SUPPORTS. OSIRIS 1992; NICHD trials; AAP standard of care; LISA refined delivery but benefit uncontested.",
+  "claim-16-vitamin-e-cvd": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2012). HOPE 2000 NEJM null; GISSI-Prevenzione 1999 null; USPSTF 2022 Grade D against supplementation.",
+  "claim-17-intensive-glucose-t2dm": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2012). UKPDS 1998 microvascular; ACCORD 2008 NEJM excess CVD mortality; ADVANCE/VADT 2009 null CVD.",
+  "claim-18-periop-beta-blocker": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2012). Mangano 1996 NEJM initial; POISE 2008 Lancet: less MI but more stroke/death; Poldermans scandal 2011.",
+  "claim-19-bed-rest-acute-lbp": "ERA REVERSAL: NEUTRAL\u2192REFUTES (2012). Malmivaara 1995 NEJM; Cochrane 2010; NICE 2009; European guidelines 2004 active approach recommended.",
+  "claim-20-dental-ab-endocarditis": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2012). AHA 2007 narrowed to only highest-risk cardiac conditions; NICE 2008 against; no RCT evidence of population benefit.",
+  "claim-21-tpa-acute-stroke": "Stable SUPPORTS (conditional). NINDS 1995 NEJM; ECASS III 2008; FDA approved 1996; 4.5h window; AHA/ASA 2019/2023 Class I. Conditional on time window.",
+  "claim-22-routine-oxygen-acute-mi": "ERA REVERSAL: SUPPORTS\u2192REFUTES (2024). DETO2X-AMI 2017 NEJM null in normoxic; AVOID 2015 potential harm; ESC 2017/2023 only if SpO2 <90%.",
+  "claim-23-mammography-40-49": "REVERSAL: NEUTRAL\u2192NEUTRAL\u2192SUPPORTS. USPSTF 2009 Grade C \u2192 2024 Grade B; ACS 2015 40+; net benefit reframed with tomosynthesis.",
+  "claim-24-psa-screening": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL. USPSTF 2012 Grade D; PLCO 2012 null; ERSPC small benefit high NNS; 2018 USPSTF Grade C individualized; shared decision-making.",
+  "claim-25-colorectal-screening": "Stable SUPPORTS. USPSTF Grade A; Mandel 1993; lowered to 45 in 2021; NordICC 2022 NEJM confirmed colonoscopy benefit; uncontested.",
+  "claim-26-vitamin-d-fracture": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2024). VITAL 2018 null; D-HEALTH 2022 null; USPSTF 2021 Grade D; Cochrane 2022 weak evidence general population.",
+  "claim-27-glucosamine-knee-oa": "Stable NEUTRAL. GAIT 2006 NEJM null; AAOS 2021 strong against; Cochrane 2015 uncertain; OARSI 2019 uncertain.",
+  "claim-28-ssri-major-depression": "Stable SUPPORTS. Cipriani 2018 Lancet 522 RCTs; APA 2000/2023 first-line; NICE 2022; uncontested for MDD.",
+  "claim-29-short-course-ab-uti-children": "ERA REVERSAL: NEUTRAL\u2192SUPPORTS (2012). Cochrane 2003/2007/2011; AAP 2011; NICE 2022 3-day course; EAU Pediatric guideline.",
+  "claim-30-prophylactic-cranial-irradiation-sclc": "ERA REVERSAL: SUPPORTS\u2192NEUTRAL (2024). Auperin 1999 NEJM initial; Takahashi 2017 Lancet Oncology null; MAVERICK 2019 null; MRI surveillance alternative."
+ }
+}

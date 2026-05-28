@@ -213,6 +213,17 @@ def _parse_pubmed_xml(xml_text: str) -> list[PubMedRecord]:
             for node in article.findall(".//Abstract/AbstractText")
         )
         journal = " ".join((article.findtext(".//Journal/Title") or "").split())
+        # MeSH DescriptorName headings: canonical biomedical vocabulary PubMed
+        # indexers attached to this article. We deliberately ignore qualifiers
+        # (e.g. /epidemiology, /therapy) and major-topic flags — the descriptor
+        # alone is what matches a claim-outcome MeSH set.
+        mesh_terms = sorted(
+            {
+                " ".join((node.text or "").split()).lower()
+                for node in article.findall(".//MeshHeadingList/MeshHeading/DescriptorName")
+                if node.text and node.text.strip()
+            }
+        )
         records.append(
             PubMedRecord(
                 pmid=pmid,
@@ -227,6 +238,7 @@ def _parse_pubmed_xml(xml_text: str) -> list[PubMedRecord]:
                     year_start=year,
                     year_end=year,
                 ),
+                mesh_terms=mesh_terms,
             )
         )
     return records

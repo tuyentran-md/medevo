@@ -320,6 +320,51 @@ def test_mild_scope_overreach_within_tolerance_slips_the_gate() -> None:
     assert _admit_in_gate(study, catalog).passed is True
 
 
+def test_multi_pmid_source_scope_is_aggregate_envelope_not_intersection() -> None:
+    class MultiYearPubMed:
+        def search(self, *, query: str, max_year: int, retmax: int = 20) -> PubMedSearchResult:
+            records = [
+                PubMedRecord(
+                    pmid="111",
+                    title="Early cohort",
+                    abstract="Cohort study n=500 found benefit; RR 0.80, 95% CI 0.70 to 0.92.",
+                    year=2010,
+                    scope=EvidenceScope(year_start=2010, year_end=2010),
+                ),
+                PubMedRecord(
+                    pmid="222",
+                    title="Later cohort",
+                    abstract="Cohort study n=700 found benefit; RR 0.84, 95% CI 0.74 to 0.95.",
+                    year=2012,
+                    scope=EvidenceScope(year_start=2012, year_end=2012),
+                ),
+            ]
+            return PubMedSearchResult(
+                query=query, max_year=max_year, pmids=["111", "222"], records=records
+            )
+
+    agent = ResearchAgent(
+        pubmed=MultiYearPubMed(),
+        llm=ScriptedLLM(
+            "DIRECTION: SUPPORTS\n"
+            "SCOPE: pop=0-120 years=2010-2012\n"
+            "PMIDS: 111, 222\n"
+            "RATIONALE: both cohorts support the claim."
+        ),
+        retmax=5,
+    )
+
+    study, _catalog = agent.run(
+        claim_id="claim-1",
+        claim_text="Light to moderate alcohol consumption reduces CHD risk.",
+        simulated_year=2012,
+    )
+
+    assert study.source_scope.year_start == 2010
+    assert study.source_scope.year_end == 2012
+    assert study.provenance == "GROUNDED"
+
+
 def test_emission_parser_is_robust_to_ordering_and_case() -> None:
     emission = parse_research_emission(
         "rationale: because.\npmids: 111, 222\nscope: pop=40-60 years=2015-2018\ndirection: supports"
@@ -328,3 +373,13 @@ def test_emission_parser_is_robust_to_ordering_and_case() -> None:
     assert emission.direction == "SUPPORTS"
     assert emission.cited_pmids == ["111", "222"]
     assert emission.claimed_scope.population_low == 40
+
+
+def test_pmid_parser_extracts_real_ids_from_prose_and_ignores_words() -> None:
+    emission = parse_research_emission(
+        "DIRECTION: REFUTES\n"
+        "SCOPE: pop=0-120 years=2024-2024\n"
+        "PMIDS: Only 39580711 is committed, so PMIDS: 39580711\n"
+        "RATIONALE: x"
+    )
+    assert emission.cited_pmids == ["39580711"]

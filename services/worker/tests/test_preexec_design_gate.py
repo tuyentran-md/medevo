@@ -326,22 +326,22 @@ def test_design_and_deviation_events_present_end_to_end() -> None:
         failure_rate=0.45,
     )
     event_types = {e.event_type for e in bundle.audit_trail}
-    # After the SPEC Endpoint 4 repair loop landed, the final constrained-arm
-    # design outcomes are `design-repaired` (repair succeeded) or
-    # `design-abstain-persistent` (all MAX_PLAN_REVISIONS exhausted). The legacy
-    # `design-refused` event type is no longer emitted as a final outcome.
-    assert "design-repaired" in event_types
+    # After no-evidence outputs stopped receiving execution warrants, the
+    # deterministic fake may end in persistent abstain rather than repair. Either
+    # way the design/gate path is explicit and hash-verifiable.
+    assert event_types & {"design-repaired", "design-abstain-persistent"}
     assert "execution-deviated" in event_types
     assert verify_audit_chain(bundle.audit_trail)
     # design / execution phase events are recorded for both branches; only
     # constrained enters the repair loop / abstains.
-    assert {e.branch for e in bundle.audit_trail if e.phase == "design"} == {
+    assert {e.branch for e in bundle.audit_trail if e.phase == "design"} <= {
         "free",
         "constrained",
     }
+    assert "constrained" in {e.branch for e in bundle.audit_trail if e.phase == "design"}
     # A `design-repaired` event records a constrained-arm success of refuse+repair.
     repaired = [e for e in bundle.audit_trail if e.event_type == "design-repaired"]
-    assert repaired and all(e.severity == "info" and e.branch == "constrained" for e in repaired)
+    assert all(e.severity == "info" and e.branch == "constrained" for e in repaired)
     # A persistent abstain (if any) must be a constrained-arm block-severity event.
     abstain = [e for e in bundle.audit_trail if e.event_type == "design-abstain-persistent"]
     assert all(e.severity == "block" and e.branch == "constrained" for e in abstain)
@@ -587,6 +587,62 @@ def test_patent_spc02_warns_on_small_n_generalizing_claim_and_gc01_escalates() -
     ]
     score_gc01 = process_integrity_score(civer_passed=True, violations=many_warns)
     assert score_gc01 == 0.0
+
+
+def test_no_citation_abstention_does_not_receive_execution_warrant() -> None:
+    """A NEUTRAL/no-PMID output may be honest abstention, but it is not
+    warrantable evidence and must not enter the constrained corpus."""
+    from app.models import ResearchPlan as Plan
+    from app.process_gate import issue_process_warrant
+
+    plan = Plan(
+        plan_id="p",
+        claim_id="claim-1",
+        year=2020,
+        question="q",
+        method="appraise",
+        committed_pmids=[],
+        claimed_scope=EvidenceScope(
+            population_low=0, population_high=120, year_start=1900, year_end=2025
+        ),
+    )
+    study = Study(
+        id="s-no-evidence",
+        claim_id="claim-1",
+        year=2020,
+        direction="NEUTRAL",
+        quality=0.2,
+        provenance="UNGROUNDED",
+        pmids=[],
+        catalog_pmids=[],
+        numeric=False,
+        n=None,
+        rationale="No committed sources, so abstain.",
+        claimed_scope=EvidenceScope(
+            population_low=0, population_high=120, year_start=1900, year_end=2025
+        ),
+        source_scope=EvidenceScope(
+            population_low=0, population_high=120, year_start=2020, year_end=2020
+        ),
+        plan_id="p",
+        research_plan=plan,
+    )
+
+    assessment, warrant = issue_process_warrant(
+        run_id="r",
+        branch="constrained",
+        year=2020,
+        study=study,
+        claim_graph=build_claim_graph(CLAIM),
+    )
+
+    assert assessment.passed is False
+    assert warrant.issued is False
+    assert warrant.status == "REFUSED"
+    assert any(
+        "abstention is not warrantable corpus evidence" in r
+        for r in assessment.reasons
+    )
 
 
 def test_repair_loop_persistent_abstain_after_max_revisions() -> None:

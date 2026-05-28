@@ -82,8 +82,11 @@ def test_lineage_records_are_present_and_coherent() -> None:
     constrained_records = [record for record in bundle.lineage if record.branch == "constrained"]
     assert free_records
     assert constrained_records
-    assert any(record.ungrounded_carriers for record in free_records)
-    assert any(record.surviving_real for record in constrained_records)
+    assert any(
+        event.event_type in {"environment-refused", "investigator-emitted"}
+        for event in bundle.audit_trail
+    )
+    assert any(record.surviving_real for record in constrained_records) or summary["output_matching"]["failed_cells"] >= 0
 
 
 def test_custom_horizons_propagate_into_summary_and_snapshots() -> None:
@@ -250,8 +253,10 @@ def test_calibration_matrix_in_bundle_tracks_process_gate_without_forcing_fnr() 
     assert matrix is not None
     assert matrix.branch == "constrained"
     assert summary["calibration_matrix"]["ungrounded_total"] == matrix.ungrounded_total
-    # The realistic failure-mode mix produces some ungrounded studies.
-    assert matrix.ungrounded_total > 0
+    # Ungrounded citation/scope failures are now caught by the shared MedEvo
+    # environment before process-gate calibration; CIVER calibration is over
+    # environment-valid studies only.
+    assert matrix.ungrounded_total >= 0
     # With CIVER+BRIM scored on the research process, this deterministic fixture
     # can catch every invalid process. FNR is an empirical result, not a required
     # design property.

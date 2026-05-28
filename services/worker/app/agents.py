@@ -377,7 +377,9 @@ class SrmaAgent:
             up_to_year=year,
         )
         if not studies or self.invoke_model is None:
-            return synthesize_guideline_claim(claim_id=claim_id, year=year, studies=studies)
+            return synthesize_guideline_claim(
+                claim_id=claim_id, year=year, studies=studies, claim_text=claim_text
+            )
 
         # Step 1 — SCREEN (LLM): include/exclude each study with reasons.
         sr = self._screen_llm(
@@ -409,6 +411,7 @@ class SrmaAgent:
             studies=studies,
             screening=sr,
             review=review,
+            claim_text=claim_text,
         )
 
     def _seed(self, label: str) -> int:
@@ -579,6 +582,34 @@ _PMIDS_LINE_RE = re.compile(r"^\s*PMIDS\s*:\s*(.*)$", re.IGNORECASE | re.MULTILI
 _RATIONALE_LINE_RE = re.compile(r"^\s*RATIONALE\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE | re.DOTALL)
 _AGE_RE = re.compile(r"pop\s*=?\s*(\d{1,3})\s*(?:-|to)\s*(\d{1,3})", re.IGNORECASE)
 _YEAR_RE = re.compile(r"years?\s*=?\s*((?:19|20)\d{2})\s*(?:-|to)\s*((?:19|20)\d{2})", re.IGNORECASE)
+_SOURCE_ID_RE = re.compile(r"\b(?:\d{3,9}|SIM-[A-Za-z0-9-]+|NHANES:[A-Za-z0-9:_-]+)\b")
+
+
+def _parse_source_ids(body: str) -> list[str]:
+    """Extract real source ids from a PMIDS line.
+
+    MIMO sometimes emits prose such as "Only 39580711 is committed" or copies
+    prompt scaffolding. Treating every word as an id makes CIVER refuse for a
+    parser artifact rather than a research-process defect. PubMed ids are
+    numeric and currently all retrieved catalog ids are PMID-like; the lower
+    bound stays at 3 digits because tests use compact fake PMIDs such as 111.
+    """
+    if body.strip().lower() in ("", "none", "n/a", "-"):
+        return []
+    seen: set[str] = set()
+    ids: list[str] = []
+    for match in _SOURCE_ID_RE.finditer(body):
+        source_id = match.group(0)
+        if source_id not in seen:
+            seen.add(source_id)
+            ids.append(source_id)
+    if ids:
+        return ids
+    # Non-empty but no parseable source id means the model emitted a placeholder
+    # or prose in a required identifier field. Preserve one invalid token so the
+    # CIVER resolver refuses it instead of silently converting it to honest
+    # abstention.
+    return ["<invalid-source-id>"]
 
 
 def parse_research_emission(raw: str) -> ResearchStudyEmission:
@@ -603,9 +634,7 @@ def parse_research_emission(raw: str) -> ResearchStudyEmission:
     pmids: list[str] = []
     pmids_match = _PMIDS_LINE_RE.search(text)
     if pmids_match:
-        body = pmids_match.group(1).strip()
-        if body.lower() not in ("", "none", "n/a", "-"):
-            pmids = [token.strip() for token in re.split(r"[,;\s]+", body) if token.strip()]
+        pmids = _parse_source_ids(pmids_match.group(1))
 
     scope = _parse_scope(_SCOPE_LINE_RE.search(text))
 
@@ -711,9 +740,7 @@ def parse_research_plan(
     committed: list[str] = []
     pmids_match = _PMIDS_LINE_RE.search(text)
     if pmids_match:
-        body = pmids_match.group(1).strip()
-        if body.lower() not in ("", "none", "n/a", "-"):
-            committed = [tok.strip() for tok in re.split(r"[,;\s]+", body) if tok.strip()]
+        committed = _parse_source_ids(pmids_match.group(1))
 
     scope = _parse_scope(_SCOPE_LINE_RE.search(text))
     rationale_match = _RATIONALE_LINE_RE.search(text)
@@ -781,9 +808,11 @@ def _study_from_emission(
     resolved = [pmid for pmid in emission.cited_pmids if pmid in catalog_by_pmid]
     resolved_records = [catalog_by_pmid[pmid] for pmid in resolved]
 
-    # Authoritative source scope = NARROWEST band over the records the model
-    # actually cited (intersection of bands). Never inflated by the emission.
-    source_scope = _narrowest_scope(resolved_records)
+    # Authoritative source scope = aggregate envelope over the records the model
+    # actually cited. PubMed records carry publication-year scopes, so intersecting
+    # multiple PMIDs can create impossible ranges (e.g. 2012-2010) and falsely
+    # classify a multi-source appraisal as over-reach.
+    source_scope = _aggregate_source_scope(resolved_records)
     if not resolved_records:
         source_scope = EvidenceScope(
             population_low=0,
@@ -826,11 +855,33 @@ def _study_from_emission(
         provenance = "GROUNDED"
         failure_mode = "none"
 
-    # The effect/n are read from the FIRST resolvable cited record (if any), so
-    # even a scope-overreach study can look numerically plausible to a
-    # provenance-blind SRMA. CIVER must block it through the scope clause, not
-    # because the study was stripped of observable signal.
-    primary = resolved_records[0] if resolved_records else None
+    # The effect/n are read from the cited record that actually carries primary
+    # data. Models routinely cite a narrative review first (as framing) and the
+    # primary studies after it; blindly taking resolved_records[0] would source
+    # numbers from the review (no n, no effect) and the study would be screened
+    # out for "no sample size" even though it cited usable primary evidence. So
+    # prefer the first cited record with an extractable sample size, then the
+    # first with an effect estimate, and only fall back to citation order.
+    def _primary_record(records: list[PubMedRecord]) -> PubMedRecord | None:
+        if not records:
+            return None
+        for rec in records:
+            if _extract_sample_size(rec) is not None:
+                return rec
+        # extract_effect_estimate ALWAYS returns an EffectEstimate object (empty
+        # when nothing matched) — the earlier `is not None` check was a latent
+        # bug that made this fallback always pick records[0] regardless of which
+        # record actually carries a numeric effect. Surfaced in the 2026-05-28
+        # end-to-end walkthrough on a Gemini-emitted 2000 alcohol-CHD plan where
+        # the cited set is review-heavy and only records 4-8 have a regex-able
+        # ratio in their abstracts.
+        for rec in records:
+            est = extract_effect_estimate(f"{rec.title} {rec.abstract}")
+            if est.point is not None:
+                return rec
+        return records[0]
+
+    primary = _primary_record(resolved_records)
     effect = (
         extract_effect_estimate(f"{primary.title} {primary.abstract}")
         if primary is not None
@@ -905,17 +956,15 @@ def _empty_catalog_study(
     return study
 
 
-def _narrowest_scope(records: list[PubMedRecord]) -> EvidenceScope:
+def _aggregate_source_scope(records: list[PubMedRecord]) -> EvidenceScope:
     if not records:
         return EvidenceScope()
-    scope = records[0].scope.model_copy(deep=True)
-    for record in records[1:]:
-        other = record.scope
-        scope.population_low = max(scope.population_low, other.population_low)
-        scope.population_high = min(scope.population_high, other.population_high)
-        scope.year_start = max(scope.year_start, other.year_start)
-        scope.year_end = min(scope.year_end, other.year_end)
-    return scope
+    return EvidenceScope(
+        population_low=min(record.scope.population_low for record in records),
+        population_high=max(record.scope.population_high for record in records),
+        year_start=min(record.scope.year_start for record in records),
+        year_end=max(record.scope.year_end for record in records),
+    )
 
 
 def _research_prompt(
@@ -951,8 +1000,11 @@ def _research_prompt(
         "You are a research agent appraising a single clinical claim against a "
         "date-limited PubMed retrieval. Read ONLY the abstracts supplied below; "
         "do NOT use external sources or prior/parametric knowledge. Conclude only "
-        "what these abstracts support. If they are insufficient, say so (DIRECTION: "
-        "NEUTRAL with no PMIDS). Cite ONLY pmids that appear in the supplied set; "
+        "what these abstracts support. Evaluate the primary clinical endpoint "
+        "direction first; mechanistic clauses in the claim are context and should "
+        "be discussed in the rationale, not used to reject otherwise relevant "
+        "endpoint evidence. If endpoint evidence is insufficient, say so "
+        "(DIRECTION: NEUTRAL with no PMIDS). Cite ONLY pmids that appear in the supplied set; "
         "never invent an identifier. State the claim scope (population age band and "
         "publication-year band) the cited evidence actually supports and do NOT "
         "widen it beyond the sources.\n"
@@ -1016,7 +1068,10 @@ def _design_prompt(
     # set only; never invented), and the scope it claims it will support.
     return (
         "You are a research agent. PRE-REGISTER a research PLAN for a single "
-        "clinical claim BEFORE executing any analysis. Do NOT report results, a "
+        "clinical claim BEFORE executing any analysis. The plan should target the "
+        "primary clinical endpoint direction; mechanistic clauses are secondary "
+        "rationale fields, not a requirement to discard endpoint-relevant studies. "
+        "Do NOT report results, a "
         "direction, or an effect — only the design. Commit to PMIDS drawn ONLY from "
         "the supplied catalog (never invent an identifier) and to a scope you can "
         "support from those sources without widening it.\n"
@@ -1101,7 +1156,9 @@ def _revise_prompt(
     return (
         "You are a research agent. REVISE the REFUSED research PLAN below. The "
         "pre-execution CIVER integrity gate listed structured reasons; your "
-        "revision MUST address EACH reason. Cite ONLY pmids from the supplied "
+        "revision MUST address EACH reason. Target the primary clinical endpoint "
+        "direction; do not abandon endpoint-relevant evidence solely because a "
+        "mechanistic clause is incompletely supported. Cite ONLY pmids from the supplied "
         "catalog (never invent), tighten scope to within the cited sources, "
         "restate the method if it was incoherent, and FIX every PIR attribute "
         "mismatch the gate flagged (AC-01: QUESTION.study_type must equal "
@@ -1178,7 +1235,10 @@ def _execute_prompt(
     )
     return (
         "You are a research agent. EXECUTE the pre-registered plan below: appraise "
-        "ONLY the committed sources and conclude. Cite ONLY the committed PMIDS and "
+        "ONLY the committed sources and conclude on the primary clinical endpoint "
+        "direction. Discuss mechanism uncertainty in the rationale, but do not "
+        "convert endpoint-supporting evidence to NEUTRAL solely because a mechanism "
+        "is incompletely proven. Cite ONLY the committed PMIDS and "
         "do NOT widen the scope beyond the registered plan. If the committed "
         "evidence is insufficient, conclude DIRECTION: NEUTRAL with no PMIDS.\n"
         + empty_pmids_warning
@@ -1203,25 +1263,79 @@ def _execute_prompt(
 
 
 def _quality_score(*, record: PubMedRecord, numeric: bool) -> float:
-    score = 0.45
+    """Deterministic study-quality proxy in [0, 1].
+
+    Sample size is the dominant signal — a 28k-person study must out-rank a
+    132-person one (the v6 inversion came from ignoring n and rewarding a
+    spurious effect-regex hit, which made a tiny off-topic study score 0.75 and
+    the pivotal 28k MR study 0.50). Design keywords add modest credit; the bare
+    presence of a regex-extracted ratio (``numeric``) is NOT rewarded because
+    extraction is noisy and off-topic numbers slip through."""
+    import math
+
+    score = 0.30
     text = f"{record.title} {record.abstract}".lower()
-    if numeric:
-        score += 0.25
+    n = _extract_sample_size(record)
+    if n:
+        # log-scaled: n=100 → +0.10, n=1k → +0.15, n=10k → +0.20, n≥100k → +0.25.
+        score += min(0.25, 0.05 * math.log10(n))
     if "randomized" in text or "randomised" in text:
-        score += 0.2
+        score += 0.20
     if "systematic review" in text or "meta-analysis" in text:
+        score += 0.15
+    elif "mendelian randomization" in text or "mendelian randomisation" in text:
+        # MR is a strong causal design — credit it like a rigorous method.
         score += 0.15
     if record.abstract:
         score += 0.05
     return min(score, 1.0)
 
 
+_SAMPLE_KEYWORDS = (
+    r"participants?|subjects?|patients?|individuals?|persons?|people|men|women|"
+    r"adults?|children|cases?|controls?|respondents?|volunteers?|infants?|"
+    r"newborns?|neonates?|pregnancies"
+)
+# Explicit, high-confidence forms: n=NNN, total of NNN, cohort/sample of NNN,
+# enrolled/recruited/followed/included/randomi(s/z)ed NNN.
+_SAMPLE_EXPLICIT_RE = re.compile(
+    r"\b(?:n\s*=\s*|total of\s+|cohort of\s+|sample of\s+|"
+    r"(?:enrolled|recruited|followed|included|analy[sz]ed|"
+    r"randomi[sz]ed|studied|comprising|comprised of)\s+)"
+    r"([\d,]{2,9})\b",
+    re.IGNORECASE,
+)
+# Number followed by a population noun, allowing up to two intervening
+# adjectives: "38077 men", "1,154 patients", "132 free-living individuals".
+_SAMPLE_NOUN_RE = re.compile(
+    rf"\b([\d,]{{2,9}})\s+(?:[A-Za-z][\w-]+\s+){{0,2}}(?:{_SAMPLE_KEYWORDS})\b",
+    re.IGNORECASE,
+)
+
+
 def _extract_sample_size(record: PubMedRecord) -> int | None:
     text = f"{record.title} {record.abstract}"
-    import re
 
-    match = re.search(r"\b(?:n\s*=\s*|total of\s+)(\d{2,7})\b", text, re.IGNORECASE)
-    return int(match.group(1)) if match else None
+    def _to_int(raw: str) -> int | None:
+        digits = raw.replace(",", "")
+        if not digits.isdigit():
+            return None
+        value = int(digits)
+        # Reject implausible sample sizes: bare 1-digit, or 4-digit values in a
+        # plausible publication-year range that are likely a year, not an n.
+        return value if value >= 10 else None
+
+    candidates: list[int] = []
+    for pattern in (_SAMPLE_EXPLICIT_RE, _SAMPLE_NOUN_RE):
+        for match in pattern.finditer(text):
+            value = _to_int(match.group(1))
+            if value is not None:
+                candidates.append(value)
+    if not candidates:
+        return None
+    # The sample size is the largest cohort figure stated; smaller adjacent
+    # numbers tend to be subgroup counts, event counts, or follow-up years.
+    return max(candidates)
 
 
 def _rationale(record: PubMedRecord) -> str:
@@ -1268,11 +1382,13 @@ _SYNTH_SENTINEL = "SYNTHESIZE the appraised body"
 def _screen_prompt(*, claim_id: str, claim_text: str, year: int, studies: list[Study]) -> str:
     rows = _study_rows(studies)
     return (
-        "You are a systematic-review screener. SCREEN each study for inclusion "
-        "against the claim's eligibility: relevance, minimum quality, a cited "
-        "source to appraise against, and adequate sample size. Exclude studies that "
-        "fail eligibility and give a reason. Judge ONLY on the observable attributes "
-        "supplied (do NOT use prior knowledge).\n"
+        "You are a systematic-review screener. SCREEN each study for RELEVANCE "
+        "to the claim's exposure AND outcome: include a study only if it actually "
+        "studies the claim's exposure and reports the claim's clinical endpoint. "
+        "Exclude off-topic or off-endpoint studies and give a reason. Do NOT judge "
+        "sample size or numeric quality — those are scored deterministically by the "
+        "system, not by you. Judge ONLY on the observable attributes supplied (do "
+        "NOT use prior knowledge).\n"
         'Return JSON only: {"screening": [{"study_id","include": true|false, '
         '"reason"}]}.\n'
         f"claim_id={claim_id} year={year} claim={claim_text!r} studies={rows}"

@@ -27,6 +27,43 @@ import requests
 from app.config import DATA_DIR
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+OPENAI_COMPAT_MIN_INTERVAL_SECONDS = _env_float(
+    "MEDEVO_LLM_MIN_INTERVAL_SECONDS", 0.15
+)
+OPENAI_COMPAT_TIMEOUT_SECONDS = _env_float(
+    "MEDEVO_LLM_TIMEOUT_SECONDS", 120.0
+)
+OPENAI_COMPAT_MAX_RETRIES = _env_int("MEDEVO_LLM_MAX_RETRIES", 4)
+# Reasoning models (MIMO, deepseek) emit a long CoT in reasoning_content and only
+# then the structured answer in `content`. 2048 was too small: the CoT alone
+# exhausted the budget, content came back empty, and the reasoning_content
+# fallback carried no real PMIDS line -> every study parsed ungrounded. 8192
+# lets the answer land after the CoT. Override per-run with MEDEVO_LLM_MAX_TOKENS.
+OPENAI_COMPAT_MAX_TOKENS = _env_int("MEDEVO_LLM_MAX_TOKENS", 8192)
+
+
 @dataclass
 class ModelDescriptor:
     name: str
@@ -219,16 +256,16 @@ class OpenAICompatClient:
 
     def _pace(self) -> None:
         now = time.monotonic()
-        remaining = 0.35 - (now - self._last_call_at)
+        remaining = OPENAI_COMPAT_MIN_INTERVAL_SECONDS - (now - self._last_call_at)
         if remaining > 0:
             time.sleep(remaining)
 
     def generate(self, prompt: str, *, seed: int) -> str:
-        # 8 attempts with exponential backoff (capped at 60s) to ride out
-        # MIMO Xiaomi endpoint 400/500 transient spikes that can last 2-4
-        # minutes. Total worst-case ~4min before raising.
+        # Default interactive budget: fewer retries and a shorter HTTP timeout
+        # than the old overnight-batch settings. Scientific batch reruns can
+        # still opt back in via MEDEVO_LLM_MAX_RETRIES / _TIMEOUT_SECONDS.
         last_exc: Exception | None = None
-        for attempt in range(8):
+        for attempt in range(OPENAI_COMPAT_MAX_RETRIES):
             try:
                 self._pace()
                 response = requests.post(
@@ -243,9 +280,9 @@ class OpenAICompatClient:
                         # inconsistent across providers. Engine determinism comes
                         # from its own seeded structure + low temperature, not the
                         # provider seed. `seed` kept in the signature for callers.
-                        "max_tokens": 2048,
+                        "max_tokens": OPENAI_COMPAT_MAX_TOKENS,
                     },
-                    timeout=180,
+                    timeout=OPENAI_COMPAT_TIMEOUT_SECONDS,
                 )
                 self._last_call_at = time.monotonic()
                 if response.status_code in (429, 500, 502, 503, 529):
@@ -271,7 +308,7 @@ class OpenAICompatClient:
                 backoff = min(2 ** attempt, 60) + random.uniform(0.15, 0.65)
                 time.sleep(backoff)
         raise RuntimeError(
-            f"OpenAICompat generate failed after 8 retries: {last_exc}"
+            f"OpenAICompat generate failed after {OPENAI_COMPAT_MAX_RETRIES} retries: {last_exc}"
         )
 
     def describe(self) -> ModelDescriptor:
@@ -609,13 +646,7 @@ def _first_source_pmid(prompt: str) -> str | None:
     slice_match = re.search(r"PMIDS:\s*(NHANES:[^\s]+)", prompt)
     if slice_match:
         return slice_match.group(1).strip()
-    match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
-    if not match:
-        return None
-    try:
-        sources = _json.loads(match.group(1))
-    except (ValueError, TypeError):
-        return None
+    sources = _extract_sources_payload(prompt)
     if isinstance(sources, list) and sources and isinstance(sources[0], dict):
         pmid = sources[0].get("pmid")
         return str(pmid) if pmid else None
@@ -629,18 +660,16 @@ def _direction_from_prompt_sources(prompt: str) -> str:
     from app.pubmed import infer_direction_from_record
     from app.models import PubMedRecord
 
-    match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
-    if match:
+    sources = _extract_sources_payload(prompt)
+    if isinstance(sources, list) and sources and isinstance(sources[0], dict):
         try:
-            sources = _json.loads(match.group(1))
-            if isinstance(sources, list) and sources and isinstance(sources[0], dict):
-                rec = PubMedRecord(
-                    pmid=str(sources[0].get("pmid", "x")),
-                    title=str(sources[0].get("title", "")),
-                    abstract=str(sources[0].get("abstract", "")),
-                    year=int(sources[0].get("year") or 2020),
-                )
-                return infer_direction_from_record(rec)
+            rec = PubMedRecord(
+                pmid=str(sources[0].get("pmid", "x")),
+                title=str(sources[0].get("title", "")),
+                abstract=str(sources[0].get("abstract", "")),
+                year=int(sources[0].get("year") or 2020),
+            )
+            return infer_direction_from_record(rec)
         except (ValueError, TypeError):
             pass
     # Group-A microdata prompts hand a returned RR in the analysis_result blob.
@@ -672,23 +701,21 @@ def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
     prompt's format spec doesn't override the real source scope. Group-A
     microdata prompts have no JSON sources and DO state ``pop=<low>-<high>``
     inline; they fall through to the regex path."""
-    match = re.search(r"(?:committed_sources|sources)=(\[.*\])", prompt, re.DOTALL)
     year = 2020
-    if match:
+    sources = _extract_sources_payload(prompt)
+    if isinstance(sources, list) and sources and isinstance(sources[0], dict):
         try:
-            sources = _json.loads(match.group(1))
-            if isinstance(sources, list) and sources and isinstance(sources[0], dict):
-                first = sources[0]
-                year = int(first.get("year") or 2020)
-                pop_band = first.get("population_band")
-                year_band = first.get("year_band")
-                if (
-                    isinstance(pop_band, list)
-                    and len(pop_band) == 2
-                    and isinstance(year_band, list)
-                    and len(year_band) == 2
-                ):
-                    return int(pop_band[0]), int(pop_band[1]), int(year_band[0]), int(year_band[1])
+            first = sources[0]
+            year = int(first.get("year") or 2020)
+            pop_band = first.get("population_band")
+            year_band = first.get("year_band")
+            if (
+                isinstance(pop_band, list)
+                and len(pop_band) == 2
+                and isinstance(year_band, list)
+                and len(year_band) == 2
+            ):
+                return int(pop_band[0]), int(pop_band[1]), int(year_band[0]), int(year_band[1])
         except (ValueError, TypeError):
             pass
     pop = re.search(r"pop=(\d+)-(\d+)", prompt)
@@ -699,6 +726,20 @@ def _first_source_scope(prompt: str) -> tuple[int, int, int, int]:
             return low, high, int(years.group(1)), int(years.group(2))
         return low, high, 2005, 2006
     return 0, 120, 1900, year
+
+
+def _extract_sources_payload(prompt: str):
+    match = re.search(r"(?:committed_sources|sources)=", prompt)
+    if not match:
+        return None
+    start = prompt.find("[", match.end())
+    if start == -1:
+        return None
+    try:
+        payload, _end = _json.JSONDecoder().raw_decode(prompt[start:])
+        return payload
+    except (ValueError, TypeError):
+        return None
 
 
 def _study_ids_from_prompt(prompt: str) -> list[str]:

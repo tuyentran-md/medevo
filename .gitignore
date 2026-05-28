@@ -14,6 +14,7 @@ services/worker/.pytest_cache
 services/worker/data/artifacts
 services/worker/data/medevo.db
 services/worker/data/pubmed_cache
+services/worker/data/mesh_cache
 services/worker/data/nhanes_cache
 services/worker/data/llm_cache
 services/worker/data/run_manifests
