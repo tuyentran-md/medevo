@@ -1,0 +1,308 @@
+{
+  "_status": "VERIFIED 2026-05-22 source battery; locked Paper 1 subset assembled 2026-05-28 from battery_30claim on commit f55282f.",
+  "_design": "Locked 15-claim Paper 1 subset from battery_30claim. Mix: 5 stable/support anchors, 5 reversals, 3 stable/refutes, 2 neutral/contested. Horizons: 2000 / 2012 / 2024. Purpose: one paper-facing benchmark batch after substrate lock.",
+  "topic": "battery_paper1_15claim_locked",
+  "scope_note": "Fifteen claims selected from the verified 30-claim battery to preserve cross-domain heterogeneity while keeping one locked batch tractable for a fresh paper-facing run.",
+  "trajectory": {
+    "claim-1": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "1964 US Surgeon General report; Doll and Hill cohort 1954/1964; AHA consensus. Causal link established across all eras."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; global evidence base strengthened by cessation benefit trials."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; USPSTF Grade A for cessation interventions; AHA/ACC 2019 guideline."
+      }
+    ],
+    "claim-2": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "J-curve observational evidence; predecessor studies later synthesized in Ronksley 2011; AHA 2001 cautious positive; light-moderate alcohol widely reported cardioprotective."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Still mostly supportive; Ronksley 2011 BMJ large meta-analysis supports J-curve; Mendelian-randomization era not yet arrived."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Mendelian-randomization studies 2016-2022 nullified J-curve confounding; WHO 2023 no safe level; AHA 2021 dropped cardioprotection language."
+      }
+    ],
+    "claim-3": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Pre-WHI observational data suggested HRT cardioprotective; widely recommended for chronic-disease prevention."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "WHI 2002 and 2004 RCTs showed excess stroke/thromboembolism; USPSTF Grade D 2002 reaffirmed 2012."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "USPSTF Grade D reaffirmed 2017/2022; no cardiovascular prevention benefit; ESC 2022 consistent."
+      }
+    ],
+    "claim-4": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Obesity paradox not yet systematically described in established CVD; insufficient evidence; no guideline position."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Lavie-era obesity paradox literature described the phenomenon but it remained methodologically contested; no society guideline endorses."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Still methodologically contested with reverse-causation and BMI-limit arguments; no guideline endorses."
+      }
+    ],
+    "claim-5": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "4S 1994, CARE 1996, and LIPID 1998 established mortality benefit in secondary prevention; ACC/AHA 1997 guideline."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Heart Protection Study 2002 and later trials expanded benefit; cornerstone guideline-directed therapy."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; multiple meta-analyses and ACC/AHA 2018/2022 guidance."
+      }
+    ],
+    "claim-6": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Early primary-prevention trials and USPSTF-era practice supported aspirin use in elevated-risk adults."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Still common practice; net benefit assumed positive in intermediate-high CVD risk."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "ASPREE, ASCEND, and ARRIVE erased net benefit in primary prevention; AHA/ACC 2019 turned against routine use."
+      }
+    ],
+    "claim-7": [
+      {
+        "year": 2000,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "CAST I/II established excess mortality from Class I antiarrhythmics post-MI despite PVC suppression."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Unchanged; guideline position remained Class III harm."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "Unchanged; no reversal or rehabilitating evidence."
+      }
+    ],
+    "claim-8": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "GISSI-Prevenzione and observational literature supported omega-3 supplementation in cardiovascular prevention."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Conditional support persisted through mixed but still favorable cohort and advisory literature."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "ASCEND, VITAL, STRENGTH, and later meta-analyses neutralized primary-prevention benefit."
+      }
+    ],
+    "claim-9": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Widely practiced before definitive sham-controlled evidence; conditional support rested on observational and surgical series."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Moseley and Kirkley showed no benefit over sham or optimized conservative care; practice shifted against."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "AAOS 2021 and later systematic reviews strongly against routine arthroscopy for knee OA."
+      }
+    ],
+    "claim-10": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "Vertebroplasty spread on case-series and retrospective reports before sham-controlled evidence existed."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "INVEST and FREE changed the evidence trajectory against routine vertebroplasty."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "Cochrane 2018 and VERTOS IV sustained the anti-routine-use position despite subgroup debate."
+      }
+    ],
+    "claim-11": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "OSIRIS and NICHD-era surfactant trials made exogenous surfactant standard neonatal care."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; delivery techniques evolved, core benefit uncontested."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "Unchanged; standard of care across major pediatric/neonatal guidelines."
+      }
+    ],
+    "claim-12": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "CHAOS and favorable observational cohorts drove routine vitamin E enthusiasm around 2000."
+      },
+      {
+        "year": 2012,
+        "direction": "REFUTES",
+        "level": "conditional-against",
+        "_basis": "HOPE, HOPE-2, and later reviews erased benefit and raised concern for harm."
+      },
+      {
+        "year": 2024,
+        "direction": "REFUTES",
+        "level": "strong-against",
+        "_basis": "USPSTF 2022 Grade D and consistent null/harm meta-analytic evidence."
+      }
+    ],
+    "claim-13": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "NINDS tPA trial and AHA/ASA guidance supported thrombolysis within 3 hours under strict criteria."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "ECASS III and IST-3 expanded or reinforced benefit under selected criteria."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "AHA/ASA 2019/2023 kept alteplase conditional-for within time and imaging criteria."
+      }
+    ],
+    "claim-14": [
+      {
+        "year": 2000,
+        "direction": "SUPPORTS",
+        "level": "conditional-for",
+        "_basis": "FOBT and early screening studies made colorectal cancer screening a recommended preventive intervention."
+      },
+      {
+        "year": 2012,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "USPSTF Grade A and accumulating colonoscopy literature consolidated a strong-for position."
+      },
+      {
+        "year": 2024,
+        "direction": "SUPPORTS",
+        "level": "strong-for",
+        "_basis": "USPSTF 2021 and NordICC-era evidence preserved a strong-for recommendation despite modality debates."
+      }
+    ],
+    "claim-15": [
+      {
+        "year": 2000,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Mixed early OA supplement evidence before definitive trials."
+      },
+      {
+        "year": 2012,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "GAIT and later guideline positions undercut enthusiasm without yielding a clean strong-against consensus."
+      },
+      {
+        "year": 2024,
+        "direction": "NEUTRAL",
+        "level": "no-recommendation",
+        "_basis": "Modern guidelines mostly advise against use, but the evidence profile still reads as contested/low-clinical-significance rather than a dramatic reversal."
+      }
+    ]
+  }
+}
