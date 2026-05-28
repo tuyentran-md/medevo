@@ -39,7 +39,7 @@ def evaluate_shadow_civer(
     graphs = {graph.claim_id: graph for graph in bundle.claim_graphs}
     truth = load_ground_truth(ground_truth_path)
     verdicts = [_shadow_verdict(study=study, graph=graphs.get(study.claim_id)) for study in studies]
-    passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
+    warranted_ids = {row["study_id"] for row in verdicts if _is_warranted(row)}
     # IMPORTANT: both arms must be scored on the same claim/year grid. The old
     # path synthesized the warranted arm only over claims that had >=1 admitted
     # study, silently dropping no-warrant cells from the denominator.
@@ -47,7 +47,7 @@ def evaluate_shadow_civer(
     grid_years = sorted({study.year for study in studies})
     all_guidelines = _resynthesize(studies, claim_ids=grid_claim_ids, years=grid_years)
     warranted_guidelines = _resynthesize(
-        [study for study in studies if study.id in passed_ids],
+        [study for study in studies if study.id in warranted_ids],
         claim_ids=grid_claim_ids,
         years=grid_years,
     )
@@ -62,7 +62,7 @@ def evaluate_shadow_civer(
     # null samples a same-size random subset of the FULL natural corpus and
     # reports the bootstrap mean distance + 95% CI. CIVER's delta is only
     # discriminative if it beats this null.
-    warranted_ids_set = passed_ids
+    warranted_ids_set = warranted_ids
     volume_null = _volume_matched_null_for_e3(
         studies=studies,
         warranted_count=len(warranted_ids_set),
@@ -107,6 +107,7 @@ def evaluate_shadow_civer(
         "analysis_mode_breakdown": mode_breakdown,
         "fallback_warning": fallback_warning,
         "verdict_counts": _verdict_counts(verdicts),
+        "warrant_counts": _warrant_counts(verdicts),
         "calibration_matrix": _calibration_matrix(verdicts),
         "endpoint_1_natural_drift": drift,
         "endpoint_2_process_validation": _process_validation_summary(studies, verdicts, truth),
@@ -156,6 +157,7 @@ def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]
             "year": study.year,
             "analysis_mode": "output_fallback",
             "passed": fb.passed,
+            "warranted": False,
             "civer_passed": False,
             "brim_passed": False,
             "output_check_passed": fb.passed,
@@ -182,6 +184,7 @@ def _shadow_verdict(*, study: Study, graph: ClaimGraph | None) -> dict[str, Any]
         "year": study.year,
         "analysis_mode": "process",
         "passed": assessment.passed,
+        "warranted": assessment.passed,
         "civer_passed": assessment.civer_passed,
         "brim_passed": assessment.brim_passed,
         "reasons": list(assessment.reasons),
@@ -426,11 +429,26 @@ def _verdict_counts(verdicts: Sequence[dict[str, Any]]) -> dict[str, int]:
     return {"passed": passed, "failed": failed, "total": len(verdicts)}
 
 
+def _is_warranted(row: dict[str, Any]) -> bool:
+    """True only for a real process-CIVER + BRIM warrant.
+
+    Output-fallback checks can pass citation/scope scaffolding, but they are not
+    process warrants and must not enter the CIVER E2/E3 warranted corpus.
+    """
+    return bool(row.get("warranted", False))
+
+
+def _warrant_counts(verdicts: Sequence[dict[str, Any]]) -> dict[str, int]:
+    warranted = sum(1 for row in verdicts if _is_warranted(row))
+    refused = len(verdicts) - warranted
+    return {"warranted": warranted, "refused": refused, "total": len(verdicts)}
+
+
 def _calibration_matrix(verdicts: Sequence[dict[str, Any]]) -> dict[str, Any]:
     tp = tn = fp = fn = 0
     for row in verdicts:
         grounded = row["true_provenance_for_calibration"] == "GROUNDED"
-        passed = bool(row["passed"])
+        passed = _is_warranted(row)
         if grounded and passed:
             tp += 1
         elif grounded and not passed:
@@ -458,7 +476,7 @@ def _process_validation_summary(
     verdicts: Sequence[dict[str, Any]],
     truth: GroundTruth | None = None,
 ) -> dict[str, Any]:
-    passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
+    passed_ids = {row["study_id"] for row in verdicts if _is_warranted(row)}
     passed = [study for study in studies if study.id in passed_ids]
     failed = [study for study in studies if study.id not in passed_ids]
     truth_lookup = _truth_direction_lookup(truth)
@@ -491,7 +509,7 @@ def _per_claim_warrant_enrichment(
     discrimination (e.g. CIVER may catch alcohol drift but miss obesity-paradox
     over-reach). Each claim reports passed/failed cohort metrics so reviewers
     see which claims the gate works for."""
-    passed_ids = {row["study_id"] for row in verdicts if row["passed"]}
+    passed_ids = {row["study_id"] for row in verdicts if _is_warranted(row)}
     truth_lookup = _truth_direction_lookup(truth)
     by_claim: dict[str, list[Study]] = {}
     for study in studies:
