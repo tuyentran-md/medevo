@@ -8,7 +8,7 @@ It is a research simulator for asking a simple question:
 
 MedEvo does not write clinical guidelines. It does not give patient-care advice. It is an evaluation tool for studying how evidence pipelines can drift.
 
-![Historical reversal replay: the ungated branch drifts while the process-gated branch tracks the real reversal.](docs/reversal.svg)
+![Schematic of a clinical claim replayed across historical time points through the two-branch evidence pipeline.](docs/reversal.svg)
 
 ## What MedEvo Does
 
@@ -83,42 +83,6 @@ Example: hormone therapy for chronic-disease prevention in postmenopausal women.
 - Later guidance recommended against preventive use.
 
 The simulator asks whether each branch can track that reversal when it only sees evidence available at each simulated time point.
-
-## Current Results
-
-The repository currently includes two scored benchmark runs.
-
-### Run 1: 4 cardiovascular claims
-
-Run 1 used Claude Sonnet 4.6 on four cardiovascular claims.
-
-It showed that MedEvo can detect recommendation drift, but the gated and ungated branches ended with the same guideline-level distance from truth. The model was strong enough that too few bad studies entered the corpus for the gate to make a visible difference at the final recommendation level.
-
-### Run 2: 30 claims across 6 medical domains
-
-Run 2 used MIMO-v2.5-pro on 30 claims across cardiovascular medicine, surgery/procedures, pharmacotherapy, screening, metabolic disease, and infectious disease.
-
-Summary:
-
-| Measure | Result |
-|---|---:|
-| Claims | 30 |
-| Medical domains | 6 |
-| Historical horizons | 2000, 2012, 2024 |
-| Model calls | 1,032 |
-| Approximate tokens | 16M |
-| Ungated distance to truth | 0.346 |
-| Gated distance to truth | 0.250 |
-| Improvement | 0.096 |
-
-Lower distance is better. A score of 0 would mean the simulated recommendation exactly matches the historical truth label used by the benchmark.
-
-Run 2 is the first benchmark where the process gate reduced guideline-level drift. It also beat a volume-matched random-filter baseline, meaning the improvement was not explained only by keeping fewer studies.
-
-This is still an early result: one model, one seed, a modest margin, and a high abstention rate in the weaker model.
-
-Full Run 2 report: [`docs/runs/RUN_2_30CLAIM_MIMO.md`](docs/runs/RUN_2_30CLAIM_MIMO.md)  
-Short abstract: [`docs/runs/RUN_2_ABSTRACT.md`](docs/runs/RUN_2_ABSTRACT.md)
 
 ## What Is In This Repository
 
