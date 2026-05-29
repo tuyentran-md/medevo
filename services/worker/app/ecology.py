@@ -78,6 +78,13 @@ REAL_SOURCES_PER_CLAIM = 4
 # up to 50 x 3 x 2 = 300 studies per arm across the run; shorter inputs still emit
 # fewer claims. Declared as one named constant, never a magic literal in the loop.
 STUDIES_PER_CLAIM_PER_ERA = _env_int("MEDEVO_STUDIES_PER_CLAIM_PER_ERA", 2)
+# When set, the FREE arm runs design->execute (recording the ResearchPlan) but
+# applies NO gate, instead of the single merged run(). This makes free-branch
+# studies carry a process trace so post-hoc shadow CIVER can score them in
+# process mode (not output-fallback) on identical data — the clean way to
+# isolate the gate. Off by default to preserve the merged-call free arm used by
+# Paper 1's drift benchmark.
+FREE_RECORD_PLAN = os.environ.get("MEDEVO_FREE_RECORD_PLAN") == "1"
 # DEFAULT_FAILURE_RATE (imported from app.agents) is the weak-agent failure
 # fraction placeholder; SPEC §11-A anchors it to A0 in a later slice. It drives
 # the EMERGENT ungrounded-study rate, NOT a harness injection rate.
@@ -483,14 +490,33 @@ def _free_research_batch(
                 )
             )
             continue
+        plan = None
         try:
-            study, catalog = research_agent.run(
-                claim_id=claim.claim_id,
-                claim_text=claim.text,
-                simulated_year=year,
-                max_pubmed_year=pubmed_cutoff_year(year),
-                replicate=replicate,
-            )
+            if FREE_RECORD_PLAN:
+                # Process-bearing free arm: design->execute, recording the plan
+                # but applying NO gate. Gives free studies a ResearchPlan so
+                # post-hoc shadow CIVER scores them in process mode.
+                plan, catalog = research_agent.run_design(
+                    claim_id=claim.claim_id,
+                    claim_text=claim.text,
+                    simulated_year=year,
+                    max_pubmed_year=pubmed_cutoff_year(year),
+                    replicate=replicate,
+                )
+                study = research_agent.run_execute(
+                    plan=plan,
+                    catalog=catalog,
+                    claim_text=claim.text,
+                    replicate=replicate,
+                )
+            else:
+                study, catalog = research_agent.run(
+                    claim_id=claim.claim_id,
+                    claim_text=claim.text,
+                    simulated_year=year,
+                    max_pubmed_year=pubmed_cutoff_year(year),
+                    replicate=replicate,
+                )
         except Exception as exc:
             telemetry.record_failure(f"free-research/{claim.claim_id}/year-{year}", exc)
             study = Study(
@@ -519,9 +545,13 @@ def _free_research_batch(
             ResearchOutcome(
                 study=study,
                 catalog=catalog,
-                plan=None,
+                plan=plan,
                 design_admitted=None,
-                design_reasons=["Free branch: direct MedEvo research output; no active CIVER design gate."],
+                design_reasons=[
+                    "Free branch (process-bearing): design->execute recorded, NO gate applied."
+                    if FREE_RECORD_PLAN
+                    else "Free branch: direct MedEvo research output; no active CIVER design gate."
+                ],
             )
         )
     return outcomes
