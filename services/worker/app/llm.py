@@ -460,12 +460,44 @@ class DeterministicFakeClient:
         return ModelDescriptor(name="deterministic-fallback", digest="n/a")
 
 
+def _is_transient_llm_error(exc: BaseException) -> bool:
+    """Distinguish a flaky-endpoint failure (timeout, dropped connection,
+    retryable 429/5xx, retry-budget exhaustion) from a persistent one (model
+    not pulled -> 404, auth, bad config). Transient failures are absorbed
+    per-cell by the caller's CallTelemetry/TRANSIENT_FAILURE_TOLERANCE path;
+    only persistent failures justify sticky deterministic fallback."""
+    if isinstance(exc, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)):
+        return True
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return True
+    if isinstance(exc, TimeoutError):
+        return True
+    text = str(exc).lower()
+    transient_markers = (
+        "failed after",        # OpenAICompat retry-budget exhaustion
+        "retryable",           # 429/500/502/503/529 surfaced by OpenAICompat
+        "timed out",
+        "timeout",
+        "connection reset",
+        "connection aborted",
+        "temporarily unavailable",
+    )
+    return any(marker in text for marker in transient_markers)
+
+
 class LiveOrFallbackClient:
-    """Tries the real model; if any generation call fails (e.g. Ollama is
-    reachable but the model is not pulled -> 404), degrades to the
-    deterministic fake for the rest of the run and flips `scientific` to
-    False. A reachable-but-broken model must never crash a run nor be
-    presented as a scientific result (SPEC §6.6)."""
+    """Tries the real model. A PERSISTENT failure (e.g. Ollama reachable but the
+    model is not pulled -> 404, auth, bad config) degrades to the deterministic
+    fake for the rest of the run and flips `scientific` to False — a
+    reachable-but-broken model must never crash a run nor be presented as a
+    scientific result (SPEC §6.6).
+
+    A TRANSIENT failure (endpoint timeout / dropped connection / retryable
+    5xx / retry-budget exhaustion) is re-raised instead, so the caller's
+    per-cell telemetry (CallTelemetry.record_failure + TRANSIENT_FAILURE_TOLERANCE)
+    absorbs it. Previously ANY exception flipped the sticky `_degraded` flag, so
+    a single late endpoint timeout silently faked every remaining cell in the
+    run and marked the whole batch non-scientific."""
 
     def __init__(self, live: LLMClient, fake: DeterministicFakeClient) -> None:
         self._live = live
@@ -487,6 +519,8 @@ class LiveOrFallbackClient:
         try:
             return self._live.generate(prompt, seed=seed)
         except Exception as exc:
+            if _is_transient_llm_error(exc):
+                raise
             self._degraded = True
             self._degradation_reason = f"{type(exc).__name__}: {exc}"
             return self._fake.generate(prompt, seed=seed)

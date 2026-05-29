@@ -11,7 +11,7 @@ from statistics import fmean
 from typing import Any, Literal
 
 from app.agents import DEFAULT_FAILURE_RATE, ResearchAgent, SrmaAgent
-from app.synthesis import admit_guideline_output
+from app.synthesis import admit_guideline_output, synthesize_guideline_claim
 from app.config import YEARS
 from app.db import insert_ecology_records, insert_guideline_claims, insert_tier3_study
 from app.harness import branch_gap, replay_counts
@@ -2477,13 +2477,34 @@ def run_ecology(
                     )
 
                 # Tier-4: ONE SR/MA over the accumulated Tier-3 DB for this branch.
-                guideline = srma_agent.run(
-                    run_id=run_id or "preview-run",
-                    branch=branch,
-                    claim_id=claim.claim_id,
-                    claim_text=claim.text,
-                    year=year,
-                )
+                try:
+                    guideline = srma_agent.run(
+                        run_id=run_id or "preview-run",
+                        branch=branch,
+                        claim_id=claim.claim_id,
+                        claim_text=claim.text,
+                        year=year,
+                    )
+                except Exception as exc:
+                    # Transient synthesis-stage model failure (endpoint timeout
+                    # re-raised by LiveOrFallbackClient): record per-cell and fall
+                    # back to the deterministic GRADE synthesis over the real
+                    # accumulated corpus for this one cell, instead of crashing
+                    # the run. Counts toward TRANSIENT_FAILURE_TOLERANCE.
+                    telemetry.record_failure(
+                        f"synthesis/{branch}/{claim.claim_id}/year-{year}", exc
+                    )
+                    guideline = synthesize_guideline_claim(
+                        claim_id=claim.claim_id,
+                        year=year,
+                        studies=tier3_store.list_studies(
+                            run_id=run_id or "preview-run",
+                            branch=branch,
+                            claim_id=claim.claim_id,
+                            up_to_year=year,
+                        ),
+                        claim_text=claim.text,
+                    )
                 # Task A: CIVER gates the SRMA OUTPUT on the constrained branch.
                 # Free branch emits as-is (no gate). The output gate re-appraises
                 # the warranted-only corpus and refuses an over-reaching /
